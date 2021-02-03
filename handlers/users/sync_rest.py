@@ -58,16 +58,9 @@ async def process_restaurants(message: types.Message, state: FSMContext):
             rest_with_start_sync.append(rest_info['web_link'])
         else:
             logging.error('Старт синхронизации: Ошибка')
-        if len(rest_with_start_sync) > 0:
-            with ProcessPoolExecutor(max_workers=5) as executor:
-                future_to_url = {executor.submit(check_sync_status, rest, 60): rest for rest in rest_with_start_sync}
-                for future in concurrent.futures.as_completed(future_to_url):
-                    url = future_to_url[future]
-                    try:
-                        data = future.result()
-                    except Exception as exc:
-                        print('%r generated an exception: %s' % (url, exc))
-                    else:
-                        print('%r page is %d bytes' % (url, len(data)))
-
+    if len(rest_with_start_sync) > 0:
+        with ProcessPoolExecutor(max_workers=5) as executor:
+            results = executor.map(check_sync_status, rest_with_start_sync)
+        for result in results:
+            print(result)
     await state.finish()
