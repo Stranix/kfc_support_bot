@@ -18,6 +18,8 @@ def sync_rep(web_link: str) -> bool:
     except requests.exceptions.RequestException:
         start_sync = False
 
+    return start_sync
+
 
 def check_conn_to_main_server(conn_link: str) -> dict:
     result_dict = dict()
