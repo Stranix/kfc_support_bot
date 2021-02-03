@@ -1,4 +1,4 @@
-# Created by .ignore support plugin (hsz.mobi)
 .env
 /venv/*
 /.idea/
+/services/rest.xml
