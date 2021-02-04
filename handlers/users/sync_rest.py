@@ -60,7 +60,6 @@ async def process_restaurants(message: types.Message, state: FSMContext):
             logging.error('Старт синхронизации: Ошибка')
     if len(rest_with_start_sync) > 0:
         with ProcessPoolExecutor(max_workers=5) as executor:
-            results = executor.map(check_sync_status, rest_with_start_sync)
-        for result in results:
-            print(result)
+            for web_link, sync_result in zip(rest_with_start_sync, executor.map(check_sync_status, rest_with_start_sync)):
+                logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
     await state.finish()
