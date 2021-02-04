@@ -90,12 +90,11 @@ def check_sync_status(web_link: str) -> bool:
         logging.info(f'{count}: Старт проверки процесса синхронизации {web_link}')
         try:
             response = requests.get(rep_ref_link, verify=False, timeout=3)
+            soup = BeautifulSoup(response.text, 'lxml')
+            in_progress = soup.find_all(string=re.compile('in progress'))
+            sync_done = False if in_progress else True
+            count = count + 1
         except requests.exceptions.RequestException:
             logging.info('Веб морда не ответила')
-
-        soup = BeautifulSoup(response.text, 'lxml')
-        in_progress = soup.find_all(string=re.compile('in progress'))
-        sync_done = False if in_progress else True
-        count = count + 1
 
     return sync_done
