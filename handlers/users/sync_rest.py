@@ -3,7 +3,7 @@ import logging
 from concurrent.futures.process import ProcessPoolExecutor
 
 from aiogram import types
-from aiogram.dispatcher import FSMContext
+from aiogram.dispatcher import FSMContext, filters
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
 
@@ -34,7 +34,8 @@ async def process_choice_sync_rest(message: types.Message, state: FSMContext):
     if data['choice_sync_rest'] == 'Один(Группу)':
         await SyncRep.next()
         logging.info(f"Выбран параметр шаг 1: {data['choice_sync_rest']}")
-        await message.reply('Введите группу ресторанов (через пробел). \nНапример: 5028 12 1840', reply_markup=markup)
+        await message.reply('Введите код ресторана(групп кодов через пробел). \nНапример: 5028 12 1840',
+                            reply_markup=markup)
     else:
         await message.reply('Принял \nОжидайте...', reply_markup=markup)
         all_rests = get_all_rest_ip()
@@ -46,8 +47,8 @@ async def process_choice_sync_rest(message: types.Message, state: FSMContext):
         await state.finish()
 
 
-@dp.message_handler(state=SyncRep.restaurants)
-async def process_restaurants(message: types.Message, state: FSMContext):
+@dp.message_handler(filters.Regexp(regexp=r'^(\d{2,4}\s?)+'), state=SyncRep.restaurants)
+async def process_restaurants(message: types.Message, regexp, state: FSMContext):
     async with state.proxy() as data:
         data['restaurants'] = message.text
 
@@ -69,7 +70,13 @@ async def process_restaurants(message: types.Message, state: FSMContext):
 
     if len(rest_with_start_sync) > 0:
         with ProcessPoolExecutor(max_workers=5) as executor:
-            for web_link, sync_result in zip(rest_with_start_sync, executor.map(check_sync_status, rest_with_start_sync)):
+            for web_link, sync_result in zip(rest_with_start_sync,
+                                             executor.map(check_sync_status, rest_with_start_sync)):
                 logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
 
     await state.finish()
+
+
+@dp.message_handler(state=SyncRep.restaurants)
+async def process_code_invalid(message: types.Message):
+    return await message.reply(f'неверный формат')
