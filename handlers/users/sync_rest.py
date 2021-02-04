@@ -53,8 +53,9 @@ async def process_choice_sync_rest(message: types.Message, state: FSMContext):
 @dp.message_handler(filters.Regexp(regexp=r'^(\d{2,4}\s?)+'), state=SyncRep.restaurants)
 async def process_restaurants(message: types.Message, regexp, state: FSMContext):
     async with state.proxy() as data:
-        data['restaurants'] = message.text
+        data['restaurants'] = regexp.group()
 
+    print(regexp.group())
     await message.reply('Данные получены, запускаю синхронизацию. \nОжидайте...')
 
     logging.info(f'Получил ресторан(ы): {data["restaurants"]}')
