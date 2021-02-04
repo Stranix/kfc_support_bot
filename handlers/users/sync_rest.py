@@ -1,5 +1,6 @@
 import concurrent
 import logging
+import time
 from concurrent.futures.process import ProcessPoolExecutor
 
 from aiogram import types
@@ -38,12 +39,14 @@ async def process_choice_sync_rest(message: types.Message, state: FSMContext):
                             reply_markup=markup)
     else:
         await message.reply('Принял \nОжидайте...', reply_markup=markup)
+
         all_rests = get_all_rest_ip()
-        with ProcessPoolExecutor(max_workers=5) as executor:
-            for web_link, sync_result in zip(all_rests, executor.map(check_sync_status, all_rests)):
+        start = time.time()
+        with ProcessPoolExecutor(max_workers=10) as executor:
+            for web_link, sync_result in zip(all_rests, executor.map(sync_rep, all_rests)):
                 logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
 
-        await message.answer('Синхронизация запущена')
+        await message.answer(f'Синхронизация запущена\nЗа {time.time() - start}')
         await state.finish()
 
 

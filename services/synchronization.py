@@ -72,7 +72,7 @@ def get_all_rest_ip() -> list:
     for item in items:
         rest_ip = item.attrib['genIP_REP_SRV']
         if rest_ip == '':
-            break
+            continue
         web_link = f"https://{item.attrib['genIP_REP_SRV']}:9000"
         all_restaurants_ip.append(web_link)
 
