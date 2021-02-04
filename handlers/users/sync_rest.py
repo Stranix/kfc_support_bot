@@ -8,7 +8,7 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
 
 from loader import dp
-from services.synchronization import get_rest_info_by_code, sync_rep, check_sync_status
+from services.synchronization import get_rest_info_by_code, sync_rep, check_sync_status, get_all_rest_ip
 
 
 class SyncRep(StatesGroup):
@@ -36,7 +36,13 @@ async def process_choice_sync_rest(message: types.Message, state: FSMContext):
         logging.info(f"Выбран параметр шаг 1: {data['choice_sync_rest']}")
         await message.reply('Введите группу ресторанов (через пробел). \nНапример: 5028 12 1840', reply_markup=markup)
     else:
-        await message.reply('будет запущена синхронизация по всем ресторанам', reply_markup=markup)
+        await message.reply('Принял \nОжидайте...', reply_markup=markup)
+        all_rests = get_all_rest_ip()
+        with ProcessPoolExecutor(max_workers=5) as executor:
+            for web_link, sync_result in zip(all_rests, executor.map(check_sync_status, all_rests)):
+                logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
+
+        await message.answer('Синхронизация запущена')
         await state.finish()
 
 
@@ -46,9 +52,11 @@ async def process_restaurants(message: types.Message, state: FSMContext):
         data['restaurants'] = message.text
 
     await message.reply('Данные получены, запускаю синхронизацию. \nОжидайте...')
+
     logging.info(f'Получил ресторан(ы): {data["restaurants"]}')
     rests = str(data["restaurants"]).split(' ')
     rest_with_start_sync = []
+
     for rest in rests:
         logging.info(f'Запуск синхронизации для ресторана: {rest}')
         rest_info = get_rest_info_by_code(rest)
@@ -58,8 +66,10 @@ async def process_restaurants(message: types.Message, state: FSMContext):
             rest_with_start_sync.append(rest_info['web_link'])
         else:
             logging.error('Старт синхронизации: Ошибка')
+
     if len(rest_with_start_sync) > 0:
         with ProcessPoolExecutor(max_workers=5) as executor:
             for web_link, sync_result in zip(rest_with_start_sync, executor.map(check_sync_status, rest_with_start_sync)):
                 logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
+
     await state.finish()

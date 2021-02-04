@@ -10,10 +10,9 @@ from xml.etree import ElementTree as ET
 
 
 def sync_rep(web_link: str) -> bool:
-    start_sync = False
     link_to_sync = f'{web_link}/rk7api/v1/forcesyncrefs.xml'
     try:
-        response = requests.get(link_to_sync, verify=False, timeout=3)
+        requests.get(link_to_sync, verify=False, timeout=3)
         start_sync = True
     except requests.exceptions.RequestException:
         start_sync = False
@@ -60,6 +59,24 @@ def get_rest_info_by_code(rest_code: str) -> dict:
         rest_info['rest_name'] = False
 
     return rest_info
+
+
+def get_all_rest_ip() -> list:
+    all_restaurants_ip = []
+    path_to_file = os.getcwd() + '\\services\\rest.xml'
+    with open(path_to_file, 'r', encoding='UTF-8') as reference:
+        reference_data = reference.read()
+
+    root = ET.fromstring(reference_data)
+    items = root.findall(f"RK7Reference/Items/Item")
+    for item in items:
+        rest_ip = item.attrib['genIP_REP_SRV']
+        if rest_ip == '':
+            break
+        web_link = f"https://{item.attrib['genIP_REP_SRV']}:9000"
+        all_restaurants_ip.append(web_link)
+
+    return all_restaurants_ip
 
 
 def check_sync_status(web_link: str) -> bool:
