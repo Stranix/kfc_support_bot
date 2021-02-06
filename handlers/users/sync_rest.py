@@ -90,6 +90,16 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
                 logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
                 if sync_result:
                     sync_complete.append(web_link)
+    if len(rest_not_found) > 0:
+        message_for_send = 'Не найдены: '
+        for rest in rest_not_found:
+            message_for_send += rest
+        message_for_send += '\n'
+    if len(rest_sync_error) > 0:
+        message_for_send = 'Ошибка старта синхронизации: '
+        for rest in rest_not_found:
+            message_for_send += rest
+        message_for_send += '\n'
 
     await state.finish()
 
