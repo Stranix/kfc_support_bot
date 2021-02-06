@@ -97,10 +97,16 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
         message_for_send += '\n'
     if len(rest_sync_error) > 0:
         message_for_send = 'Ошибка старта синхронизации: '
+        for rest in rest_sync_error:
+            message_for_send += rest['rest_name']
+        message_for_send += '\n'
+    if len(sync_complete) > 0:
+        message_for_send = 'Ошибка старта синхронизации: '
         for rest in rest_not_found:
-            message_for_send += rest
+            message_for_send += rest['rest_name']
         message_for_send += '\n'
 
+    await message.reply(message_for_send)
     await state.finish()
 
 
