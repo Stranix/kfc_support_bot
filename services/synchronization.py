@@ -20,7 +20,8 @@ def sync_rep(web_link: str) -> bool:
     return start_sync
 
 
-def check_conn_to_main_server(conn_link: str) -> dict:
+def check_conn_to_main_server(web_link: str) -> dict:
+    conn_link = f'{web_link}/Connects'
     result_dict = dict()
     try:
         response = requests.get(conn_link, verify=False, timeout=3)

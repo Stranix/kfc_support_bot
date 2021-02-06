@@ -9,7 +9,8 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.types import Message
 
 from loader import dp
-from services.synchronization import get_rest_info_by_code, sync_rep, check_sync_status, get_all_rest_ip
+from services.synchronization import get_rest_info_by_code, sync_rep, check_sync_status, get_all_rest_ip, \
+    check_conn_to_main_server
 
 
 class SyncRep(StatesGroup):
@@ -60,23 +61,35 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
 
     logging.info(f'Получил ресторан(ы): {data["restaurants"]}')
     rests = str(data["restaurants"]).split(' ')
+    rest_not_found = []
     rest_with_start_sync = []
+    rest_sync_error = []
+    sync_complete = []
 
     for rest in rests:
-        logging.info(f'Запуск синхронизации для ресторана: {rest}')
+        logging.info(f'Получаю информацию для ресторана: {rest}')
         rest_info = get_rest_info_by_code(rest)
-        logging.debug(f'рест инфо: {rest_info}')
-        if sync_rep(rest_info['web_link']):
-            logging.info('Старт синхронизации: Успех')
-            rest_with_start_sync.append(rest_info['web_link'])
+        if rest_info['rest_name']:
+            logging.debug(f'рест инфо: {rest_info}')
+            check_conn = check_conn_to_main_server(rest_info['web_link'])
+            if check_conn['resume']:
+                if sync_rep(rest_info['web_link']):
+                    logging.info('Старт синхронизации: Успех')
+                    rest_with_start_sync.append(rest_info)
+                else:
+                    logging.error('Старт синхронизации: Ошибка')
+                    rest_sync_error.append(rest_info)
         else:
-            logging.error('Старт синхронизации: Ошибка')
+            logging.error('Ресторан не найден')
+            rest_not_found.append(rest)
 
     if len(rest_with_start_sync) > 0:
         with ProcessPoolExecutor(max_workers=5) as executor:
-            for web_link, sync_result in zip(rest_with_start_sync,
-                                             executor.map(check_sync_status, rest_with_start_sync)):
-                logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
+            for rest, sync_result in zip(rest_with_start_sync,
+                                         executor.map(check_sync_status, rest_with_start_sync['web_link'])):
+                logging.info('Start: {} Sync_result: {}'.format(rest['rest_name'], sync_result))
+                if sync_result:
+                    sync_complete.append(rest)
 
     await state.finish()
 
