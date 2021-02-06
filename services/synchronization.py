@@ -80,7 +80,8 @@ def get_all_rest_ip() -> list:
     return all_restaurants_ip
 
 
-def check_sync_status(web_link: str) -> bool:
+def check_sync_status(list_info: list) -> bool:
+    web_link = list_info['web_link']
     rep_ref_link = f'{web_link}/References'
     sync_done = False
     count = 1
