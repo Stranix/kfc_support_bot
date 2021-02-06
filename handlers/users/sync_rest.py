@@ -85,11 +85,11 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
 
     if len(rest_with_start_sync) > 0:
         with ProcessPoolExecutor(max_workers=5) as executor:
-            for rest, sync_result in zip(rest_with_start_sync,
-                                         executor.map(check_sync_status, rest_with_start_sync['web_link'])):
-                logging.info('Start: {} Sync_result: {}'.format(rest['rest_name'], sync_result))
+            for web_link, sync_result in zip(rest_with_start_sync,
+                                             executor.map(check_sync_status, rest_with_start_sync)):
+                logging.info('Start: {} Sync_result: {}'.format(web_link, sync_result))
                 if sync_result:
-                    sync_complete.append(rest)
+                    sync_complete.append(web_link)
 
     await state.finish()
 
