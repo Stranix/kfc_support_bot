@@ -80,9 +80,9 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
             not_found += rest['code'] + ' '
             continue
         if rest['sync_status'] == 'In Progress':
-            sync_start += f'{rest["rest_name"]}:{rest["web_link"]}\n'
+            sync_start += f'{rest["rest_name"]} : {rest["web_link"]}\n'
         else:
-            sync_error += f'\n{rest["rest_name"]}:{rest["web_link"]}\nОшибка: {rest["sync_status"]}\n'
+            sync_error += f'\n{rest["rest_name"]} : {rest["web_link"]}\nОшибка: {rest["sync_status"]}\n'
 
     message_for_send = ''
     if not_found != '':
