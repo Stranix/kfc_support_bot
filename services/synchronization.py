@@ -9,15 +9,21 @@ from bs4 import BeautifulSoup
 from xml.etree import ElementTree as ET
 
 
-def sync_rep(web_link: str) -> bool:
+def sync_rep(web_link: str) -> dict:
     link_to_sync = f'{web_link}/rk7api/v1/forcesyncrefs.xml'
-    try:
-        requests.get(link_to_sync, verify=False, timeout=3)
-        start_sync = True
-    except requests.exceptions.RequestException:
-        start_sync = False
+    check_conn = check_conn_to_main_server(web_link)
+    result_sync_rep = dict()
+    result_sync_rep['web_link'] = web_link
+    if check_conn['resume']:
+        try:
+            requests.get(link_to_sync, verify=False, timeout=3)
+            result_sync_rep['status'] = 'In Progress'
+        except requests.exceptions.RequestException:
+            result_sync_rep['status'] = 'Error'
+    else:
+        result_sync_rep['status'] = check_conn['status']
 
-    return start_sync
+    return result_sync_rep
 
 
 def check_conn_to_main_server(web_link: str) -> dict:
@@ -54,10 +60,12 @@ def get_rest_info_by_code(rest_code: str) -> dict:
     try:
         item = root.find(f"RK7Reference/Items/*[@Code='{rest_code}']")
         rest_info['rest_name'] = item.attrib['Name']
+        rest_info['code'] = item.attrib['code']
         rest_info['ip'] = item.attrib['genIP_REP_SRV']
         rest_info['web_link'] = f"https://{item.attrib['genIP_REP_SRV']}:9000"
+        rest_info['founded'] = True
     except AttributeError:
-        rest_info['rest_name'] = False
+        rest_info['founded'] = False
 
     return rest_info
 

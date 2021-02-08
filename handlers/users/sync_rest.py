@@ -56,57 +56,12 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
     async with state.proxy() as data:
         data['restaurants'] = regexp.group()
 
-    print(regexp.group())
-    await message.reply('Данные получены, запускаю синхронизацию. \nОжидайте...')
-
     logging.info(f'Получил ресторан(ы): {data["restaurants"]}')
-    rests = str(data["restaurants"]).split(' ')
-    rest_not_found = []
-    rest_with_start_sync = []
-    rest_sync_error = []
-    sync_complete = []
+    codes = str(data["restaurants"]).split(' ')
+    rest_info = list()
+    for code in codes:
+        rest_info.append(get_rest_info_by_code(code))
 
-    for rest in rests:
-        logging.info(f'Получаю информацию для ресторана: {rest}')
-        rest_info = get_rest_info_by_code(rest)
-        if rest_info['rest_name']:
-            logging.debug(f'рест инфо: {rest_info}')
-            check_conn = check_conn_to_main_server(rest_info['web_link'])
-            if check_conn['resume']:
-                if sync_rep(rest_info['web_link']):
-                    logging.info('Старт синхронизации: Успех')
-                    rest_with_start_sync.append(rest_info)
-                else:
-                    logging.error('Старт синхронизации: Ошибка')
-                    rest_sync_error.append(rest_info)
-        else:
-            logging.error('Ресторан не найден')
-            rest_not_found.append(rest)
-
-    if len(rest_with_start_sync) > 0:
-        with ProcessPoolExecutor(max_workers=5) as executor:
-            for rest, sync_result in zip(rest_with_start_sync,
-                                         executor.map(check_sync_status, rest_with_start_sync)):
-                logging.info('Start: {} Sync_result: {}'.format(rest['rest_name'], sync_result))
-                if sync_result:
-                    sync_complete.append(rest)
-    if len(rest_not_found) > 0:
-        message_for_send = 'Не найдены: '
-        for rest in rest_not_found:
-            message_for_send += rest
-        message_for_send += '\n'
-    if len(rest_sync_error) > 0:
-        message_for_send = 'Ошибка старта синхронизации: '
-        for rest in rest_sync_error:
-            message_for_send += rest['rest_name']
-        message_for_send += '\n'
-    if len(sync_complete) > 0:
-        message_for_send = 'Ошибка старта синхронизации: '
-        for rest in rest_not_found:
-            message_for_send += rest['rest_name']
-        message_for_send += '\n'
-
-    await message.reply(message_for_send)
     await state.finish()
 
 
