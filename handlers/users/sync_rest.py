@@ -70,12 +70,29 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
             sync_results.append(rest_info)
         else:
             logging.error(f'Информация по ресторану не получена. {code} Рест не найден')
+            rest_info['code'] = code
             sync_results.append(rest_info)
+    not_found = ''
+    sync_start = ''
+    sync_error = ''
+    for rest in sync_results:
+        if not rest['founded']:
+            not_found += rest['code'] + ' '
+            continue
+        if rest['sync_status'] == 'In Progress':
+            sync_start += f'{rest["rest_name"]}:{rest["web_link"]}\n'
+        else:
+            sync_error += f'\n{rest["rest_name"]}:{rest["web_link"]}\nОшибка: {rest["sync_status"]}\n'
 
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        for number, time_taken in zip(sync_results, executor.map(check_sync_status, sync_results)):
-            print('Start: {} Time taken: {}'.format(number, time_taken))
-    print('Total time taken: {}'.format(time.time()))
+    message_for_send = ''
+    if not_found != '':
+        message_for_send += 'Не нашел информацию по ресторану(ам): ' + not_found + '\n'
+    if sync_start != '':
+        message_for_send += 'Синхронизация запущена для:\n' + sync_start
+    if sync_error != '':
+        message_for_send += 'Ошибка старта синхронизации:\n' + sync_error
+
+    await message.reply(message_for_send)
 
     await state.finish()
 
