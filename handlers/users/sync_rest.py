@@ -61,7 +61,7 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
     rest_info = list()
     for code in codes:
         rest_info.append(get_rest_info_by_code(code))
-
+    print(rest_info)
     await state.finish()
 
 
