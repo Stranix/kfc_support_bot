@@ -60,7 +60,7 @@ def get_rest_info_by_code(rest_code: str) -> dict:
     try:
         item = root.find(f"RK7Reference/Items/*[@Code='{rest_code}']")
         rest_info['rest_name'] = item.attrib['Name']
-        rest_info['code'] = item.attrib['code']
+        rest_info['code'] = item.attrib['Code']
         rest_info['ip'] = item.attrib['genIP_REP_SRV']
         rest_info['web_link'] = f"https://{item.attrib['genIP_REP_SRV']}:9000"
         rest_info['founded'] = True
