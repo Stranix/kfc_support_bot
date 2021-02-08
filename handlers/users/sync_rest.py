@@ -58,12 +58,25 @@ async def process_restaurants(message: types.Message, regexp, state: FSMContext)
 
     logging.info(f'Получил ресторан(ы): {data["restaurants"]}')
     codes = str(data["restaurants"]).split(' ')
-    rest_info = list()
+    sync_results = list()
     for code in codes:
-        rest_info.append(get_rest_info_by_code(code))
-    for rest in rest_info:
-        test = sync_rep(rest['web_link'])
-    print(test)
+        logging.info(f'Получаю информацию по ресторану с кодом {code}')
+        rest_info = get_rest_info_by_code(code)
+        if rest_info['founded']:
+            logging.info(f'Информация по ресторану получена.')
+            logging.info('Запускаю синхронизацию')
+            start_sync = sync_rep(rest_info['web_link'])
+            rest_info['sync_status'] = start_sync['status']
+            sync_results.append(rest_info)
+        else:
+            logging.error(f'Информация по ресторану не получена. {code} Рест не найден')
+            sync_results.append(rest_info)
+
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        for number, time_taken in zip(sync_results, executor.map(check_sync_status, sync_results)):
+            print('Start: {} Time taken: {}'.format(number, time_taken))
+    print('Total time taken: {}'.format(time.time()))
+
     await state.finish()
 
 
