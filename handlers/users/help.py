@@ -8,12 +8,9 @@ from loader import dp
 async def bot_help(message: types.Message):
     text = [
         'Список команд: ',
-        '/start - Старт бота',
         '/help - Получить справку',
         '/sync_tr - Синхронизация транзитов',
         '/sync_rest - Синхронизация ресторана(ов)',
-        '/rest_info - Информация по ресторану',
-        '/cash_info - Информация по кассе',
-        '/sync_check - Проверка синхронизации в ресторане(ах)',
+        '/sync_all - Синхронизация всех ресторанов с выбором Юр лица',
     ]
     await message.answer('\n'.join(text))

@@ -2,3 +2,4 @@
 /venv/*
 /.idea/
 /services/rest.xml
+/files/conn_error.txt

@@ -4,6 +4,7 @@ from aiogram import types
 from aiogram.dispatcher.filters import Command
 from keyboards.choice_tr import choice_tr
 from loader import dp
+from services.synchronization import sync_rep, generated_links_to_sync
 
 
 @dp.message_handler(Command('sync_tr'))
@@ -19,20 +20,25 @@ async def choice_tr_group(message: types.Message):
 async def kb_answer_for_sync_tr(query: types.CallbackQuery):
     await query.answer()
     logging.info(f'Получен ответ: {query.data}')
-    if query.data == 'yum':
-        logging.info('Запускаю синхронизацию по транзитам ЯМ!')
-        await query.message.answer(f'Запускаю синхронизацию по транзитам: {query.data}')
-    elif query.data == 'irb':
-        logging.info('Запускаю синхронизацию по транзитам IRB')
-        await query.message.answer(f'Запускаю синхронизацию по транзитам: {query.data}')
-    elif query.data == 'all':
-        logging.info('Запускаю синхронизацию по всем транзитам')
-        await query.message.answer(f'Запускаю синхронизацию по всем транзитам')
-    elif query.data == 'cancel':
-        logging.info('Отменил синхронизацию транзитов')
-        await query.message.edit_reply_markup(reply_markup=None)
-    else:
-        logging.error('Не выбран транзит для синхронизации!')
 
-    sync_result = 'Результат синхронизации: ОК'
-    await query.message.answer(sync_result)
+    if query.data == 'all':
+        links_to_sync = generated_links_to_sync(['yum', 'irb'])
+    else:
+        links_to_sync = generated_links_to_sync([query.data])
+
+    sync_results = []
+    for tr in links_to_sync:
+        sync_results.append(sync_rep(tr))
+
+    sync_error = ''
+    for result in sync_results:
+        if result['status'] != 'In Progress':
+            sync_error += f'\nTranzit: {result["web_link"]}\nStatus: {result["status"]}\n'
+
+    if sync_error == '':
+        message_for_send = 'Запуск синхронизации по транзитам: Успех'
+    else:
+        message_for_send = 'Ошибка запуска синхронизации: \n' + sync_error
+
+    await query.message.edit_reply_markup(reply_markup=None)
+    await query.message.answer(message_for_send)

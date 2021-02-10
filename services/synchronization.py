@@ -70,22 +70,37 @@ def get_rest_info_by_code(rest_code: str) -> dict:
     return rest_info
 
 
-def get_all_rest_ip() -> list:
-    all_restaurants_ip = []
+def get_all_rest_info(owner: str) -> list:
+    restaurants = list()
     path_to_file = os.getcwd() + '\\services\\rest.xml'
     with open(path_to_file, 'r', encoding='UTF-8') as reference:
         reference_data = reference.read()
 
     root = ET.fromstring(reference_data)
-    items = root.findall(f"RK7Reference/Items/Item")
-    for item in items:
-        rest_ip = item.attrib['genIP_REP_SRV']
-        if rest_ip == '':
-            continue
-        web_link = f"https://{item.attrib['genIP_REP_SRV']}:9000"
-        all_restaurants_ip.append(web_link)
+    if owner == 'all':
+        items = root.findall(f"RK7Reference/Items/Item")
+        for item in items:
+            rest_ip = item.attrib['genIP_REP_SRV']
+            if rest_ip == '':
+                continue
+            restaurants.append(dict(name=item.attrib['Name'],
+                                    code=item.attrib['Code'],
+                                    ip=rest_ip,
+                                    web_link=f"https://{item.attrib['genIP_REP_SRV']}:9000"
+                                    ))
+    else:
+        items = root.findall(f"RK7Reference/Items/*[@Owner='{owner}']")
+        for item in items:
+            rest_ip = item.attrib['genIP_REP_SRV']
+            if rest_ip == '':
+                continue
+            restaurants.append(dict(name=item.attrib['Name'],
+                                    code=item.attrib['Code'],
+                                    ip=rest_ip,
+                                    web_link=f"https://{item.attrib['genIP_REP_SRV']}:9000"
+                                    ))
 
-    return all_restaurants_ip
+    return restaurants
 
 
 def check_sync_status(list_info: list) -> bool:
@@ -108,3 +123,19 @@ def check_sync_status(list_info: list) -> bool:
             logging.info('Веб морда не ответила')
 
     return sync_done
+
+
+def generated_links_to_sync(tranzit_owners: list) -> list:
+    tranzit_port_dict = dict(yum=['9001', '9002', '9003', '9004'],
+                             irb=['5001', '5002', '5003', '5004', '5005', '5006', '5007',
+                                  '5008', '5009', '5010', '5011', '5012', '5013'])
+    list_links_to_sync = list()
+    for owner in tranzit_owners:
+        for tranzit_port in tranzit_port_dict[owner]:
+            if owner == 'yum':
+                list_links_to_sync.append(f"https://192.168.221.24:{tranzit_port}")
+
+            if owner == 'irb':
+                list_links_to_sync.append(f"https://10.200.103.223:{tranzit_port}")
+
+    return list_links_to_sync
