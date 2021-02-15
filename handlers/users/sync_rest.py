@@ -1,5 +1,4 @@
 import logging
-import time
 
 from aiogram import types
 from aiogram.dispatcher import filters
@@ -11,6 +10,7 @@ from services.synchronization import get_rest_info_by_code, sync_rep
 @dp.message_handler(filters.RegexpCommandsFilter(regexp_commands=[r'(\d{2,4}\s?)+']))
 async def send_welcome(message: types.Message, regexp_command):
     restaurants = regexp_command.group()
+    logging.info(f'Запуск от: {message.from_user.full_name}')
     logging.info(f'Получил ресторан(ы): {restaurants}')
     codes = str(restaurants).split(' ')
     sync_results = list()
