@@ -1,4 +1,5 @@
 import logging
+import re
 
 from aiogram import types
 from aiogram.dispatcher import filters
@@ -12,6 +13,7 @@ async def scan_ticket(message: types.Message, regexp):
     logging.info(f'Нашел в сообщении номер тикета: {regexp.group()}')
     message_for_send = find_ticket(regexp.group())
     if message_for_send:
+        message_for_send = re.sub(r'<[^>]*>', '', message_for_send)
         await message.reply(f'<code>есть информация по тикету:\n'
                             f'{message_for_send}</code>')
     else:
