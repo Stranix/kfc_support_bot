@@ -127,8 +127,8 @@ def check_sync_status(list_info: list) -> bool:
 
 def generated_links_to_sync(tranzit_owners: list) -> list:
     tranzit_port_dict = dict(yum=['9001', '9002', '9003', '9004'],
-                             irb=['5001', '5002', '5003', '5004', '5005', '5006', '5007',
-                                  '5008', '5009', '5010', '5011', '5012', '5013'])
+                             irb=['9001', '9002', '9003', '9004', '9005', '9006', '9007',
+                                  '9008', '9009', '9010', '9011', '9012', '9013'])
     list_links_to_sync = list()
     for owner in tranzit_owners:
         for tranzit_port in tranzit_port_dict[owner]:
