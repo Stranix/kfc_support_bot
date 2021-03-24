@@ -8,7 +8,7 @@ import env_config as config
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 FORMAT = '%(asctime)s %(levelname)s : %(message)s'
-logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt='%m/%d/%Y %I:%M:%S %p', filename='bot.log')
 
 bot = Bot(token=config.BOT_TOKEN, parse_mode=types.ParseMode.HTML)
 storage = MemoryStorage()
