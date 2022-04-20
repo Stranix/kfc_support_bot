@@ -52,7 +52,7 @@ def check_conn_to_main_server(web_link: str) -> dict:
 
 def get_rest_info_by_code(rest_code: str) -> dict:
     rest_info = dict()
-    path_to_file = os.getcwd() + '\\services\\rest.xml'
+    path_to_file = os.getcwd() + '/services/rest.xml'
     with open(path_to_file, 'r', encoding='UTF-8') as reference:
         reference_data = reference.read()
 
@@ -72,7 +72,7 @@ def get_rest_info_by_code(rest_code: str) -> dict:
 
 def get_all_rest_info(owner: str) -> list:
     restaurants = list()
-    path_to_file = os.getcwd() + '\\services\\rest.xml'
+    path_to_file = os.getcwd() + '/services/rest.xml'
     with open(path_to_file, 'r', encoding='UTF-8') as reference:
         reference_data = reference.read()
 

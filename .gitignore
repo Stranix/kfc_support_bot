@@ -1,5 +1,7 @@
 .env
-/venv/*
+env/
 /.idea/
 /services/rest.xml
-/files/conn_error.txt
+conn_error.txt
+__pycache__/
+bot.log
