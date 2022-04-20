@@ -14,8 +14,6 @@ async def choice_tr_group(message: types.Message):
 
 
 @dp.callback_query_handler(text='yum')
-@dp.callback_query_handler(text='irb')
-@dp.callback_query_handler(text='all')
 @dp.callback_query_handler(text='cancel')
 async def kb_answer_for_sync_tr(query: types.CallbackQuery):
     await query.answer()
@@ -28,8 +26,10 @@ async def kb_answer_for_sync_tr(query: types.CallbackQuery):
 
     if query.data == 'all':
         links_to_sync = generated_links_to_sync(['yum', 'irb'])
-    else:
+    elif query.data != 'cancel':
         links_to_sync = generated_links_to_sync([query.data])
+    else:
+        links_to_sync = ''
 
     sync_results = []
     for tr in links_to_sync:
@@ -44,6 +44,9 @@ async def kb_answer_for_sync_tr(query: types.CallbackQuery):
         message_for_send = f'Запуск синхронизации по транзитам {tranzit_name}: Без ошибок'
     else:
         message_for_send = 'Ошибка запуска синхронизации: \n' + sync_error
-
-    await query.message.edit_reply_markup(reply_markup=None)
-    await query.message.answer(message_for_send)
+    if query.data == 'cancel':
+        await query.message.edit_reply_markup(reply_markup=None)
+        await query.message.answer('Синхронизация отменена')
+    else:
+        await query.message.edit_reply_markup(reply_markup=None)
+        await query.message.answer(message_for_send)

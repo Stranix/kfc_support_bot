@@ -24,7 +24,7 @@ def get_body(msg):
 def get_emails(result_bytes, conn):
     msgs = []
     for num in result_bytes[0].split():
-        status, data = conn.fetch(num, '(RFC822)')
+        status, data = conn.uid('fetch', num, '(RFC822)')
         msgs.append(data)
     return msgs
 
