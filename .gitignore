@@ -2,6 +2,8 @@
 env/
 /.idea/
 /services/rest.xml
-conn_error.txt
 __pycache__/
+files/
 bot.log
+conn_error.txt
+.\\files\\conn_error.txt
