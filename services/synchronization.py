@@ -8,10 +8,13 @@ import re
 from bs4 import BeautifulSoup
 from xml.etree import ElementTree as ET
 
+logger = logging.getLogger(__name__)
 
 def sync_rep(web_link: str) -> dict:
+    logger.info(f'web_link: {web_link}')
     link_to_sync = f'{web_link}/rk7api/v1/forcesyncrefs.xml'
     check_conn = check_conn_to_main_server(web_link)
+    logger.info(f'check_conn: {check_conn}')
     result_sync_rep = dict()
     result_sync_rep['web_link'] = web_link
     if check_conn['resume']:
@@ -32,7 +35,7 @@ def check_conn_to_main_server(web_link: str) -> dict:
     try:
         response = requests.get(conn_link, verify=False, timeout=3)
         soup = BeautifulSoup(response.text, 'lxml')
-        check_list = ['REF_TRANSIT', 'RS_REF_TRANSIT', 'CENTER', 'TRANSIT']
+        check_list = ['REF_TRANSIT', 'RS_REF_TRANSIT', 'CENTER', 'TRANSIT', 'FZ_REF_TRANSIT_764']
         exist_conn = ''
         for check in check_list:
             exist_conn = soup.find_all(string=re.compile(check))
@@ -103,7 +106,7 @@ def get_all_rest_info(owner: str) -> list:
     return restaurants
 
 
-def check_sync_status(list_info: list) -> bool:
+def check_sync_status(list_info) -> bool:
     web_link = list_info['web_link']
     rep_ref_link = f'{web_link}/References'
     sync_done = False
@@ -128,7 +131,9 @@ def check_sync_status(list_info: list) -> bool:
 def generated_links_to_sync(tranzit_owners: list) -> list:
     tranzit_port_dict = dict(yum=['9001', '9002', '9003', '9004'],
                              irb=['9001', '9002', '9003', '9004', '9005', '9006', '9007',
-                                  '9008', '9009', '9010', '9011', '9012', '9013'])
+                                  '9008', '9009', '9010', '9011', '9012', '9013', '9014'],
+                             fz=['19401', '19402', '19403', '19404', '19405', '19406', '19407', 
+                                 '19408', '19409', '19410', '19411', '19412', '19413'])
     list_links_to_sync = list()
     for owner in tranzit_owners:
         for tranzit_port in tranzit_port_dict[owner]:
@@ -138,4 +143,7 @@ def generated_links_to_sync(tranzit_owners: list) -> list:
             if owner == 'irb':
                 list_links_to_sync.append(f"https://10.200.103.223:{tranzit_port}")
 
+            if owner == 'fz':
+                list_links_to_sync.append(f"https://95.181.206.172:{tranzit_port}")
+    
     return list_links_to_sync

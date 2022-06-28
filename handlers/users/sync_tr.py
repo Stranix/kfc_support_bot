@@ -14,6 +14,9 @@ async def choice_tr_group(message: types.Message):
 
 
 @dp.callback_query_handler(text='yum')
+@dp.callback_query_handler(text='irb')
+@dp.callback_query_handler(text='fz')
+@dp.callback_query_handler(text='all')
 @dp.callback_query_handler(text='cancel')
 async def kb_answer_for_sync_tr(query: types.CallbackQuery):
     await query.answer()
@@ -23,9 +26,11 @@ async def kb_answer_for_sync_tr(query: types.CallbackQuery):
         tranzit_name = 'ЯМ'
     if query.data == 'irb':
         tranzit_name = 'ИРБ'
+    if query.data == 'fz':
+        tranzit_name = 'FZ'
 
     if query.data == 'all':
-        links_to_sync = generated_links_to_sync(['yum', 'irb'])
+        links_to_sync = generated_links_to_sync(['yum', 'fz'])
     elif query.data != 'cancel':
         links_to_sync = generated_links_to_sync([query.data])
     else:
