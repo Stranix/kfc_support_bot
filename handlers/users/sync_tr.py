@@ -30,7 +30,7 @@ async def kb_answer_for_sync_tr(query: types.CallbackQuery):
         tranzit_name = 'FZ'
 
     if query.data == 'all':
-        links_to_sync = generated_links_to_sync(['yum', 'fz'])
+        links_to_sync = generated_links_to_sync(['yum', 'irb', 'fz'])
     elif query.data != 'cancel':
         links_to_sync = generated_links_to_sync([query.data])
     else:
