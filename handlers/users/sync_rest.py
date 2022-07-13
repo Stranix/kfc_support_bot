@@ -4,7 +4,7 @@ from aiogram import types
 from aiogram.dispatcher import filters
 
 from loader import dp
-from services.synchronization import get_rest_info_by_code, sync_rep
+from services.synchronization import found_rest_in_ref, get_rest_info_by_code, sync_rep
 
 
 @dp.message_handler(filters.RegexpCommandsFilter(regexp_commands=[r'(\d{2,4}\s?)+']))
@@ -25,6 +25,9 @@ async def send_welcome(message: types.Message, regexp_command):
             sync_results.append(rest_info)
         else:
             logging.error(f'Информация по ресторану не получена. {code} Рест не найден')
+            found_rest = found_rest_in_ref(int(code))
+            logging.info(found_rest)
+            
             rest_info['code'] = code
             sync_results.append(rest_info)
     not_found = ''

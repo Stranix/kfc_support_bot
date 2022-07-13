@@ -10,3 +10,8 @@ load_dotenv(path.join(basedir, '.env'))
 BOT_TOKEN = environ.get('BOT_TOKEN')
 MAIL_LOGIN = environ.get('MAIL_LOGIN')
 MAIL_PASSWORD = environ.get('MAIL_PASSWORD')
+print(BOT_TOKEN)
+
+XML_LINK = environ.get('XML_LINK')
+XML_LOGIN = environ.get('XML_LOGIN')
+XML_PASSWORD = environ.get('XML_PASSWORD')
