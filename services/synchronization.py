@@ -1,12 +1,14 @@
-import logging
-import os
 import time
+import os
 
 import requests
 import re
 
+import logging
 from bs4 import BeautifulSoup
 from xml.etree import ElementTree as ET
+
+from . import xmlInterface
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +117,7 @@ def check_sync_status(list_info) -> bool:
         time.sleep(5)
         if count == 120:
             break
-        logging.info(f'{count}: Старт проверки процесса синхронизации {web_link}')
+        logger.info(f'{count}: Старт проверки процесса синхронизации {web_link}')
         try:
             response = requests.get(rep_ref_link, verify=False, timeout=3)
             soup = BeautifulSoup(response.text, 'lxml')
@@ -123,7 +125,7 @@ def check_sync_status(list_info) -> bool:
             sync_done = False if in_progress else True
             count = count + 1
         except requests.exceptions.RequestException:
-            logging.info('Веб морда не ответила')
+            logger.info('Веб морда не ответила')
 
     return sync_done
 
@@ -147,3 +149,22 @@ def generated_links_to_sync(tranzit_owners: list) -> list:
                 list_links_to_sync.append(f"https://95.181.206.172:{tranzit_port}")
     
     return list_links_to_sync
+
+def found_rest_in_ref(rest_code: int):
+    """Поиск ресторана на самих справочниках"""
+    logger.info('Ищу информацию по ресторану на справочниках')
+    
+    logger.info('Формирую XML запрос')
+    params_for_query = {'values':{'OnlyActive': '1', 'WithMacroProp': '1'}, 'propfilters': [{'Code': str(rest_code), 'type': 'Value'}]}
+
+    xml_for_send = xmlInterface.generate_getxml_for_interface('GetRefData', 'Restaurants', params_for_query)
+    logger.info('Сформировал xml запрос. Отправляю')
+
+    response = xmlInterface.send_request_to_interface(xml_for_send)
+    
+    result = None
+    if response is not None and response.status_code == 200:
+        result = xmlInterface.parse_xml_response_for_restaurant(response.text)
+    
+    return result
+
