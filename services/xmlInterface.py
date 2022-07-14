@@ -13,9 +13,6 @@ from requests.auth import HTTPBasicAuth
 import logging
 logger = logging.getLogger(__name__)
 
-logger.info(config.XML_LOGIN)
-logger.info(config.XML_PASSWORD)
-logger.info(config.XML_LINK)
 # создание xml для get запроса на интерфейс
 def generate_getxml_for_interface(cmd:str, collection:str, params:dict, nesting = 0) -> str:
     """
@@ -81,10 +78,12 @@ def send_request_to_interface(xml_request):
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     headers = {'Content-Type': 'application/xml'}
     try:
-        password_xml = f'{config.XML_PASSWORD}'
-        print(password_xml)
+        if config.XML_LINK is None:
+            logger.error('Не задан адрес интерфейса')
+            return None
+
         request_response = requests.post(config.XML_LINK, data=xml_request, headers=headers,
-                                         verify=False, auth=HTTPBasicAuth('GetREF', r'Hm:N)Z27'))
+                                         verify=False, auth=('GetREF', r'Hm:N)Z27'))
         logger.info(config.XML_LINK)
         logger.info(request_response.text)
         if request_response.status_code == 401:

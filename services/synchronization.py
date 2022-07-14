@@ -62,8 +62,11 @@ def get_rest_info_by_code(rest_code: str) -> dict:
         reference_data = reference.read()
 
     root = ET.fromstring(reference_data)
+    logger.info(rest_code)
+    logger.info(root.tag)
     try:
         item = root.find(f"RK7Reference/Items/*[@Code='{rest_code}']")
+        logger.info(item)
         rest_info['rest_name'] = item.attrib['Name']
         rest_info['code'] = item.attrib['Code']
         rest_info['ip'] = item.attrib['genIP_REP_SRV']
@@ -165,6 +168,21 @@ def found_rest_in_ref(rest_code: int):
     result = None
     if response is not None and response.status_code == 200:
         result = xmlInterface.parse_xml_response_for_restaurant(response.text)
-    
+        root = ET.parse(os.getcwd() + '/services/rest.xml').getroot()
+        logger.info(f' root: {root}')
+        items = root.find('RK7Reference/Items')
+        ET.SubElement(items, 'Item', {'Ident': str(result['ident']), 
+                                      'Name': str(result['name']), 
+                                      'Code': str(result['code']), 
+                                      'Owner': str(result['owner']), 
+                                      'genIP_REP_SRV': str(result['ip'])
+                                      }
+                      )
+        xml_to_str = ET.tostring(root, 'utf-8')
+        xml_doc = '<?xml version="1.0" encoding="UTF-8"?>' + xml_to_str.decode('utf-8')
+        logger.info(xml_doc)
+
+        with open(os.getcwd() + '/services/rest.xml', 'w') as f:
+            f.write(xml_doc)
     return result
 

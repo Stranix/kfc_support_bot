@@ -4,6 +4,7 @@ from aiogram import types
 from aiogram.dispatcher import filters
 
 from loader import dp
+from loader import bot
 from services.synchronization import found_rest_in_ref, get_rest_info_by_code, sync_rep
 
 
@@ -26,10 +27,22 @@ async def send_welcome(message: types.Message, regexp_command):
         else:
             logging.error(f'Информация по ресторану не получена. {code} Рест не найден')
             found_rest = found_rest_in_ref(int(code))
-            logging.info(found_rest)
             
-            rest_info['code'] = code
-            sync_results.append(rest_info)
+            if found_rest is not None:
+                msg_fo_me = f"""Запрос неизвестного ресторана с кодом: {code}
+                От {message.from_user.id} : {message.from_user.full_name}
+                """
+                await bot.send_message(378630510, msg_fo_me)
+
+                logging.info('Запускаю синхронизацию')
+                rest_info = get_rest_info_by_code(code)
+                logging.info(rest_info)
+                start_sync = sync_rep(rest_info['web_link'])
+                rest_info['sync_status'] = start_sync['status']
+                sync_results.append(rest_info)
+            else:
+                rest_info['code'] = code
+                sync_results.append(rest_info)
     not_found = ''
     sync_start = ''
     sync_error = ''
