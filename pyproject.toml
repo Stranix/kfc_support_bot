@@ -9,6 +9,7 @@ packages = [{include = "support_bot"}]
 [tool.poetry.dependencies]
 python = "^3.11"
 pydantic-settings = "^2.0.3"
+aiogram = "^2.25.1"
 
 
 [build-system]
