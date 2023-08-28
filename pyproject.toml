@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "support-bot"
+version = "0.1.0"
+description = "tg bot for KFC Support"
+authors = ["Stranix <Phantom2525@gmail.com>"]
+readme = "README.md"
+packages = [{include = "support_bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pydantic-settings = "^2.0.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
