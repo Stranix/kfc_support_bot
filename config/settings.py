@@ -9,7 +9,7 @@ logger = logging.getLogger('support_bot')
 
 
 class Settings(BaseSettings):
-    log_level: str = logging.INFO
+    log_level: int = logging.INFO
 
     tg_bot_token: str = ''
 

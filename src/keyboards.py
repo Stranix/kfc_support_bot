@@ -26,7 +26,7 @@ def get_choice_rest_owner_keyboard():
     logger.debug('Создаю клавиатуру для выбора группы ресторанов для синхры')
     inline_keyboard = [
         [
-            InlineKeyboardButton(text='YUM!',callback_data='rest_yum'),
+            InlineKeyboardButton(text='YUM!', callback_data='rest_yum'),
             InlineKeyboardButton(text='IRB', callback_data='rest_irb'),
             InlineKeyboardButton(text='Все', callback_data='rest_all'),
         ],

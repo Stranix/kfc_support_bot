@@ -14,17 +14,22 @@ logger = logging.getLogger('support_bot')
 
 async def sync_referents(web_server_url: str) -> SyncStatus:
     logger.info('Запуск синхронизации для: %s', web_server_url)
-    link_to_sync = urljoin(web_server_url, '/rk7api/v1/forcesyncrefs.xml')
-    check_conn = await check_conn_to_main_server(web_server_url)
     sync_status = SyncStatus(web_link=web_server_url)
+    try:
+        link_to_sync = urljoin(web_server_url, '/rk7api/v1/forcesyncrefs.xml')
+        check_conn = await check_conn_to_main_server(web_server_url)
 
-    if not check_conn:
+        if not check_conn:
+            sync_status.status = 'error'
+            sync_status.msg = 'Нет соединения с транзитом'
+
+        response = requests.get(link_to_sync, verify=False, timeout=3)
+        response.raise_for_status()
+        return sync_status
+    except requests.exceptions.ConnectTimeout:
         sync_status.status = 'error'
-        sync_status.msg = 'Нет соединения с транзитом'
-
-    response = requests.get(link_to_sync, verify=False, timeout=3)
-    response.raise_for_status()
-    return sync_status
+        sync_status.msg = 'Отсутствует подключение к транзиту'
+        return sync_status
 
 
 async def check_conn_to_main_server(web_server_url: str) -> bool:
