@@ -10,7 +10,14 @@ packages = [{include = "support_bot"}]
 python = "^3.11"
 pydantic-settings = "^2.0.3"
 aiogram = "^2.25.1"
+beautifulsoup4 = "^4.12.2"
+lxml = "^4.9.3"
+requests = "2.27.0"
 
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.1"
 
 [build-system]
 requires = ["poetry-core"]
