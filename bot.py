@@ -9,6 +9,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from config import settings
 from src.handlers.common import register_handlers_common
 from src.handlers.sync import register_handlers_sync
+from src.handlers.scan_chats import register_handlers_scan_chats
 
 logger = logging.getLogger('support_bot')
 
@@ -20,6 +21,7 @@ async def main():
     logger.info('Регистрация handlers')
     register_handlers_common(dp)
     register_handlers_sync(dp)
+    register_handlers_scan_chats(dp)
 
     await dp.skip_updates()
     await dp.start_polling()

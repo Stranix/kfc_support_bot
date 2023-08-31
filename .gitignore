@@ -1,9 +1,6 @@
 .env
 env/
-/.idea/
-/services/rest.xml
+.idea/
 __pycache__/
-files/
-bot.log
-conn_error.txt
-.\\files\\conn_error.txt
+.pytest_cache/
+*.log
