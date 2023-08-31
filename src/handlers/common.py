@@ -11,6 +11,7 @@ logger = logging.getLogger('support_bot')
 def register_handlers_common(dp: Dispatcher):
     logger.info('Регистрация общих команд')
     dp.register_message_handler(cmd_start, commands="start", state="*")
+    dp.register_message_handler(cmd_start, commands="help")
     dp.register_message_handler(cmd_cancel, commands="cancel", state="*")
     dp.register_message_handler(
         cmd_cancel,
@@ -30,6 +31,17 @@ async def cmd_start(message: types.Message, state: FSMContext):
         'Приветствую вас',
         reply_markup=types.ReplyKeyboardRemove()
     )
+
+
+async def cmd_help(message: types.Message):
+    text = [
+        'Список команд: ',
+        '/help - Получить справку',
+        '/sync_tr - Синхронизация транзитов',
+        '/sync_rest - Синхронизация ресторана(ов)',
+        '/sync_all - Синхронизация всех ресторанов с выбором Юр лица',
+    ]
+    await message.answer('\n'.join(text))
 
 
 async def cmd_cancel(message: types.Message, state: FSMContext):
