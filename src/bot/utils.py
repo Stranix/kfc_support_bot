@@ -6,9 +6,9 @@ from urllib.parse import urljoin
 import requests
 
 from bs4 import BeautifulSoup
+from django.conf import settings
 
-from config import settings
-from src.scheme import SyncStatus
+from src.bot.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
 
@@ -58,8 +58,8 @@ async def check_conn_to_main_server(web_server_url: str) -> bool:
 
 async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
     logger.info('Запуск синхронизации транзитов %s', transit_owner)
-    tr_ports_range = settings.transits[transit_owner]['ports_range']
-    tr_ip = settings.transits[transit_owner]['ip']
+    tr_ports_range = settings.TRANSITS[transit_owner]['ports_range']
+    tr_ip = settings.TRANSITS[transit_owner]['ip']
     sync_report = []
 
     for tr_port in range(*tr_ports_range):

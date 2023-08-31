@@ -13,6 +13,9 @@ aiogram = "^2.25.1"
 beautifulsoup4 = "^4.12.2"
 lxml = "^4.9.3"
 requests = "2.27.0"
+django = "^4.2.4"
+environs = "^9.5.0"
+dj-database-url = "^2.1.0"
 
 
 [tool.poetry.group.dev.dependencies]

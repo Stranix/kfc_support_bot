@@ -8,8 +8,8 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State
 from aiogram.dispatcher.filters.state import StatesGroup
 
-from src.keyboards import get_choice_tr_keyboard
-from src.utils import start_synchronized_transits
+from src.bot.keyboards import get_choice_tr_keyboard
+from src.bot.utils import start_synchronized_transits
 
 logger = logging.getLogger('support_bot')
 

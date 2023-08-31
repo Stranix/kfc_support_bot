@@ -2,8 +2,9 @@ import logging
 
 import pytest
 
-from src.utils import check_conn_to_main_server, sync_referents, \
-    start_synchronized_transits
+from src.bot.utils import sync_referents
+from src.bot.utils import check_conn_to_main_server
+from src.bot.utils import start_synchronized_transits
 
 
 @pytest.mark.asyncio

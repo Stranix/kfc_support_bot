@@ -1,46 +1,110 @@
-import os
-import sys
 import json
-import logging
-
+import os
 from pathlib import Path
 
-from pydantic_core import ValidationError
-from pydantic_settings import BaseSettings
-from pydantic_settings import SettingsConfigDict
+import dj_database_url
 
-logger = logging.getLogger('support_bot')
+from environs import Env
+
+env = Env()
+env.read_env()
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class Settings(BaseSettings):
-    log_level: int = logging.INFO
+SECRET_KEY = env.str('SECRET_KEY', 'django-unsecure')
 
-    tg_bot_token: str = ''
+DEBUG = env.bool('DEBUG', True)
 
-    rk_xml_api: str = ''
-    rk_user: str = ''
-    rk_password: str = ''
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
-    mail_login: str = ''
-    mail_password: str = ''
-    mail_imap_server: str = ''
+TG_BOT_TOKEN = env.str('TG_BOT_TOKEN', '')
 
-    transits: dict = {}
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    ['http://localhost:1337']
+)
 
-    model_config = SettingsConfigDict(
-        env_file='.env',
-        env_file_encoding='utf-8'
+tr_settings = env.str('TR_SETTINGS', 'tr_settings.json')
+TRANSITS = json.loads(
+    Path(BASE_DIR, 'config', tr_settings).read_text('UTF-8')
+)
+
+# Application definition
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'src',
+]
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'config.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'config.wsgi.application'
+
+DATABASES = {
+    'default': dj_database_url.config(
+        default=env.str('DB_URL', 'sqlite:///db.sqlite3')
     )
+}
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'Europe/Moscow'
+
+USE_I18N = True
+
+USE_TZ = True
 
 
-try:
-    settings = Settings()
-    tr_settings_json = os.path.join('./', 'config/tr_settings.json')
-    settings.transits = json.loads(Path(tr_settings_json).read_text('UTF-8'))
-except FileNotFoundError:
-    logger.critical('В папке config отсутствует файл tr_settings.json')
-    sys.exit()
-except ValidationError as exc:
-    logger.critical('Заданы не все обязательные настройки')
-    logger.critical(exc.json())
-    sys.exit()
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/4.2/howto/static-files/
+
+STATIC_URL = 'static/'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
