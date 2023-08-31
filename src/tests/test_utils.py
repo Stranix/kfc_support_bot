@@ -2,7 +2,8 @@ import logging
 
 import pytest
 
-from src.utils import check_conn_to_main_server, sync_referents
+from src.utils import check_conn_to_main_server, sync_referents, \
+    start_synchronized_transits
 
 
 @pytest.mark.asyncio
@@ -27,3 +28,10 @@ async def test_sync_referents(caplog):
     web_server_url = 'https://172.27.31.96:8002'
     sync_status = await sync_referents(web_server_url)
     assert sync_status.status == 'ok'
+
+
+@pytest.mark.asyncio
+async def test_start_synchronized_transits(caplog):
+    caplog.set_level(logging.DEBUG, logger='support_bot')
+    sync_status = await start_synchronized_transits('yum')
+    assert isinstance(sync_status, list) is True

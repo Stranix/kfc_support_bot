@@ -7,6 +7,7 @@ import requests
 
 from bs4 import BeautifulSoup
 
+from config import settings
 from src.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
@@ -21,7 +22,7 @@ async def sync_referents(web_server_url: str) -> SyncStatus:
 
         if not check_conn:
             sync_status.status = 'error'
-            sync_status.msg = 'Нет соединения с транзитом'
+            sync_status.msg = 'Нет соединения с вышестоящим транзитом'
 
         response = requests.get(link_to_sync, verify=False, timeout=3)
         response.raise_for_status()
@@ -53,3 +54,17 @@ async def check_conn_to_main_server(web_server_url: str) -> bool:
         web_server_url, main_server
     )
     return True
+
+
+async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
+    logger.info('Запуск синхронизации транзитов %s', transit_owner)
+    tr_ports_range = settings.transits[transit_owner]['ports_range']
+    tr_ip = settings.transits[transit_owner]['ip']
+    sync_report = []
+
+    for tr_port in range(*tr_ports_range):
+        tr_web_server_url = f'https://{tr_ip}:{tr_port}/'
+        sync_info = await sync_referents(tr_web_server_url)
+        sync_report.append(sync_info)
+    logger.debug('sync_report: %s', sync_report)
+    return sync_report
