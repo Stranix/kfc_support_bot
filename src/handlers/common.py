@@ -13,7 +13,14 @@ def register_handlers_common(dp: Dispatcher):
     dp.register_message_handler(cmd_start, commands="start", state="*")
     dp.register_message_handler(cmd_cancel, commands="cancel", state="*")
     dp.register_message_handler(
-        cmd_cancel, Text(equals="отмена", ignore_case=True), state="*"
+        cmd_cancel,
+        Text(equals="отмена", ignore_case=True),
+        state="*",
+    )
+    dp.register_callback_query_handler(
+        callback_cmd_cancel,
+        lambda call: call.data == 'cancel',
+        state='*',
     )
 
 
@@ -26,8 +33,14 @@ async def cmd_start(message: types.Message, state: FSMContext):
 
 
 async def cmd_cancel(message: types.Message, state: FSMContext):
-    await state.finish()
     await message.answer(
         'Действие отменено',
         reply_markup=types.ReplyKeyboardRemove()
     )
+    await state.finish()
+
+
+async def callback_cmd_cancel(query: types.CallbackQuery, state: FSMContext):
+    await query.answer('Действие отменено', show_alert=True)
+    await query.message.delete()
+    await state.finish()
