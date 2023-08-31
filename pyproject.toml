@@ -8,7 +8,6 @@ packages = [{include = "support_bot"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-pydantic-settings = "^2.0.3"
 aiogram = "^2.25.1"
 beautifulsoup4 = "^4.12.2"
 lxml = "^4.9.3"
