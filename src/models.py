@@ -126,11 +126,17 @@ class Server(models.Model):
         unique=True
     )
     ident = models.PositiveIntegerField('RK ident', unique=True)
+    ip = models.GenericIPAddressField('IP адрес', default='127.0.0.1')
+    tcp = models.PositiveSmallIntegerField('TCP port', default=3029)
+    web_server = models.PositiveSmallIntegerField(
+        'Порт веб сервера',
+        default=9000,
+    )
     restaurant = models.ForeignKey(
         'Restaurant',
         on_delete=models.PROTECT,
-        blank=False,
-        null=False,
+        blank=True,
+        null=True,
         related_name='servers'
     )
     server_type = models.ForeignKey(
