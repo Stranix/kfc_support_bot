@@ -1,3 +1,254 @@
 from django.db import models
+from django.utils import timezone
 
-# Create your models here.
+from phonenumber_field.modelfields import PhoneNumberField
+
+
+class Employee(models.Model):
+    name = models.CharField('Имя', max_length=50)
+    tg_id = models.PositiveSmallIntegerField(
+        'Telegram_id',
+        db_index=True,
+        unique=True,
+    )
+    groups = models.ManyToManyField(
+        'Group',
+        related_name='employees',
+        verbose_name='Группа доступа'
+    )
+    registered_at = models.DateTimeField(
+        'Дата регистрации',
+        default=timezone.now,
+    )
+    is_active = models.BooleanField('Активен?', default=False)
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
+    def __str__(self):
+        return self.name
+
+
+class Group(models.Model):
+    name = models.CharField(
+        'Имя группы',
+        max_length=50,
+        unique=True,
+        db_index=True,
+    )
+    rights = models.ManyToManyField(
+        'Right',
+        related_name='groups',
+        verbose_name='Права'
+    )
+
+    class Meta:
+        verbose_name = 'Группа доступа'
+        verbose_name_plural = 'Группы доступа'
+
+    def __str__(self):
+        return self.name
+
+
+class Right(models.Model):
+    name = models.CharField('Имя права', max_length=100)
+
+    class Meta:
+        verbose_name = 'Право'
+        verbose_name_plural = 'Права'
+
+    def __str__(self):
+        return self.name
+
+
+class FranchiseOwner(models.Model):
+    name = models.CharField('Имя франшизы', max_length=25)
+    alias = models.CharField('Alias', max_length=10)
+
+    class Meta:
+        verbose_name = 'Франшиза'
+        verbose_name_plural = 'Франшизы'
+
+    def __str__(self):
+        return self.name
+
+
+class Restaurant(models.Model):
+    name = models.CharField(
+        'Имя ресторана',
+        max_length=100,
+        db_index=True,
+        unique=True
+    )
+    legal_entity = models.CharField(
+        'Юр лицо',
+        blank=True,
+        null=True,
+        max_length=100
+    )
+    address = models.CharField('Адрес', max_length=100)
+    phone = PhoneNumberField('Номер телефона', db_index=True)
+    franchise = models.ForeignKey(
+        'FranchiseOwner',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='restaurants',
+        verbose_name='Франшиза'
+    )
+    is_sync = models.BooleanField('Синхронизация?', default=False)
+
+    class Meta:
+        verbose_name = 'Ресторан'
+        verbose_name_plural = 'Рестораны'
+
+    def __str__(self):
+        return self.name
+
+
+class ServerType(models.Model):
+    name = models.CharField('Тип сервера RK', max_length=50)
+
+    class Meta:
+        verbose_name = 'Тип сервера'
+        verbose_name_plural = 'Типы Серверов'
+
+    def __str__(self):
+        return self.name
+
+
+class Server(models.Model):
+    name = models.CharField(
+        'Имя сервера',
+        max_length=100,
+        db_index=True,
+        unique=True
+    )
+    ident = models.PositiveIntegerField('RK ident', unique=True)
+    restaurant = models.ForeignKey(
+        'Restaurant',
+        on_delete=models.PROTECT,
+        blank=False,
+        null=False,
+        related_name='servers'
+    )
+    server_type = models.ForeignKey(
+        'ServerType',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Тип сервера',
+        related_name='servers',
+    )
+    is_sync = models.BooleanField('Синхронизация?', default=False)
+    is_active = models.BooleanField('Рабочий?', default=True)
+
+    class Meta:
+        verbose_name = 'Сервер'
+        verbose_name_plural = 'Сервера'
+
+    def __str__(self):
+        return self.name
+
+
+class Task(models.Model):
+    STATUS_CHOICES = (
+        ('NEW', 'Новая'),
+        ('ASSIGNED', 'Назначена'),
+        ('IN_WORK', 'В работе'),
+        ('SUSPENDED', 'Приостановлена'),
+        ('COMPLETED', 'Завершена'),
+    )
+
+    PRIORITY_CHOICES = (
+        ('LOW', 'Низкий'),
+        ('MID', 'Средний'),
+        ('HIGH', 'Высокий'),
+        ('CRITICAL', 'Критичный'),
+    )
+
+    applicant = models.CharField('Заявитель', max_length=100)
+    number = models.CharField(
+        'Номер заявки GSD',
+        unique=True,
+        db_index=True,
+        max_length=25
+    )
+    performer = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        verbose_name='Исполнитель',
+        related_name='tasks',
+        null=True,
+        blank=True,
+    )
+    restaurant = models.ForeignKey(
+        'Restaurant',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='tasks',
+        verbose_name='Ресторан',
+    )
+    start_at = models.DateTimeField('Дата регистрации', default=timezone.now)
+    expired_at = models.DateTimeField('Срок обработки', null=True, blank=True)
+    finish_at = models.DateTimeField('Дата закрытия', null=True, blank=True)
+    priority = models.CharField(
+        'Приоритет',
+        choices=PRIORITY_CHOICES,
+        default='LOW',
+        db_index=True,
+        max_length=20,
+    )
+    service = models.CharField('Услуга', max_length=100)
+    title = models.CharField('Тема обращения', max_length=150)
+    description = models.TextField('Полное описание')
+    status = models.CharField(
+        'Статус',
+        choices=STATUS_CHOICES,
+        default='NEW',
+        db_index=True,
+        max_length=20,
+    )
+    gsd_group = models.CharField(
+        'Группа GSD',
+        blank=True,
+        null=True,
+        max_length=50,
+    )
+
+    class Meta:
+        verbose_name = 'Задача'
+        verbose_name_plural = 'Задачи'
+
+    def __str__(self):
+        return f'{self.applicant} - {self.number}'
+
+
+class TaskComment(models.Model):
+    task = models.ForeignKey(
+        'Task',
+        on_delete=models.PROTECT,
+        related_name='comments',
+        verbose_name='Задача номер',
+    )
+    comment = models.TextField('Комментарий')
+    author = models.CharField('Автор комментария', max_length=150)
+    group_gsd = models.CharField(
+        'Группа GSD',
+        blank=True,
+        null=True,
+        max_length=100,
+    )
+    time_comment = models.DateTimeField(
+        'Дата комментария',
+        default=timezone.now,
+    )
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+
+    def __str__(self):
+        return f'{self.task} - {self.comment}'
