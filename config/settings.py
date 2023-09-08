@@ -29,6 +29,10 @@ tr_settings = env.str('TR_SETTINGS', 'tr_settings.json')
 TRANSITS = json.loads(
     Path(BASE_DIR, 'config', tr_settings).read_text('UTF-8')
 )
+print(env)
+
+XML_LOGIN = env.str('XML_LOGIN')
+XML_PASSWORD = env.str('XML_PASSWORD')
 
 # Application definition
 
