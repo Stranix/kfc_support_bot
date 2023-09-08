@@ -35,7 +35,21 @@ class RightAdmin(admin.ModelAdmin):
 
 @admin.register(Server)
 class ServerAdmin(admin.ModelAdmin):
-    pass
+    search_fields = [
+        'name',
+        'id',
+    ]
+
+    list_display = [
+        'id',
+        'name',
+        'ip',
+        'restaurant',
+        'is_sync',
+    ]
+    list_editable = [
+        'is_sync',
+    ]
 
 
 @admin.register(ServerType)
@@ -50,7 +64,22 @@ class TaskCommentAdmin(admin.ModelAdmin):
 
 @admin.register(Restaurant)
 class RestaurantAdmin(admin.ModelAdmin):
-    pass
+    search_fields = [
+        'name',
+        'id',
+    ]
+
+    list_display = [
+        'id',
+        'name',
+        'legal_entity',
+        'server_ip',
+        'is_sync',
+        'franchise',
+    ]
+    list_editable = [
+        'is_sync',
+    ]
 
 
 @admin.register(FranchiseOwner)
