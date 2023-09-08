@@ -44,6 +44,7 @@ class ServerAdmin(admin.ModelAdmin):
         'id',
         'name',
         'ip',
+        'web_server',
         'restaurant',
         'is_sync',
     ]
