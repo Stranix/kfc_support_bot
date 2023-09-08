@@ -1,8 +1,6 @@
 from django.db import models
 from django.utils import timezone
 
-from phonenumber_field.modelfields import PhoneNumberField
-
 
 class Employee(models.Model):
     name = models.CharField('Имя', max_length=50)
@@ -81,6 +79,10 @@ class Restaurant(models.Model):
         db_index=True,
         unique=True
     )
+    id = models.PositiveIntegerField(
+        'RK ident',
+        primary_key=True,
+    )
     legal_entity = models.CharField(
         'Юр лицо',
         blank=True,
@@ -88,7 +90,18 @@ class Restaurant(models.Model):
         max_length=100
     )
     address = models.CharField('Адрес', max_length=100)
-    phone = PhoneNumberField('Номер телефона', db_index=True)
+    phone = models.CharField(
+        'Номер телефона ресторана',
+        max_length=150,
+        db_index=True,
+        null=True,
+        blank=True,
+    )
+    server_ip = models.GenericIPAddressField(
+        'IP главного сервера RK',
+        null=True,
+        blank=True,
+    )
     franchise = models.ForeignKey(
         'FranchiseOwner',
         on_delete=models.SET_NULL,
@@ -123,10 +136,13 @@ class Server(models.Model):
         'Имя сервера',
         max_length=100,
         db_index=True,
-        unique=True
+        unique=True,
     )
-    ident = models.PositiveIntegerField('RK ident', unique=True)
-    ip = models.GenericIPAddressField('IP адрес', default='127.0.0.1')
+    id = models.PositiveIntegerField(
+        'RK ident',
+        primary_key=True,
+    )
+    ip = models.GenericIPAddressField('IP адрес', null=True, blank=True)
     tcp = models.PositiveSmallIntegerField('TCP port', default=3029)
     web_server = models.PositiveSmallIntegerField(
         'Порт веб сервера',
@@ -137,7 +153,7 @@ class Server(models.Model):
         on_delete=models.PROTECT,
         blank=True,
         null=True,
-        related_name='servers'
+        related_name='servers',
     )
     server_type = models.ForeignKey(
         'ServerType',
