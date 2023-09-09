@@ -47,6 +47,7 @@ class ServerAdmin(admin.ModelAdmin):
         'web_server',
         'restaurant',
         'is_sync',
+        'franchise_owner',
     ]
     list_editable = [
         'is_sync',

@@ -163,6 +163,14 @@ class Server(models.Model):
         verbose_name='Тип сервера',
         related_name='servers',
     )
+    franchise_owner = models.ForeignKey(
+        'FranchiseOwner',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Франшиза',
+        related_name='servers',
+    )
     is_sync = models.BooleanField('Синхронизация?', default=False)
     is_active = models.BooleanField('Рабочий?', default=True)
 
