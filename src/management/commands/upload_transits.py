@@ -7,7 +7,7 @@ from src.referents.XmlInterface import XmlInterface
 from src.referents.commands.GetRefData import get_ref_data
 from src.referents.commands.GetRefData import parse_multi_ref_data
 
-from src.models import Server
+from src.models import Server, FranchiseOwner
 from src.models import ServerType
 
 logger = logging.getLogger(__name__)
@@ -54,12 +54,18 @@ class Command(BaseCommand):
 
 def upload_transits(servers: list):
     tr_server_type = ServerType.objects.get(name='Transit')
+    tr_owner_yum = FranchiseOwner.objects.get(alias='yum')
+    tr_owner_irb = FranchiseOwner.objects.get(alias='irb')
+    tr_owner_fz = FranchiseOwner.objects.get(alias='fz')
     tr_ip = '192.168.221.24'
+    tr_owner = tr_owner_yum
     for server in servers:
         if server['Name'].find('FZ_REP') != -1:
             tr_ip = '95.181.206.172'
+            tr_owner = tr_owner_fz
         if server['Name'].find('RS_REP') != -1:
             tr_ip = '10.200.103.223'
+            tr_owner = tr_owner_irb
 
         Server.objects.update_or_create(
             id=server['Ident'],
@@ -68,6 +74,7 @@ def upload_transits(servers: list):
                 'ip': tr_ip,
                 'web_server': server['HTTPServPort'],
                 'server_type': tr_server_type,
+                'franchise_owner': tr_owner,
                 'is_sync': True,
             }
         )
