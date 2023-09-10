@@ -16,8 +16,10 @@ logger = logging.getLogger('support_bot')
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
+        logging.basicConfig(level=logging.INFO)
+        logger.setLevel(logging.DEBUG)
         if not settings.TG_BOT_TOKEN:
-            print('Не могу запустить команду не задан TG_BOT_TOKEN')
+            logger.error('Не могу запустить команду не задан TG_BOT_TOKEN')
         asyncio.run(run_bot())
 
 
