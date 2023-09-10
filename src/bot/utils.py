@@ -87,7 +87,8 @@ async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
         for transit in transits:
             tr_web_server_url = f'https://{transit.ip}:{transit.web_server}/'
             task = asyncio.create_task(
-                sync_referents(session, tr_web_server_url))
+                sync_referents(session, tr_web_server_url)
+            )
             tasks.append(task)
 
         sync_report = list(await asyncio.gather(*tasks))
@@ -104,7 +105,7 @@ def get_transits_server_by_owner(transit_owner: str) -> list[Server]:
     )
     if transit_owner == 'all':
         transits = Server.objects.filter(
-            franchise_owner__alias__in=('yum', 'irb'),
+            franchise_owner__alias__in=('yum', 'irb', 'fz'),
             is_sync=True,
         )
     logger.info('Успешно')
