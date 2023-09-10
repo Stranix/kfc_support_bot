@@ -21,8 +21,14 @@ class Command(BaseCommand):
         yum_tr_groups_name = ['REP_CENTER', 'FZ_REP_TRANSIT']
         irb_tr_groups_name = ['RS_REP_TRANSIT']
 
-        referents_yum = Server.objects.get(id=1)
-        referents_irb = Server.objects.get(id=999999)
+        referents_yum = Server.objects.get(
+            server_type__name='Referents',
+            franchise_owner__alias='yum',
+        )
+        referents_irb = Server.objects.get(
+            server_type__name='Referents',
+            franchise_owner__alias='irb',
+        )
 
         r_keeper_yum = XmlInterface(
             referents_yum.ip,

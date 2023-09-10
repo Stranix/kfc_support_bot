@@ -19,7 +19,10 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         logging.basicConfig(level=logging.INFO)
         logger.setLevel(logging.INFO)
-        referents = Server.objects.get(server_type__name='Referents')
+        referents = Server.objects.get(
+            franchise_owner__alias='yum',
+            server_type__name='Referents',
+        )
         r_keeper = XmlInterface(
             referents.ip,
             referents.web_server,
