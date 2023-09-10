@@ -4,10 +4,11 @@ import logging
 from urllib.parse import urljoin
 
 import requests
+from asgiref.sync import sync_to_async
 
 from bs4 import BeautifulSoup
-from django.conf import settings
 
+from src.models import Server
 from src.bot.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
@@ -27,7 +28,10 @@ async def sync_referents(web_server_url: str) -> SyncStatus:
         response = requests.get(link_to_sync, verify=False, timeout=3)
         response.raise_for_status()
         return sync_status
-    except requests.exceptions.ConnectTimeout:
+    except (
+            requests.exceptions.ConnectTimeout,
+            requests.exceptions.ConnectionError
+    ):
         sync_status.status = 'error'
         sync_status.msg = 'Отсутствует подключение к транзиту'
         return sync_status
@@ -58,13 +62,29 @@ async def check_conn_to_main_server(web_server_url: str) -> bool:
 
 async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
     logger.info('Запуск синхронизации транзитов %s', transit_owner)
-    tr_ports_range = settings.TRANSITS[transit_owner]['ports_range']
-    tr_ip = settings.TRANSITS[transit_owner]['ip']
-    sync_report = []
+    transits = await get_transits_server_by_owner(transit_owner)
 
-    for tr_port in range(*tr_ports_range):
-        tr_web_server_url = f'https://{tr_ip}:{tr_port}/'
+    sync_report = []
+    for transit in transits:
+        tr_web_server_url = f'https://{transit.ip}:{transit.web_server}/'
         sync_info = await sync_referents(tr_web_server_url)
         sync_report.append(sync_info)
     logger.debug('sync_report: %s', sync_report)
     return sync_report
+
+
+@sync_to_async
+def get_transits_server_by_owner(transit_owner: str) -> list[Server]:
+    logger.info('Получаем список транзитов из базы по владельцу')
+    transits = Server.objects.filter(
+        franchise_owner__alias=transit_owner,
+        is_sync=True,
+    )
+    if transit_owner == 'all':
+        transits = Server.objects.filter(
+            franchise_owner__alias__in=('yum', 'irb'),
+            is_sync=True,
+        )
+    logger.info('Успешно')
+    logger.debug('transits: %s', transits)
+    return list(transits)
