@@ -1,4 +1,5 @@
 import os
+import ssl
 
 import dj_database_url
 
@@ -8,7 +9,6 @@ env = Env()
 env.read_env()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 SECRET_KEY = env.str('SECRET_KEY', 'django-unsecure')
 
@@ -25,6 +25,11 @@ CSRF_TRUSTED_ORIGINS = env.list(
 
 XML_LOGIN = env.str('XML_LOGIN')
 XML_PASSWORD = env.str('XML_PASSWORD')
+
+SSL_CONTEXT = ssl.create_default_context()
+SSL_CONTEXT.set_ciphers('DEFAULT')
+SSL_CONTEXT.check_hostname = False
+SSL_CONTEXT.verify_mode = ssl.CERT_NONE
 
 # Application definition
 
