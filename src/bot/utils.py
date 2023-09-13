@@ -33,7 +33,7 @@ async def sync_referents(
             sync_status.status = 'error'
             sync_status.msg = 'Нет соединения с вышестоящим транзитом'
         async with session.get(link_to_sync) as response:
-            response.raise_for_status()
+            logger.debug('response_status: %s', response.status)
         return sync_status
     except (asyncio.TimeoutError, aiohttp.ClientConnectionError):
         sync_status.status = 'error'
@@ -49,7 +49,6 @@ async def check_conn_to_main_server(
     conn_tab = urljoin(web_server_url, 'Connects')
 
     async with session.get(conn_tab) as response:
-        response.raise_for_status()
         soup = BeautifulSoup(await response.text(), 'lxml')
 
     main_server = soup.find_all(
@@ -74,7 +73,7 @@ async def check_conn_to_main_server(
 
 async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
     logger.info('Запуск синхронизации транзитов %s', transit_owner)
-    conn = aiohttp.TCPConnector(ssl_context=settings.SSL_CONTEXT)
+    conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
     transits = await get_transits_server_by_owner(transit_owner)
 
     async with aiohttp.ClientSession(
