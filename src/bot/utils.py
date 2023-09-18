@@ -5,6 +5,7 @@ import logging
 from urllib.parse import urljoin
 
 import aiohttp
+import aiogram.utils.markdown as md
 
 from aiohttp import ClientSession
 from aiohttp import ClientTimeout
@@ -38,6 +39,10 @@ async def sync_referents(
     except (asyncio.TimeoutError, aiohttp.ClientConnectionError):
         sync_status.status = 'error'
         sync_status.msg = 'Отсутствует подключение к серверу'
+        return sync_status
+    except aiohttp.ClientResponseError:
+        sync_status.status = 'error'
+        sync_status.msg = 'Ошибка авторизации'
         return sync_status
 
 
@@ -135,3 +140,25 @@ async def start_synchronized_restaurants(
         sync_report = list(await asyncio.gather(*tasks))
         logger.debug('sync_report: %s', sync_report)
     return sync_report
+
+
+async def create_sync_report(
+        sync_statuses: list[SyncStatus]
+) -> tuple[str, dict]:
+    logger.info('Подготовка отчета по синхронизации')
+    sync_report = {
+        'ok': [],
+        'error': [],
+    }
+
+    for sync_status in sync_statuses:
+        if sync_status.status == 'ok':
+            sync_report['ok'].append(sync_status)
+        else:
+            sync_report['error'].append(sync_status)
+    message_report = md.text(
+        'Результат синхронизации:\n',
+        md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
+        md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
+    )
+    return message_report, sync_report

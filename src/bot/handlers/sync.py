@@ -70,23 +70,8 @@ async def sync_tr_start(message: types.Message, state: FSMContext):
 
 
 async def sync_tr_choice(query: types.CallbackQuery, state: FSMContext):
-    sync_report = {
-        'ok': [],
-        'error': [],
-    }
-
     sync_statuses = await utils.start_synchronized_transits(query.data)
-
-    for sync_status in sync_statuses:
-        if sync_status.status == 'ok':
-            sync_report['ok'].append(sync_status)
-        else:
-            sync_report['error'].append(sync_status)
-    message_for_send = md.text(
-        'Статус синхронизации транзитов:\n',
-        md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
-        md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
-    )
+    message_for_send, _ = await utils.create_sync_report(sync_statuses)
     await query.message.delete()
     await query.message.answer(
         message_for_send,
@@ -129,10 +114,6 @@ async def sync_rest_choice(query: types.CallbackQuery, state: FSMContext):
 
     if user_choice == 'rest_all':
         logger.info('Выбраны все рестораны для синхронизации')
-        sync_report = {
-            'ok': [],
-            'error': [],
-        }
         restaurants = await sync_to_async(list)(
             Restaurant.objects.filter(
                 server_ip__isnull=False,
@@ -140,16 +121,7 @@ async def sync_rest_choice(query: types.CallbackQuery, state: FSMContext):
             )
         )
         sync_statuses = await utils.start_synchronized_restaurants(restaurants)
-        for sync_status in sync_statuses:
-            if sync_status.status == 'ok':
-                sync_report['ok'].append(sync_status)
-            else:
-                sync_report['error'].append(sync_status)
-        message_for_send = md.text(
-            'Статус синхронизации ресторанов:\n',
-            md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
-            md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
-        )
+        message_for_send, _ = await utils.create_sync_report(sync_statuses)
         await query.message.answer(message_for_send)
         await state.finish()
 
@@ -160,10 +132,6 @@ async def start_sync_restaurants_by_list(
 ):
     logger.info('Синхронизация ресторанов по списку от пользователя')
     logger.debug('message.text: %s', message.text)
-    sync_report = {
-        'ok': [],
-        'error': [],
-    }
     try:
         restaurants = list(map(int, message.text.split()))
     except ValueError:
@@ -185,16 +153,7 @@ async def start_sync_restaurants_by_list(
         )
     logger.debug('Нашел рестораны: %s', restaurants)
     sync_statuses = await utils.start_synchronized_restaurants(restaurants)
-    for sync_status in sync_statuses:
-        if sync_status.status == 'ok':
-            sync_report['ok'].append(sync_status)
-        else:
-            sync_report['error'].append(sync_status)
-    message_for_send = md.text(
-        'Статус синхронизации ресторанов:\n',
-        md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
-        md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
-    )
+    message_for_send, _ = await utils.create_sync_report(sync_statuses)
     await message.answer(message_for_send)
 
 
@@ -206,10 +165,6 @@ async def start_sync_restaurants_by_group(
     user_choice = query.data.split('_')[1]
     logger.debug('user_choice: %s', user_choice)
     await query.message.delete()
-    sync_report = {
-        'ok': [],
-        'error': [],
-    }
     restaurants = await sync_to_async(list)(
         Restaurant.objects.filter(
             server_ip__isnull=False,
@@ -219,14 +174,5 @@ async def start_sync_restaurants_by_group(
     )
     logger.debug('Нашел рестораны: %s', restaurants)
     sync_statuses = await utils.start_synchronized_restaurants(restaurants)
-    for sync_status in sync_statuses:
-        if sync_status.status == 'ok':
-            sync_report['ok'].append(sync_status)
-        else:
-            sync_report['error'].append(sync_status)
-    message_for_send = md.text(
-        'Статус синхронизации ресторанов:\n',
-        md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
-        md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
-    )
+    message_for_send, _ = await utils.create_sync_report(sync_statuses)
     await query.message.answer(message_for_send)
