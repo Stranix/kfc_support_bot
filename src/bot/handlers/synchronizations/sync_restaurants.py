@@ -3,7 +3,6 @@ import logging
 import aiogram.utils.markdown as md
 
 from aiogram import types
-from aiogram import Dispatcher
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State
 from aiogram.dispatcher.filters.state import StatesGroup
@@ -16,71 +15,13 @@ from src.models import Restaurant
 logger = logging.getLogger('support_bot')
 
 
-class SyncTrState(StatesGroup):
-    waiting_for_tr_choice = State()
-
-
 class SyncRestState(StatesGroup):
     waiting_for_choice = State()
     waiting_rest_list = State()
     waiting_rest_group = State()
 
 
-def register_handlers_sync(dp: Dispatcher):
-    logger.info('Регистрация команд синхронизации')
-    dp.register_message_handler(
-        sync_tr_start,
-        commands='sync_tr',
-        state='*',
-    )
-    dp.register_message_handler(
-        sync_rest_start,
-        commands='sync_rest',
-        state='*',
-    )
-    dp.register_callback_query_handler(
-        sync_tr_choice,
-        lambda call: call.data in ('yum', 'irb', 'fz', 'all'),
-        state=SyncTrState,
-    )
-    dp.register_message_handler(
-        start_sync_restaurants_by_list,
-        state=SyncRestState.waiting_rest_list,
-    )
-    dp.register_callback_query_handler(
-        start_sync_restaurants_by_group,
-        state=SyncRestState.waiting_rest_group,
-    )
-    dp.register_callback_query_handler(
-        sync_rest_choice,
-        state=SyncRestState,
-    )
-
-
-async def sync_tr_start(message: types.Message, state: FSMContext):
-    logging.info(
-        'Запрос на запуск синхронизации от %s',
-        message.from_user.full_name
-    )
-    await state.set_state(SyncTrState.waiting_for_tr_choice.state)
-    await message.reply(
-        text='Какие транзиты будем синхронизировать?',
-        reply_markup=keyboards.get_choice_tr_keyboard()
-    )
-
-
-async def sync_tr_choice(query: types.CallbackQuery, state: FSMContext):
-    sync_statuses = await utils.start_synchronized_transits(query.data)
-    message_for_send, _ = await utils.create_sync_report(sync_statuses)
-    await query.message.delete()
-    await query.message.answer(
-        message_for_send,
-        reply_markup=types.ReplyKeyboardRemove()
-    )
-    await state.finish()
-
-
-async def sync_rest_start(message: types.Message, state: FSMContext):
+async def start(message: types.Message, state: FSMContext):
     logging.info(
         'Запрос на запуск синхронизации ресторанов от %s',
         message.from_user.full_name
@@ -92,7 +33,7 @@ async def sync_rest_start(message: types.Message, state: FSMContext):
     )
 
 
-async def sync_rest_choice(query: types.CallbackQuery, state: FSMContext):
+async def choice(query: types.CallbackQuery, state: FSMContext):
     user_choice = query.data
     await query.message.delete()
 
@@ -126,7 +67,7 @@ async def sync_rest_choice(query: types.CallbackQuery, state: FSMContext):
         await state.finish()
 
 
-async def start_sync_restaurants_by_list(
+async def sync_by_list(
         message: types.Message,
         state: FSMContext
 ):
@@ -157,7 +98,7 @@ async def start_sync_restaurants_by_list(
     await message.answer(message_for_send)
 
 
-async def start_sync_restaurants_by_group(
+async def sync_by_group(
         query: types.CallbackQuery,
         state: FSMContext
 ):

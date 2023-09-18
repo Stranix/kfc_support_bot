@@ -10,6 +10,7 @@ from aiogram import Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from src.bot import handlers
+from src.bot.handlers.synchronizations import register_handlers_sync
 
 logger = logging.getLogger('support_bot')
 
@@ -29,7 +30,7 @@ async def run_bot():
 
     logger.info('Регистрация handlers')
     handlers.register_handlers_common(dp)
-    handlers.register_handlers_sync(dp)
+    register_handlers_sync(dp)
     handlers.register_handlers_scan_chats(dp)
 
     await dp.skip_updates()
