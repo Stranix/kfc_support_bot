@@ -14,7 +14,7 @@ from asgiref.sync import sync_to_async
 
 from bs4 import BeautifulSoup
 
-from src.models import Server
+from src.models import Server, Restaurant
 from src.bot.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
@@ -37,7 +37,7 @@ async def sync_referents(
         return sync_status
     except (asyncio.TimeoutError, aiohttp.ClientConnectionError):
         sync_status.status = 'error'
-        sync_status.msg = 'Отсутствует подключение к транзиту'
+        sync_status.msg = 'Отсутствует подключение к серверу'
         return sync_status
 
 
@@ -110,3 +110,28 @@ def get_transits_server_by_owner(transit_owner: str) -> list[Server]:
     logger.info('Успешно')
     logger.debug('transits: %s', transits)
     return list(transits)
+
+
+async def start_synchronized_restaurants(
+        restaurants: list[Restaurant]
+) -> list[SyncStatus]:
+    logger.info('Запуск синхронизации ресторанов %s', restaurants)
+    conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
+
+    async with aiohttp.ClientSession(
+            trust_env=True,
+            connector=conn,
+            raise_for_status=True,
+            timeout=ClientTimeout(total=3)
+    ) as session:
+        tasks = []
+        for restaurant in restaurants:
+            rest_web_server_url = f'https://{restaurant.server_ip}:9000/'
+            task = asyncio.create_task(
+                sync_referents(session, rest_web_server_url)
+            )
+            tasks.append(task)
+
+        sync_report = list(await asyncio.gather(*tasks))
+        logger.debug('sync_report: %s', sync_report)
+    return sync_report

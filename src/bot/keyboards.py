@@ -22,13 +22,27 @@ def get_choice_tr_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
+def get_choice_rest_sync_keyboard():
+    logger.debug('Создаю клавиатуру выбора синхронизации ресторанов')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text='По Списку', callback_data='rest_list'),
+            InlineKeyboardButton(text='Группу', callback_data='rest_group'),
+            InlineKeyboardButton(text='Все', callback_data='rest_all'),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
 def get_choice_rest_owner_keyboard():
     logger.debug('Создаю клавиатуру для выбора группы ресторанов для синхры')
     inline_keyboard = [
         [
             InlineKeyboardButton(text='YUM!', callback_data='rest_yum'),
             InlineKeyboardButton(text='IRB', callback_data='rest_irb'),
-            InlineKeyboardButton(text='Все', callback_data='rest_all'),
         ],
         [
             InlineKeyboardButton(text='Отмена', callback_data='cancel')
