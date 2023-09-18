@@ -69,11 +69,13 @@ class RestaurantAdmin(admin.ModelAdmin):
     search_fields = [
         'name',
         'id',
+        'code',
     ]
 
     list_display = [
         'id',
         'name',
+        'code',
         'legal_entity',
         'server_ip',
         'is_sync',

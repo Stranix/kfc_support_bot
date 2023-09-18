@@ -64,6 +64,7 @@ def upload_restaurants(restaurants):
             id=int(restaurant['Ident']),
             defaults={
                 'name': restaurant['Name'],
+                'code': int(restaurant['Code']),
                 'legal_entity': owner,
                 'address': restaurant['Address'],
                 'phone': restaurant['gentelephone_number'],

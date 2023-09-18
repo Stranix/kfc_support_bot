@@ -12,7 +12,7 @@ class Employee(models.Model):
     groups = models.ManyToManyField(
         'Group',
         related_name='employees',
-        verbose_name='Группа доступа'
+        verbose_name='Группа доступа',
     )
     registered_at = models.DateTimeField(
         'Дата регистрации',
@@ -38,7 +38,7 @@ class Group(models.Model):
     rights = models.ManyToManyField(
         'Right',
         related_name='groups',
-        verbose_name='Права'
+        verbose_name='Права',
     )
 
     class Meta:
@@ -77,17 +77,21 @@ class Restaurant(models.Model):
         'Имя ресторана',
         max_length=100,
         db_index=True,
-        unique=True
+        unique=True,
     )
     id = models.PositiveIntegerField(
         'RK ident',
         primary_key=True,
     )
+    code = models.PositiveSmallIntegerField(
+        'RK Код',
+        unique=True,
+    )
     legal_entity = models.CharField(
         'Юр лицо',
         blank=True,
         null=True,
-        max_length=100
+        max_length=100,
     )
     address = models.CharField('Адрес', max_length=100)
     phone = models.CharField(
@@ -108,7 +112,7 @@ class Restaurant(models.Model):
         null=True,
         blank=True,
         related_name='restaurants',
-        verbose_name='Франшиза'
+        verbose_name='Франшиза',
     )
     is_sync = models.BooleanField('Синхронизация?', default=False)
 
@@ -203,7 +207,7 @@ class Task(models.Model):
         'Номер заявки GSD',
         unique=True,
         db_index=True,
-        max_length=25
+        max_length=25,
     )
     performer = models.ForeignKey(
         'Employee',
