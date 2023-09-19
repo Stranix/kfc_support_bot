@@ -5,16 +5,10 @@ import logging
 from urllib.parse import urljoin
 
 import aiohttp
-import aiogram.utils.markdown as md
-
 from aiohttp import ClientSession
-from aiohttp import ClientTimeout
-
-from django.conf import settings
 
 from bs4 import BeautifulSoup
 
-from src.models import Restaurant
 from src.bot.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
@@ -74,25 +68,3 @@ async def check_conn_to_main_server(
         main_server,
     )
     return True
-
-
-async def create_sync_report(
-        sync_statuses: list[SyncStatus]
-) -> tuple[str, dict]:
-    logger.info('Подготовка отчета по синхронизации')
-    sync_report = {
-        'ok': [],
-        'error': [],
-    }
-
-    for sync_status in sync_statuses:
-        if sync_status.status == 'ok':
-            sync_report['ok'].append(sync_status)
-        else:
-            sync_report['error'].append(sync_status)
-    message_report = md.text(
-        'Результат синхронизации:\n',
-        md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
-        md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
-    )
-    return message_report, sync_report
