@@ -1,9 +1,11 @@
 import logging
+import re
 
 from aiogram import Dispatcher
 
 from src.bot.handlers.synchronizations import sync_transits
 from src.bot.handlers.synchronizations import sync_restaurants
+from src.bot.handlers.synchronizations import sync_report
 
 logger = logging.getLogger('support_bot')
 
@@ -18,6 +20,11 @@ def register_handlers_sync(dp: Dispatcher):
     dp.register_message_handler(
         sync_restaurants.start,
         commands='sync_rest',
+        state='*',
+    )
+    dp.register_callback_query_handler(
+        sync_report.send_report,
+        lambda call: re.match('report', call.data),
         state='*',
     )
     dp.register_callback_query_handler(
