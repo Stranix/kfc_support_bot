@@ -306,3 +306,10 @@ class SyncReport(models.Model):
         verbose_name='Что синхронизировали',
     )
     report = models.JSONField('Отчет')
+
+    class Meta:
+        verbose_name = 'Журнал синхронизации'
+        verbose_name_plural = 'Журналы синхронизации'
+
+    def __str__(self):
+        return f'{self.start_at}'
