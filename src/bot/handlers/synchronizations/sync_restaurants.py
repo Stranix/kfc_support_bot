@@ -16,7 +16,8 @@ from django.conf import settings
 
 from src.bot import keyboards
 from src.bot import utils
-from src.bot.handlers.synchronizations.sync_report import report_save_in_db
+from src.bot.handlers.synchronizations.sync_report import report_save_in_db, \
+    create_sync_report
 from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
 from src.models import Restaurant
@@ -71,7 +72,7 @@ async def choice(query: types.CallbackQuery, state: FSMContext):
             )
         )
         sync_statuses = await start_synchronized_restaurants(restaurants)
-        message_for_send, _ = await utils.create_sync_report(sync_statuses)
+        message_for_send, _ = await create_sync_report(sync_statuses)
         sync_report = await report_save_in_db(
             query.from_user.id,
             'Report',
@@ -111,7 +112,7 @@ async def sync_by_list(
         )
     logger.debug('Нашел рестораны: %s', restaurants)
     sync_statuses = await start_synchronized_restaurants(restaurants)
-    message_for_send, _ = await utils.create_sync_report(sync_statuses)
+    message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
         message.from_user.id,
         'Report',
@@ -141,7 +142,7 @@ async def sync_by_group(
     )
     logger.debug('Нашел рестораны: %s', restaurants)
     sync_statuses = await start_synchronized_restaurants(restaurants)
-    message_for_send, _ = await utils.create_sync_report(sync_statuses)
+    message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
         query.from_user.id,
         'Report',

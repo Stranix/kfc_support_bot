@@ -12,10 +12,10 @@ from aiogram.dispatcher.filters.state import StatesGroup
 from django.conf import settings
 from asgiref.sync import sync_to_async
 
-from src.bot.handlers.synchronizations.sync_report import report_save_in_db
+from src.bot.handlers.synchronizations.sync_report import report_save_in_db, \
+    create_sync_report
 from src.models import Server
 from src.bot import keyboards
-from src.bot import utils
 from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
 
@@ -42,7 +42,7 @@ async def choice(query: types.CallbackQuery, state: FSMContext):
     logger.debug('query: %s', query)
 
     sync_statuses = await start_synchronized_transits(query.data)
-    message_for_send, _ = await utils.create_sync_report(sync_statuses)
+    message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
         query.from_user.id,
         'Transit',

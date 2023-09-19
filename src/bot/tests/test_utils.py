@@ -4,12 +4,17 @@ import logging
 import aiohttp
 import pytest
 import pytest_asyncio
+
+from aiogram.types import InputFile
+
 from aiohttp import ClientTimeout
 from django.conf import settings
 
+from src.bot.handlers.synchronizations.sync_report import \
+    prepare_report_as_file
 from src.bot.utils import sync_referents
 from src.bot.utils import check_conn_to_main_server
-from src.bot.utils import start_synchronized_transits
+from src.bot.handlers.synchronizations.sync_transits import start_synchronized_transits
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +75,11 @@ class TestSync:
     ):
         caplog.set_level(logging.DEBUG, logger='support_bot')
         web_server_url = 'https://172.27.31.96:8002'
-        sync_status = await sync_referents(get_client_session, web_server_url)
+        sync_status = await sync_referents(
+            get_client_session,
+            web_server_url,
+            'Transit'
+        )
         assert sync_status.status == 'ok'
 
     @pytest.mark.asyncio
@@ -78,3 +87,9 @@ class TestSync:
         caplog.set_level(logging.DEBUG, logger='support_bot')
         sync_status = await start_synchronized_transits('fz')
         assert isinstance(sync_status, list) is True
+
+    @pytest.mark.asyncio
+    async def test_prepare_report_as_file(self, caplog):
+        caplog.set_level(logging.DEBUG, logger='support_bot')
+        doc = await prepare_report_as_file(23)
+        assert isinstance(doc, InputFile) is True
