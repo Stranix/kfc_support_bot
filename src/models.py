@@ -286,3 +286,23 @@ class TaskComment(models.Model):
 
     def __str__(self):
         return f'{self.task} - {self.comment}'
+
+
+class SyncReport(models.Model):
+    start_at = models.DateTimeField(
+        'Время запуска синхронизации',
+        default=timezone.now,
+    )
+    employee = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        related_name='sync_reports',
+        verbose_name='Инициатор',
+    )
+    server_type = models.ForeignKey(
+        'ServerType',
+        on_delete=models.PROTECT,
+        related_name='sync_reports',
+        verbose_name='Что синхронизировали',
+    )
+    report = models.JSONField('Отчет')

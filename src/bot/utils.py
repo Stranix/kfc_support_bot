@@ -11,11 +11,10 @@ from aiohttp import ClientSession
 from aiohttp import ClientTimeout
 
 from django.conf import settings
-from asgiref.sync import sync_to_async
 
 from bs4 import BeautifulSoup
 
-from src.models import Server, Restaurant
+from src.models import Restaurant
 from src.bot.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
@@ -24,9 +23,10 @@ logger = logging.getLogger('support_bot')
 async def sync_referents(
         session: ClientSession,
         web_server_url: str,
+        server_name: str,
 ) -> SyncStatus:
     logger.info('Запуск синхронизации для: %s', web_server_url)
-    sync_status = SyncStatus(web_link=web_server_url)
+    sync_status = SyncStatus(web_link=web_server_url, server_name=server_name)
     try:
         link_to_sync = urljoin(web_server_url, '/rk7api/v1/forcesyncrefs.xml')
         check_conn = await check_conn_to_main_server(session, web_server_url)
@@ -74,72 +74,6 @@ async def check_conn_to_main_server(
         main_server,
     )
     return True
-
-
-async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
-    logger.info('Запуск синхронизации транзитов %s', transit_owner)
-    conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
-    transits = await get_transits_server_by_owner(transit_owner)
-
-    async with aiohttp.ClientSession(
-            trust_env=True,
-            connector=conn,
-            raise_for_status=True,
-            timeout=ClientTimeout(total=3)
-    ) as session:
-        tasks = []
-        for transit in transits:
-            tr_web_server_url = f'https://{transit.ip}:{transit.web_server}/'
-            task = asyncio.create_task(
-                sync_referents(session, tr_web_server_url)
-            )
-            tasks.append(task)
-
-        sync_report = list(await asyncio.gather(*tasks))
-        logger.debug('sync_report: %s', sync_report)
-    return sync_report
-
-
-@sync_to_async
-def get_transits_server_by_owner(transit_owner: str) -> list[Server]:
-    logger.info('Получаем список транзитов из базы по владельцу')
-    transits = Server.objects.filter(
-        franchise_owner__alias=transit_owner,
-        is_sync=True,
-    )
-    if transit_owner == 'all':
-        transits = Server.objects.filter(
-            franchise_owner__alias__in=('yum', 'irb', 'fz'),
-            is_sync=True,
-        )
-    logger.info('Успешно')
-    logger.debug('transits: %s', transits)
-    return list(transits)
-
-
-async def start_synchronized_restaurants(
-        restaurants: list[Restaurant]
-) -> list[SyncStatus]:
-    logger.info('Запуск синхронизации ресторанов %s', restaurants)
-    conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
-
-    async with aiohttp.ClientSession(
-            trust_env=True,
-            connector=conn,
-            raise_for_status=True,
-            timeout=ClientTimeout(total=3)
-    ) as session:
-        tasks = []
-        for restaurant in restaurants:
-            rest_web_server_url = f'https://{restaurant.server_ip}:9000/'
-            task = asyncio.create_task(
-                sync_referents(session, rest_web_server_url)
-            )
-            tasks.append(task)
-
-        sync_report = list(await asyncio.gather(*tasks))
-        logger.debug('sync_report: %s', sync_report)
-    return sync_report
 
 
 async def create_sync_report(

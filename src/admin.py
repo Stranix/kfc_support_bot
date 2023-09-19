@@ -9,7 +9,8 @@ from src.models import (
     ServerType,
     TaskComment,
     Restaurant,
-    FranchiseOwner
+    FranchiseOwner,
+    SyncReport,
 )
 
 
@@ -89,3 +90,18 @@ class RestaurantAdmin(admin.ModelAdmin):
 @admin.register(FranchiseOwner)
 class FranchiseOwner(admin.ModelAdmin):
     pass
+
+
+@admin.register(SyncReport)
+class SyncReportAdmin(admin.ModelAdmin):
+    search_fields = [
+        'employee',
+    ]
+
+    list_display = [
+        'id',
+        'start_at',
+        'employee',
+        'server_type',
+        'report',
+    ]
