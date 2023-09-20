@@ -31,6 +31,10 @@ SSL_CONTEXT.set_ciphers('DEFAULT')
 SSL_CONTEXT.check_hostname = False
 SSL_CONTEXT.verify_mode = ssl.CERT_NONE
 
+MAIL_LOGIN = env.str('MAIL_LOGIN', '')
+MAIL_PASSWORD = env.str('MAIL_PASSWORD', '')
+MAIL_IMAP_SERVER = env.str('MAIL_IMAP_SERVER', '')
+
 # Application definition
 
 INSTALLED_APPS = [
