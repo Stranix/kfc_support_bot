@@ -1,14 +1,15 @@
-# Подключение к почте
-# Чтение писем
-# Запись в бд
-# Запуск раз в 15 минут задачи на скан почты
-
 import email
 import imaplib
 import logging
+import re
+
+from datetime import datetime
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.utils import timezone
+
+from src.models import Task
 
 logger = logging.getLogger('mail_service')
 
@@ -18,13 +19,36 @@ class Command(BaseCommand):
         logging.basicConfig(level=logging.INFO)
         logger.setLevel(logging.DEBUG)
         unread_mail = check_unread_mail()
-        one_message = unread_mail[0].split('Описание:')
+        for mail in unread_mail:
+            if mail.find('назначено группе') == -1:
+                logger.warning('Не подходящее сообщение. Пропускаю.')
+                logger.debug('Текст сообщения: %s', mail)
+            task = parse_gsd_mail(mail)
+            Task.objects.create(**task)
 
-        task_main_info = filter(None, one_message[0].split('\r\n'))
-        task_descriptions = one_message[1]
 
-        for line in task_main_info:
-            print(line)
+def parse_gsd_mail(mail_text: str) -> dict:
+    message = mail_text.split('Описание:')
+    main_info = list(filter(None, message[0].split('\r\n')))
+
+    expired_at = datetime.strptime(
+        main_info[10].split(': ')[1],
+        '%d.%m.%Y %H:%M:%S',
+    )
+    tz = timezone.get_current_timezone()
+    tz_expired_at = timezone.make_aware(expired_at, tz, True)
+
+    task = {
+        'applicant': main_info[2].split(': ')[1],
+        'number': re.search(r'SC-(\d{7})+', main_info[0]).group(),
+        'expired_at': tz_expired_at,
+        'priority': main_info[9].split(': ')[1],
+        'service': main_info[11].split(': ')[1],
+        'title': main_info[12].split(': ')[1],
+        'description': mail_text,
+        'gsd_group': re.search(r'«([\s\S]+?)»', main_info[0]).group(),
+    }
+    return task
 
 
 def get_conn():
