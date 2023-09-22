@@ -111,6 +111,7 @@ async def send_message_to_tg_group(
     logger.info('Отправка сообщению ботом из менеджмент команды')
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=types.ParseMode.HTML)
     await bot.send_message(group_id, message, reply_markup=keyboard)
+    await bot.close()
     logger.info('Сообщение отправлено')
 
 
