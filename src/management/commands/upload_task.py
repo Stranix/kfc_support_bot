@@ -10,15 +10,18 @@ import aiogram.utils.markdown as md
 
 from aiogram import Bot
 from aiogram import types
+from aiogram.types import InlineKeyboardMarkup
 
 from asgiref.sync import sync_to_async
 
 from django.conf import settings
 from django.utils import timezone
 from django.core.management.base import BaseCommand
+from django.utils.dateformat import format
 
 from src.models import Task
 from src.models import Restaurant
+from src.bot.keyboards import get_task_keyboard
 
 logger = logging.getLogger('mail_service')
 
@@ -48,39 +51,66 @@ async def fetch_mail():
                 applicant=task.get('applicant'),
                 defaults=task,
             )
-            if created:
-                if task_db.service == 'Digital Kiosk':
-                    if task_db.title == 'Киоск ошибка':
-                        await send_message_to_tg_group(
-                            378630510,
-                            prepare_message_for_tg(task_db),
-                        )
+            if not created:
+                logger.info('Задача уже существует в базе')
+
+            if created and await is_critical_task(task_db):
+                message, keyboard = await prepare_message_for_tg(task_db)
+                await send_message_to_tg_group(
+                    378630510,
+                    message,
+                    keyboard,
+                )
         except (IndexError, ValueError):
             logger.error('Ошибка при обработке сообщения')
             logger.debug('Ошибочное сообщение: %s', mail)
 
 
-def prepare_message_for_tg(task: Task) -> str:
+async def is_critical_task(task: Task) -> bool:
+    logger.info('Проверяю задачу на критичность')
+    critical_service = ('Digital Kiosk', 'Касса Digital')
+    critical_title = ('Киоск ошибка', 'Проблемы в работе')
+    logger.debug('task.service: %s', task.service)
+    logger.debug('task.title: %s', task.title)
+    logger.debug('Критичный сервис: %s', task.service in critical_service)
+    logger.debug('Критичный Тип: %s', task.title in critical_title)
+    if task.service in critical_service:
+        if task.title in critical_title:
+            logger.info('Задача является критичной')
+            return True
+    logger.info('Задача не является критичной')
+    return False
+
+
+async def prepare_message_for_tg(
+        task: Task
+) -> tuple[str, InlineKeyboardMarkup]:
     logger.debug('Подготовка сообщения для tg')
-    time_formatted_mask = '%d-%m-%Y- %H:%M:%s'
-    start_at = task.start_at.strftime(time_formatted_mask)
-    expired_at = task.expired_at.strftime(time_formatted_mask)
+    time_formatted_mask = 'd-m-Y H:i:s'
+    start_at = format(task.start_at, time_formatted_mask)
+    expired_at = format(task.expired_at, time_formatted_mask)
     message = md.text(
         '⁉ Зафиксировано обращение:\n\n',
         'Услуга: ' + md.hcode(task.service),
         '\nТип обращения: ' + md.hcode(task.title),
         '\nЗаявитель: ' + md.hcode(task.applicant),
+        '\nНа группе: ' + md.hcode(task.gsd_group),
         '\nДата регистрации: ' + md.hcode(start_at),
         '\nСрок обработки: ' + md.hcode(expired_at),
     )
+    keyboard = await get_task_keyboard(task.id)
     logger.info('Успех')
-    return message
+    return message, keyboard
 
 
-async def send_message_to_tg_group(group_id: int, message: str):
+async def send_message_to_tg_group(
+        group_id: int,
+        message: str,
+        keyboard: InlineKeyboardMarkup,
+):
     logger.info('Отправка сообщению ботом из менеджмент команды')
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=types.ParseMode.HTML)
-    await bot.send_message(group_id, message)
+    await bot.send_message(group_id, message, reply_markup=keyboard)
     logger.info('Сообщение отправлено')
 
 
