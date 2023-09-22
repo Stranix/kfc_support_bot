@@ -1,15 +1,16 @@
+import re
 import email
 import imaplib
 import logging
-import re
 
 from datetime import datetime
 
 from django.conf import settings
-from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.core.management.base import BaseCommand
 
 from src.models import Task
+from src.models import Restaurant
 
 logger = logging.getLogger('mail_service')
 
@@ -23,24 +24,55 @@ class Command(BaseCommand):
             if mail.find('назначено группе') == -1:
                 logger.warning('Не подходящее сообщение. Пропускаю.')
                 logger.debug('Текст сообщения: %s', mail)
-            task = parse_gsd_mail(mail)
-            Task.objects.create(**task)
+                continue
+            try:
+                task = parse_gsd_mail(mail)
+                restaurant = get_restaurant_by_applicant(task.get('applicant'))
+                if restaurant:
+                    task['restaurant'] = restaurant
+                Task.objects.update_or_create(
+                    applicant=task.get('applicant'),
+                    defaults=task,
+                )
+            except (IndexError, ValueError):
+                logger.error('Ошибка при обработке сообщения')
+                logger.debug('Ошибочное сообщение: %s', mail)
+
+
+def get_restaurant_by_applicant(applicant: str) -> Restaurant | None:
+    logger.info('Пробую найти ресторан в бд по заявителю')
+    logger.debug('applicant: %s', applicant)
+    restaurant = Restaurant.objects.filter(
+        name__icontains=applicant,
+    )
+    if not restaurant:
+        logger.info('Не нашел для %s подходящего ресторана в бд', applicant)
+        return
+    logger.info('Найден подходящий ресторан %s', restaurant)
+    return restaurant.first()
 
 
 def parse_gsd_mail(mail_text: str) -> dict:
+    logger.info('Разбираем сообщение')
     message = mail_text.split('Описание:')
     main_info = list(filter(None, message[0].split('\r\n')))
 
+    start_at = datetime.strptime(
+        main_info[8].split(': ')[1],
+        '%d.%m.%Y %H:%M:%S',
+    )
     expired_at = datetime.strptime(
         main_info[10].split(': ')[1],
         '%d.%m.%Y %H:%M:%S',
     )
     tz = timezone.get_current_timezone()
     tz_expired_at = timezone.make_aware(expired_at, tz, True)
+    tz_start_at = timezone.make_aware(start_at, tz, True)
 
     task = {
         'applicant': main_info[2].split(': ')[1],
         'number': re.search(r'SC-(\d{7})+', main_info[0]).group(),
+        'start_at': tz_start_at,
         'expired_at': tz_expired_at,
         'priority': main_info[9].split(': ')[1],
         'service': main_info[11].split(': ')[1],
@@ -48,6 +80,8 @@ def parse_gsd_mail(mail_text: str) -> dict:
         'description': mail_text,
         'gsd_group': re.search(r'«([\s\S]+?)»', main_info[0]).group(),
     }
+    logger.info('Информация по задаче собрана')
+    logger.debug('task: %s', task)
     return task
 
 
@@ -87,14 +121,19 @@ def check_unread_mail():
     logger.info('Получаю непрочитанные письма')
     status, search_data = mail_conn.uid('search', 'UNSEEN')
     logger.debug('status: %s', status)
-    logger.debug('search_data: %s', search_data)
     msgs = get_emails(search_data, mail_conn)
     logger.info(f'Нашел {len(msgs)} писем')
     for msg in msgs:
-        msg_byte = get_body(email.message_from_bytes(msg[0][1]))
-        message = msg_byte.decode('UTF-8').split(
-            '---------------------------------------------------')
-        message_list.append(message[0] + message[1])
-    logger.debug('Полученные сообщения: %s', message_list)
+        msg_body = get_body(
+            email.message_from_bytes(msg[0][1])
+        ).decode('UTF-8')
+        message = msg_body.split(
+            '---------------------------------------------------',
+        )
+        try:
+            message_list.append(message[0] + message[1])
+        except IndexError:
+            message_list.append(message[0])
+    logger.debug('Количество полученных сообщений: %s', len(message_list))
     logger.info(f'Закрытие соединения с ящиком: {mail_conn.logout()}')
     return message_list
