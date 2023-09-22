@@ -5,6 +5,7 @@ import logging
 from urllib.parse import urljoin
 
 import aiohttp
+
 from aiohttp import ClientSession
 
 from bs4 import BeautifulSoup

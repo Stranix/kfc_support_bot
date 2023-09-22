@@ -1,9 +1,17 @@
 import re
 import email
 import imaplib
+import asyncio
 import logging
 
 from datetime import datetime
+
+import aiogram.utils.markdown as md
+
+from aiogram import Bot
+from aiogram import types
+
+from asgiref.sync import sync_to_async
 
 from django.conf import settings
 from django.utils import timezone
@@ -19,27 +27,65 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         logging.basicConfig(level=logging.INFO)
         logger.setLevel(logging.DEBUG)
-        unread_mail = check_unread_mail()
-        for mail in unread_mail:
-            if mail.find('назначено группе') == -1:
-                logger.warning('Не подходящее сообщение. Пропускаю.')
-                logger.debug('Текст сообщения: %s', mail)
-                continue
-            try:
-                task = parse_gsd_mail(mail)
-                restaurant = get_restaurant_by_applicant(task.get('applicant'))
-                if restaurant:
-                    task['restaurant'] = restaurant
-                Task.objects.update_or_create(
-                    applicant=task.get('applicant'),
-                    defaults=task,
-                )
-            except (IndexError, ValueError):
-                logger.error('Ошибка при обработке сообщения')
-                logger.debug('Ошибочное сообщение: %s', mail)
+        asyncio.run(fetch_mail())
 
 
-def get_restaurant_by_applicant(applicant: str) -> Restaurant | None:
+async def fetch_mail():
+    unread_mail = check_unread_mail()
+    for mail in unread_mail:
+        if mail.find('назначено группе') == -1:
+            logger.warning('Не подходящее сообщение. Пропускаю.')
+            logger.debug('Текст сообщения: %s', mail)
+            continue
+        try:
+            task = parse_gsd_mail(mail)
+            restaurant = await get_restaurant_by_applicant(
+                task.get('applicant')
+            )
+            if restaurant:
+                task['restaurant'] = restaurant
+            task_db, created = await Task.objects.aupdate_or_create(
+                applicant=task.get('applicant'),
+                defaults=task,
+            )
+            if created:
+                if task_db.service == 'Digital Kiosk':
+                    if task_db.title == 'Киоск ошибка':
+                        await send_message_to_tg_group(
+                            378630510,
+                            prepare_message_for_tg(task_db),
+                        )
+        except (IndexError, ValueError):
+            logger.error('Ошибка при обработке сообщения')
+            logger.debug('Ошибочное сообщение: %s', mail)
+
+
+def prepare_message_for_tg(task: Task) -> str:
+    logger.debug('Подготовка сообщения для tg')
+    time_formatted_mask = '%d-%m-%Y- %H:%M:%s'
+    start_at = task.start_at.strftime(time_formatted_mask)
+    expired_at = task.expired_at.strftime(time_formatted_mask)
+    message = md.text(
+        '⁉ Зафиксировано обращение:\n\n',
+        'Услуга: ' + md.hcode(task.service),
+        '\nТип обращения: ' + md.hcode(task.title),
+        '\nЗаявитель: ' + md.hcode(task.applicant),
+        '\nДата регистрации: ' + md.hcode(start_at),
+        '\nСрок обработки: ' + md.hcode(expired_at),
+    )
+    logger.info('Успех')
+    return message
+
+
+async def send_message_to_tg_group(group_id: int, message: str):
+    logger.info('Отправка сообщению ботом из менеджмент команды')
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=types.ParseMode.HTML)
+    await bot.send_message(group_id, message)
+    logger.info('Сообщение отправлено')
+
+
+@sync_to_async
+def get_restaurant_by_applicant(applicant: str) -> Restaurant:
     logger.info('Пробую найти ресторан в бд по заявителю')
     logger.debug('applicant: %s', applicant)
     restaurant = Restaurant.objects.filter(
@@ -47,8 +93,8 @@ def get_restaurant_by_applicant(applicant: str) -> Restaurant | None:
     )
     if not restaurant:
         logger.info('Не нашел для %s подходящего ресторана в бд', applicant)
-        return
-    logger.info('Найден подходящий ресторан %s', restaurant)
+
+    logger.debug('restaurant %s', restaurant)
     return restaurant.first()
 
 
