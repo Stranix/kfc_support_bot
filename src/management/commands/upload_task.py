@@ -85,14 +85,14 @@ async def is_critical_task(task: Task) -> bool:
 async def prepare_message_for_tg(
         task: Task
 ) -> tuple[str, InlineKeyboardMarkup]:
-    logger.debug('Подготовка сообщения для tg')
+    logger.info('Подготовка сообщения для tg')
     time_formatted_mask = 'd-m-Y H:i:s'
     start_at = format(task.start_at, time_formatted_mask)
     expired_at = format(task.expired_at, time_formatted_mask)
     message = md.text(
         '⁉ Зафиксировано обращение:\n\n',
         md.hbold(task.number),
-        '\nУслуга: ' + md.hcode(task.service),
+        '\n\nУслуга: ' + md.hcode(task.service),
         '\nТип обращения: ' + md.hcode(task.title),
         '\nЗаявитель: ' + md.hcode(task.applicant),
         '\nНа группе: ' + md.hcode(task.gsd_group),

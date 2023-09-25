@@ -306,6 +306,7 @@ class SyncReport(models.Model):
         verbose_name='Что синхронизировали',
     )
     report = models.JSONField('Отчет')
+    user_choice = models.CharField('Выбор пользователя', max_length=25)
 
     class Meta:
         verbose_name = 'Журнал синхронизации'

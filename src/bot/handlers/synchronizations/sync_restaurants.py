@@ -15,9 +15,8 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from src.bot import keyboards
-from src.bot import utils
-from src.bot.handlers.synchronizations.sync_report import report_save_in_db, \
-    create_sync_report
+from src.bot.handlers.synchronizations.sync_report import report_save_in_db
+from src.bot.handlers.synchronizations.sync_report import create_sync_report
 from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
 from src.models import Restaurant
@@ -77,6 +76,7 @@ async def choice(query: types.CallbackQuery, state: FSMContext):
             query.from_user.id,
             'Report',
             sync_statuses,
+            user_choice,
         )
         await query.message.answer(
             message_for_send,
@@ -117,6 +117,7 @@ async def sync_by_list(
         message.from_user.id,
         'Report',
         sync_statuses,
+        'rest_list',
     )
     await message.answer(
         message_for_send,
@@ -147,6 +148,7 @@ async def sync_by_group(
         query.from_user.id,
         'Report',
         sync_statuses,
+        'rest_group',
     )
     await query.message.answer(
         message_for_send,

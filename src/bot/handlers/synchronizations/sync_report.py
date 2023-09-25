@@ -48,6 +48,7 @@ async def report_save_in_db(
         from_user_id: int,
         server_type_name: str,
         sync_statuses: list[SyncStatus],
+        user_choice: str,
 ) -> SyncReport:
     logger.info('Сохраняю отчет о синхронизации в БД')
     emp = await Employee.objects.aget(tg_id=from_user_id)
@@ -57,6 +58,7 @@ async def report_save_in_db(
         employee=emp,
         server_type=server_type,
         report=report,
+        user_choice=user_choice,
     )
     logger.info('Готово')
     return sync_report

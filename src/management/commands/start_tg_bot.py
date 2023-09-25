@@ -11,6 +11,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
 from src.bot import handlers
 from src.bot.handlers.synchronizations import register_handlers_sync
+from src.bot.middlewares import SyncMiddleware
 
 logger = logging.getLogger('support_bot')
 
@@ -32,6 +33,7 @@ async def run_bot():
     handlers.register_handlers_common(dp)
     register_handlers_sync(dp)
     handlers.register_handlers_scan_chats(dp)
+    dp.middleware.setup(SyncMiddleware())
 
     await dp.skip_updates()
     await dp.start_polling()
