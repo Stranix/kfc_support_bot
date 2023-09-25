@@ -91,7 +91,8 @@ async def prepare_message_for_tg(
     expired_at = format(task.expired_at, time_formatted_mask)
     message = md.text(
         '⁉ Зафиксировано обращение:\n\n',
-        'Услуга: ' + md.hcode(task.service),
+        md.hbold(task.number),
+        '\nУслуга: ' + md.hcode(task.service),
         '\nТип обращения: ' + md.hcode(task.title),
         '\nЗаявитель: ' + md.hcode(task.applicant),
         '\nНа группе: ' + md.hcode(task.gsd_group),

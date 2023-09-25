@@ -30,7 +30,6 @@ async def scan_ticket(message: types.Message, regexp: re.Match):
     task_number = regexp.group()
     try:
         task = await Task.objects.aget(number=task_number)
-        logger.info(task.start_at)
         time_formatted_mask = 'd-m-Y H:i:s'
         start_at = format(task.start_at, time_formatted_mask)
         expired_at = format(task.expired_at, time_formatted_mask)
