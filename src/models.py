@@ -79,6 +79,11 @@ class Restaurant(models.Model):
         db_index=True,
         unique=True,
     )
+    ext_name = models.CharField(
+        'Расширенное имя',
+        max_length=50,
+        default='',
+    )
     id = models.PositiveIntegerField(
         'RK ident',
         primary_key=True,

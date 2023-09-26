@@ -48,7 +48,7 @@ async def fetch_mail():
             if restaurant:
                 task['restaurant'] = restaurant
             task_db, created = await Task.objects.aupdate_or_create(
-                applicant=task.get('applicant'),
+                number=task.get('number'),
                 defaults=task,
             )
             if not created:
@@ -121,7 +121,7 @@ def get_restaurant_by_applicant(applicant: str) -> Restaurant:
     logger.info('Пробую найти ресторан в бд по заявителю')
     logger.debug('applicant: %s', applicant)
     restaurant = Restaurant.objects.filter(
-        name__icontains=applicant,
+        ext_name__icontains=applicant.split()[1],
     )
     if not restaurant:
         logger.info('Не нашел для %s подходящего ресторана в бд', applicant)
