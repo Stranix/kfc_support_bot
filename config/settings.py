@@ -107,10 +107,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'assets'),
-]
-
 STATIC_URL = env.str('STATIC_URL', '/static/')
 
 STATIC_ROOT = env.str('STATIC_ROOT', os.path.join(BASE_DIR, 'static'))

@@ -49,7 +49,7 @@ async def choice(query: types.CallbackQuery, state: FSMContext):
     if user_choice == 'rest_list':
         await query.message.answer(
             md.text(
-                'Жду код ресторана(ов). Можно передавать через пробел\n' +
+                'Жду код ресторана(ов). Можно передавать через пробел\n',
                 'Например: ' + md.hcode('5050 8080 3333')
             )
         )
@@ -97,19 +97,19 @@ async def sync_by_list(
         logger.error('Не верный формат списка ресторанов')
         await message.answer(
             md.text(
-                'Не верный формат ресторанов. Попробуйте еще раз. \n' +
+                'Не верный формат ресторанов. Попробуйте еще раз. \n',
                 'Пример правильной записи: ' + md.hcode('5050 8080 3333')
             )
         )
         return
 
     restaurants = await sync_to_async(list)(
-            Restaurant.objects.filter(
-                server_ip__isnull=False,
-                code__in=restaurants,
-                is_sync=True,
-            )
+        Restaurant.objects.filter(
+            server_ip__isnull=False,
+            code__in=restaurants,
+            is_sync=True,
         )
+    )
     logger.debug('Нашел рестораны: %s', restaurants)
     sync_statuses = await start_synchronized_restaurants(restaurants)
     message_for_send, _ = await create_sync_report(sync_statuses)
