@@ -20,6 +20,7 @@ django-phonenumbers = "^1.0.1"
 psycopg2-binary = "^2.9.7"
 gunicorn = "^21.2.0"
 uvicorn = "^0.23.2"
+rollbar = "^0.16.3"
 
 
 [tool.poetry.group.dev.dependencies]

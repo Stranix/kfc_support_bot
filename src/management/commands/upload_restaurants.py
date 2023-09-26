@@ -1,4 +1,3 @@
-import json
 import logging
 
 import requests.exceptions
@@ -12,25 +11,26 @@ from src.referents.commands.GetRefData import parse_multi_ref_data
 from src.models import FranchiseOwner
 from src.models import Restaurant
 from src.models import Server
+from src.utils import configure_logging
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
-            logging.config.dictConfig(json.load(file))
-        referents = Server.objects.get(
-            franchise_owner__alias='yum',
-            server_type__name='Referents',
-        )
-        r_keeper = XmlInterface(
-            referents.ip,
-            referents.web_server,
-            settings.XML_LOGIN,
-            settings.XML_PASSWORD,
-        )
         try:
+            configure_logging()
+            referents = Server.objects.get(
+                franchise_owner__alias='yum',
+                server_type__name='Referents',
+            )
+            r_keeper = XmlInterface(
+                referents.ip,
+                referents.web_server,
+                settings.XML_LOGIN,
+                settings.XML_PASSWORD,
+            )
+
             r_keeper.check_settings_xml_interface()
             restaurants = get_restaurants_from_rkeeper(r_keeper)
             upload_restaurants(restaurants)
@@ -38,6 +38,8 @@ class Command(BaseCommand):
             logger.exception(error)
         except requests.exceptions.ConnectionError:
             logger.error('Нет соединения с сервером справочников')
+        except Exception as err:
+            logger.exception(err)
 
 
 def get_restaurants_from_rkeeper(r_keeper: XmlInterface):

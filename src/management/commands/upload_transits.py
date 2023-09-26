@@ -1,4 +1,3 @@
-import json
 import logging
 
 from django.conf import settings
@@ -10,53 +9,56 @@ from src.referents.commands.GetRefData import parse_multi_ref_data
 
 from src.models import Server, FranchiseOwner
 from src.models import ServerType
+from src.utils import configure_logging
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
-            logging.config.dictConfig(json.load(file))
+        try:
+            configure_logging()
 
-        yum_tr_groups_name = ['REP_CENTER', 'FZ_REP_TRANSIT']
-        irb_tr_groups_name = ['RS_REP_TRANSIT']
+            yum_tr_groups_name = ['REP_CENTER', 'FZ_REP_TRANSIT']
+            irb_tr_groups_name = ['RS_REP_TRANSIT']
 
-        referents_yum = Server.objects.get(
-            server_type__name='Referents',
-            franchise_owner__alias='yum',
-        )
-        referents_irb = Server.objects.get(
-            server_type__name='Referents',
-            franchise_owner__alias='irb',
-        )
-
-        r_keeper_yum = XmlInterface(
-            referents_yum.ip,
-            referents_yum.web_server,
-            settings.XML_LOGIN,
-            settings.XML_PASSWORD,
-        )
-        r_keeper_irb = XmlInterface(
-            referents_irb.ip,
-            referents_irb.web_server,
-            settings.XML_LOGIN,
-            settings.XML_PASSWORD,
-        )
-        tr_servers = []
-        for yum_group_name in yum_tr_groups_name:
-            yum_tr_servers = get_rk_tr_info_by_name(
-                r_keeper_yum,
-                yum_group_name,
+            referents_yum = Server.objects.get(
+                server_type__name='Referents',
+                franchise_owner__alias='yum',
             )
-            tr_servers.extend(yum_tr_servers)
-        for irb_group_name in irb_tr_groups_name:
-            irb_tr_servers = get_rk_tr_info_by_name(
-                r_keeper_irb,
-                irb_group_name,
+            referents_irb = Server.objects.get(
+                server_type__name='Referents',
+                franchise_owner__alias='irb',
             )
-            tr_servers.extend(irb_tr_servers)
-        upload_transits(tr_servers)
+
+            r_keeper_yum = XmlInterface(
+                referents_yum.ip,
+                referents_yum.web_server,
+                settings.XML_LOGIN,
+                settings.XML_PASSWORD,
+            )
+            r_keeper_irb = XmlInterface(
+                referents_irb.ip,
+                referents_irb.web_server,
+                settings.XML_LOGIN,
+                settings.XML_PASSWORD,
+            )
+            tr_servers = []
+            for yum_group_name in yum_tr_groups_name:
+                yum_tr_servers = get_rk_tr_info_by_name(
+                    r_keeper_yum,
+                    yum_group_name,
+                )
+                tr_servers.extend(yum_tr_servers)
+            for irb_group_name in irb_tr_groups_name:
+                irb_tr_servers = get_rk_tr_info_by_name(
+                    r_keeper_irb,
+                    irb_group_name,
+                )
+                tr_servers.extend(irb_tr_servers)
+            upload_transits(tr_servers)
+        except Exception as err:
+            logger.exception(err)
 
 
 def upload_transits(servers: list):

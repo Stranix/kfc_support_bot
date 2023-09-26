@@ -23,15 +23,18 @@ from django.utils.dateformat import format
 from src.models import Task
 from src.models import Restaurant
 from src.bot.keyboards import get_task_keyboard
+from src.utils import configure_logging
 
 logger = logging.getLogger('mail_service')
 
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
-            logging.config.dictConfig(json.load(file))
-        asyncio.run(fetch_mail())
+        try:
+            configure_logging()
+            asyncio.run(fetch_mail())
+        except Exception as err:
+            logger.exception(err)
 
 
 async def fetch_mail():

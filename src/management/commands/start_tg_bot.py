@@ -1,5 +1,3 @@
-import json
-
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -14,17 +12,20 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from src.bot import handlers
 from src.bot.handlers.synchronizations import register_handlers_sync
 from src.bot.middlewares import SyncMiddleware
+from src.utils import configure_logging
 
 logger = logging.getLogger('support_bot')
 
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
-            logging.config.dictConfig(json.load(file))
-        if not settings.TG_BOT_TOKEN:
-            logger.error('Не могу запустить команду не задан TG_BOT_TOKEN')
-        asyncio.run(run_bot())
+        try:
+            configure_logging()
+            if not settings.TG_BOT_TOKEN:
+                logger.error('Не могу запустить команду не задан TG_BOT_TOKEN')
+            asyncio.run(run_bot())
+        except Exception as err:
+            logger.exception(err)
 
 
 async def run_bot():
