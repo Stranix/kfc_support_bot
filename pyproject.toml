@@ -17,6 +17,9 @@ environs = "^9.5.0"
 dj-database-url = "^2.1.0"
 django-phonenumber-field = "^7.1.0"
 django-phonenumbers = "^1.0.1"
+psycopg2-binary = "^2.9.7"
+gunicorn = "^21.2.0"
+uvicorn = "^0.23.2"
 
 
 [tool.poetry.group.dev.dependencies]
