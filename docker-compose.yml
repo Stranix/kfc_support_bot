@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - static_volume:/home/app/web/static
+    expose:
+      - "8000"
+    env_file:
+      - ./.env
+    command: gunicorn --bind 0.0.0.0:8000 config.asgi -w 4 -k uvicorn.workers.UvicornWorker
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+     - ./nginx:/etc/nginx/templates
+     - static_volume:/home/app/web/static
+    ports:
+     - "1337:80"
+    environment:
+     - NGINX_PORT=80
+    depends_on:
+      - web
+
+volumes:
+  static_volume:
