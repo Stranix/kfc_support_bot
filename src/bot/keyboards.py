@@ -75,3 +75,16 @@ async def get_task_keyboard(task_id: int):
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_user_activate_keyboard(user_id: int):
+    logger.debug('Создаю кнопку для активации  нового пользователя')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='👤 Активировать?',
+                callback_data=f'user_{user_id}',
+            ),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

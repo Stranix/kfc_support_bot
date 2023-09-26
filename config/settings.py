@@ -17,6 +17,7 @@ DEBUG = env.bool('DEBUG', True)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
 TG_BOT_TOKEN = env.str('TG_BOT_TOKEN', '')
+TG_BOT_ADMIN = env.int('TG_BOT_ADMIN')
 
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
@@ -105,10 +106,6 @@ TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 
 USE_TZ = True
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
 
