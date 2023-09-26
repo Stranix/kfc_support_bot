@@ -1,6 +1,14 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./.env.prod.db
+
   web:
     build:
       context: ./
@@ -12,6 +20,8 @@ services:
       - "8000"
     env_file:
       - ./.env
+    depends_on:
+      - db
     command: gunicorn --bind 0.0.0.0:8000 config.asgi -w 4 -k uvicorn.workers.UvicornWorker
 
   nginx:

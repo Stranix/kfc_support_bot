@@ -31,3 +31,4 @@ pyproject.toml
 .gitignore
 .dockerignore
 nginx
+.env.db

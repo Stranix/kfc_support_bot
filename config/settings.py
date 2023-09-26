@@ -38,7 +38,8 @@ MAIL_PASSWORD = env.str('MAIL_PASSWORD', '')
 MAIL_IMAP_SERVER = env.str('MAIL_IMAP_SERVER', '')
 
 ROLLBAR_ACCESS_TOKEN = env.str('ROLLBAR_ACCESS_TOKEN', '')
-rollbar.init(ROLLBAR_ACCESS_TOKEN, environment='production')
+ROLLBAR_ENV = env.str('ROLLBAR_ENV', 'dev')
+rollbar.init(ROLLBAR_ACCESS_TOKEN, ROLLBAR_ENV)
 
 # Application definition
 
