@@ -32,7 +32,7 @@ def register_handlers_common(dp: Dispatcher):
         state='*',
     )
     dp.register_callback_query_handler(
-        callback_cmd_cancel,
+        activate_user,
         lambda call: re.match('user_', call.data),
         state='*',
     )
