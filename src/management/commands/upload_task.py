@@ -1,3 +1,4 @@
+import json
 import re
 import email
 import imaplib
@@ -28,8 +29,8 @@ logger = logging.getLogger('mail_service')
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        logging.basicConfig(level=logging.INFO)
-        logger.setLevel(logging.DEBUG)
+        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
+            logging.config.dictConfig(json.load(file))
         asyncio.run(fetch_mail())
 
 

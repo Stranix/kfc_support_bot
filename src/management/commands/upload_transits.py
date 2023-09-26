@@ -1,3 +1,4 @@
+import json
 import logging
 
 from django.conf import settings
@@ -15,8 +16,8 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        logging.basicConfig(level=logging.INFO)
-        logger.setLevel(logging.INFO)
+        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
+            logging.config.dictConfig(json.load(file))
 
         yum_tr_groups_name = ['REP_CENTER', 'FZ_REP_TRANSIT']
         irb_tr_groups_name = ['RS_REP_TRANSIT']

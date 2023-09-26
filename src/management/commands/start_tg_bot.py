@@ -1,3 +1,5 @@
+import json
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -18,8 +20,8 @@ logger = logging.getLogger('support_bot')
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        logging.basicConfig(level=logging.INFO)
-        logger.setLevel(logging.DEBUG)
+        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
+            logging.config.dictConfig(json.load(file))
         if not settings.TG_BOT_TOKEN:
             logger.error('Не могу запустить команду не задан TG_BOT_TOKEN')
         asyncio.run(run_bot())

@@ -1,3 +1,4 @@
+import json
 import logging
 
 import requests.exceptions
@@ -17,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
-        logging.basicConfig(level=logging.INFO)
-        logger.setLevel(logging.INFO)
+        with open('config/logging_config.json', 'r', encoding='utf-8') as file:
+            logging.config.dictConfig(json.load(file))
         referents = Server.objects.get(
             franchise_owner__alias='yum',
             server_type__name='Referents',

@@ -28,7 +28,7 @@ class SyncMiddleware(BaseMiddleware):
                 raise CancelHandler()
 
     async def on_pre_process_callback_query(self, callback: CallbackQuery, _):
-        logger.debug('process_update callback %s', callback)
+        logger.debug('on_pre_process_callback_query')
         report = await SyncReport.objects.select_related('employee')\
             .filter(user_choice__in=('all', ))\
             .order_by('-start_at')\
