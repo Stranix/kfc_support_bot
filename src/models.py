@@ -4,7 +4,7 @@ from django.utils import timezone
 
 class Employee(models.Model):
     name = models.CharField('Имя', max_length=50)
-    tg_id = models.PositiveSmallIntegerField(
+    tg_id = models.PositiveIntegerField(
         'Telegram_id',
         db_index=True,
         unique=True,
