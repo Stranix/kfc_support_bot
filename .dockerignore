@@ -32,3 +32,4 @@ pyproject.toml
 .dockerignore
 nginx
 .env.db
+docker_deploy.sh
