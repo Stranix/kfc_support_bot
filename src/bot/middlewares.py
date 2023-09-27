@@ -29,10 +29,19 @@ class SyncMiddleware(BaseMiddleware):
 
     async def on_pre_process_callback_query(self, callback: CallbackQuery, _):
         logger.debug('on_pre_process_callback_query')
+        logger.debug('callback: %s', callback.data)
+        if callback.data not in ('rest_all', 'all'):
+            return
+
         report = await SyncReport.objects.select_related('employee')\
-            .filter(user_choice__in=('all', ))\
+            .filter(user_choice__in=('all', 'rest_all'))\
             .order_by('-start_at')\
             .afirst()
+
+        if not report:
+            logger.debug('нет подходящего отчета по синхронизации')
+            return
+
         if (timezone.now() - report.start_at).total_seconds() < 900:
             logger.warning('С запуска синхронизации прошло меньше 15 минут')
             await callback.answer()
