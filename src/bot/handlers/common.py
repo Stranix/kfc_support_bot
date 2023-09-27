@@ -75,8 +75,8 @@ async def activate_user(query: types.CallbackQuery):
         text='Активировал'
     )
     await query.bot.send_message(
-        chat_id=settings.TG_BOT_ADMIN,
-        text='Учетная запись активирована. '
+        chat_id=employee.tg_id,
+        text='Учетная запись активирована. \n'
              'При возникновении проблем обращайтесь к @SmurovK',
     )
 

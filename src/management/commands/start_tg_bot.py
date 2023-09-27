@@ -29,7 +29,12 @@ class Command(BaseCommand):
 
 
 async def run_bot():
+    available_commands = [
+        types.BotCommand('/sync_rest', 'Запуск синхронизации по ресторанам'),
+        types.BotCommand('/sync_tr', 'Запуск синхронизации по транзитам'),
+    ]
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=types.ParseMode.HTML)
+    await bot.set_my_commands(available_commands)
     dp = Dispatcher(bot, storage=MemoryStorage())
 
     logger.info('Регистрация handlers')
