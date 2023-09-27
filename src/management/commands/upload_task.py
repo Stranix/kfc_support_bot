@@ -61,7 +61,7 @@ async def fetch_mail():
             if created and await is_critical_task(task_db):
                 message, keyboard = await prepare_message_for_tg(task_db)
                 await send_message_to_tg_group(
-                    378630510,
+                    -1001328841443,
                     message,
                     keyboard,
                 )
