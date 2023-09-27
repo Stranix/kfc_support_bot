@@ -3,6 +3,7 @@ import logging
 import requests.exceptions
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import DataError
 
 from src.referents.XmlInterface import XmlInterface
 from src.referents.commands.GetRefData import get_ref_data
@@ -58,26 +59,31 @@ def get_restaurants_from_rkeeper(r_keeper: XmlInterface):
 def upload_restaurants(restaurants):
     logger.info('Запись ресторанов в базу')
     for restaurant in restaurants:
-        logger.debug('Обработка ресторана: %s', restaurant['Name'])
-        if restaurant['Name'] == 'Центральный Офис':
+        rest_name = restaurant['Name']
+        logger.debug('Обработка ресторана: %s', rest_name)
+        if rest_name == 'Центральный Офис':
             continue
         owner = restaurant['Owner'].replace('&quot;', '"')
         franchise = get_franchise_by_owner(owner)
-        restaurant_db, _ = Restaurant.objects.update_or_create(
-            id=int(restaurant['Ident']),
-            defaults={
-                'name': restaurant['Name'],
-                'ext_name': restaurant['genrestaurant_name'],
-                'code': int(restaurant['Code']),
-                'legal_entity': owner,
-                'address': restaurant['Address'],
-                'phone': restaurant['gentelephone_number'],
-                'server_ip': restaurant['genIP_REP_SRV'],
-                'franchise': franchise,
-                'is_sync': False if franchise.alias == 'fz' else True,
-            }
-        )
-        logger.debug('Добавлен')
+        try:
+            restaurant_db, _ = Restaurant.objects.update_or_create(
+                id=int(restaurant['Ident']),
+                defaults={
+                    'name': rest_name,
+                    'ext_name': restaurant['genrestaurant_name'],
+                    'code': int(restaurant['Code']),
+                    'legal_entity': owner,
+                    'address': restaurant['Address'],
+                    'phone': restaurant['gentelephone_number'],
+                    'server_ip': restaurant['genIP_REP_SRV'],
+                    'franchise': franchise,
+                    'is_sync': False if franchise.alias == 'fz' else True,
+                }
+            )
+            logger.debug('Добавлен')
+        except DataError:
+            logger.warning('Ошибка добавления ресторана %s', rest_name)
+
     logger.info('Запись ресторанов в базу завершена')
 
 

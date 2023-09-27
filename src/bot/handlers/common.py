@@ -69,6 +69,7 @@ async def activate_user(query: types.CallbackQuery):
     employee = await Employee.objects.aget(id=user_id)
     employee.is_active = True
     await employee.asave()
+    await query.answer()
     await query.bot.send_message(
         chat_id=settings.TG_BOT_ADMIN,
         text='Активировал'
