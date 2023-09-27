@@ -57,5 +57,6 @@ async def send_task(query: types.CallbackQuery):
         await query.answer()
         task_description = re.sub(r'<[^>]*>', '', task.description)
         await query.message.answer(md.hcode(task_description))
+        await query.message.delete()
     except Task.DoesNotExist:
         logger.warning('Не удалось получить задачу')
