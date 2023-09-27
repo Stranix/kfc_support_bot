@@ -9,6 +9,7 @@ from aiogram.dispatcher.filters import Regexp
 
 from django.utils.dateformat import format
 
+from src.management.commands.upload_task import fetch_mail
 from src.models import Task
 from src.bot.keyboards import get_task_keyboard
 
@@ -28,6 +29,31 @@ def register_handlers_scan_chats(dp: Dispatcher):
 async def scan_ticket(message: types.Message, regexp: re.Match):
     logger.info(f'Нашел в сообщении номер тикета: {regexp.group()}')
     task_number = regexp.group()
+    message_fo_send, keyboard = await get_task_by_number(task_number)
+    if not message_fo_send:
+        logger.info('Пробую еще раз загрузить почту и проверить сообщение')
+        await fetch_mail()
+        message_fo_send, keyboard = await get_task_by_number(task_number)
+
+    if message_fo_send:
+        await message.reply(message_fo_send, reply_markup=keyboard)
+
+
+async def send_task(query: types.CallbackQuery):
+    logger.info('Отправка полной информации по задаче')
+    task_id = query.data.split('_')[1]
+    logger.debug('task_id: %s', task_id)
+    try:
+        task = await Task.objects.aget(id=task_id)
+        await query.answer()
+        task_description = re.sub(r'<[^>]*>', '', task.description)
+        await query.message.answer(md.hcode(task_description))
+        await query.message.delete()
+    except Task.DoesNotExist:
+        logger.warning('Не удалось получить задачу')
+
+
+async def get_task_by_number(task_number: str) -> tuple:
     try:
         task = await Task.objects.aget(number=task_number)
         time_formatted_mask = 'd-m-Y H:i:s'
@@ -43,20 +69,7 @@ async def scan_ticket(message: types.Message, regexp: re.Match):
             '\nСрок обработки: ' + md.hcode(expired_at),
         )
         keyboard = await get_task_keyboard(task.id)
-        await message.reply(message_fo_send, reply_markup=keyboard)
+        return message_fo_send, keyboard
     except Task.DoesNotExist:
         logger.warning('Нет такой задачи (%s) в БД', task_number)
-
-
-async def send_task(query: types.CallbackQuery):
-    logger.info('Отправка полной информации по задаче')
-    task_id = query.data.split('_')[1]
-    logger.debug('task_id: %s', task_id)
-    try:
-        task = await Task.objects.aget(id=task_id)
-        await query.answer()
-        task_description = re.sub(r'<[^>]*>', '', task.description)
-        await query.message.answer(md.hcode(task_description))
-        await query.message.delete()
-    except Task.DoesNotExist:
-        logger.warning('Не удалось получить задачу')
+        return None, None
