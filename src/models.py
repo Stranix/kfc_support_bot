@@ -14,6 +14,11 @@ class Employee(models.Model):
         related_name='employees',
         verbose_name='Группа доступа',
     )
+    managers = models.ManyToManyField(
+        'Employee',
+        verbose_name='Менеджеры',
+        blank=True,
+    )
     registered_at = models.DateTimeField(
         'Дата регистрации',
         default=timezone.now,
@@ -26,6 +31,39 @@ class Employee(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class WorkShift(models.Model):
+    employee = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        verbose_name='Сотрудник',
+        related_name='work_shifts',
+    )
+    shift_start_at = models.DateTimeField('Старт смены')
+    shift_start_break_at = models.DateTimeField(
+        'Старт перерыва',
+        null=True,
+        blank=True,
+    )
+    shift_end_break_at = models.DateTimeField(
+        'Завершение перерыва',
+        null=True,
+        blank=True,
+    )
+    shift_end_at = models.DateTimeField(
+        'Завершение смены',
+        null=True,
+        blank=True,
+    )
+    is_works = models.BooleanField('Работает?', default=True)
+
+    class Meta:
+        verbose_name = 'Рабочая Смена'
+        verbose_name_plural = 'Рабочие Смены'
+
+    def __str__(self):
+        return f'{self.employee.name} - {self.shift_start_at}'
 
 
 class Group(models.Model):
