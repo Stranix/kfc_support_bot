@@ -3,30 +3,22 @@ import logging
 
 import aiogram.utils.markdown as md
 
+from aiogram import F
+from aiogram import Router
 from aiogram import types
-from aiogram import Dispatcher
-from aiogram.dispatcher.filters import Regexp
 
 from django.utils.dateformat import format
 
-from src.management.commands.upload_task import fetch_mail
 from src.models import Task
 from src.bot.keyboards import get_task_keyboard
+from src.management.commands.upload_task import fetch_mail
 
 logger = logging.getLogger('support_bot')
+router = Router(name='scan_chats_handlers')
 
 
-def register_handlers_scan_chats(dp: Dispatcher):
-    logger.info('Регистрация команд поиска текста в чатах')
-    dp.register_message_handler(scan_ticket, Regexp(regexp=r'SC-(\d{7})+'))
-    dp.register_callback_query_handler(
-        send_task,
-        lambda call: re.match('task_', call.data),
-        state='*',
-    )
-
-
-async def scan_ticket(message: types.Message, regexp: re.Match):
+@router.message(F.text.regexp(r'SC-(\d{7})+').as_('regexp'))
+async def scan_ticket(message: types.Message, regexp: re.Match[str]):
     logger.info(f'Нашел в сообщении номер тикета: {regexp.group()}')
     task_number = regexp.group()
     message_fo_send, keyboard = await get_task_by_number(task_number)
@@ -39,6 +31,7 @@ async def scan_ticket(message: types.Message, regexp: re.Match):
         await message.reply(message_fo_send, reply_markup=keyboard)
 
 
+@router.callback_query(F.data.startswith('task_'))
 async def send_task(query: types.CallbackQuery):
     logger.info('Отправка полной информации по задаче')
     task_id = query.data.split('_')[1]
