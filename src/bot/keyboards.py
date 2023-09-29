@@ -83,7 +83,7 @@ async def get_user_activate_keyboard(user_id: int):
         [
             InlineKeyboardButton(
                 text='👤 Активировать?',
-                callback_data=f'user_{user_id}',
+                callback_data=f'activate_{user_id}',
             ),
         ]
     ]

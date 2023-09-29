@@ -1,17 +1,16 @@
-from django.conf import settings
-from django.core.management.base import BaseCommand
-
 import asyncio
 import logging
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
 
 from aiogram import Bot
 from aiogram import types
 from aiogram import Dispatcher
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
 
-from src.bot import handlers
-from src.bot.handlers.synchronizations import register_handlers_sync
-from src.bot.middlewares import SyncMiddleware
+from src.bot.handlers.common import router
 from src.utils import configure_logging
 
 logger = logging.getLogger('support_bot')
@@ -24,24 +23,33 @@ class Command(BaseCommand):
             if not settings.TG_BOT_TOKEN:
                 logger.error('Не могу запустить команду не задан TG_BOT_TOKEN')
             asyncio.run(run_bot())
+        except KeyboardInterrupt:
+            logger.info('Работа бота прервана')
         except Exception as err:
             logger.exception(err)
 
 
-async def run_bot():
+async def start_bot(bot: Bot):
+    await set_commands(bot)
+    await bot.send_message(settings.TG_BOT_ADMIN, text='Бот запущен!')
+
+
+async def set_commands(bot: Bot):
     available_commands = [
-        types.BotCommand('/sync_rest', 'Запуск синхронизации по ресторанам'),
-        types.BotCommand('/sync_tr', 'Запуск синхронизации по транзитам'),
+        types.BotCommand(
+            command='sync_rest',
+            description='Синхронизация ресторанов',
+        ),
     ]
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=types.ParseMode.HTML)
-    await bot.set_my_commands(available_commands)
-    dp = Dispatcher(bot, storage=MemoryStorage())
+    await bot.set_my_commands(
+        available_commands,
+        types.BotCommandScopeDefault()
+    )
 
-    logger.info('Регистрация handlers')
-    handlers.register_handlers_common(dp)
-    register_handlers_sync(dp)
-    handlers.register_handlers_scan_chats(dp)
-    dp.middleware.setup(SyncMiddleware())
 
-    await dp.skip_updates()
-    await dp.start_polling()
+async def run_bot():
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+    dp = Dispatcher(storage=MemoryStorage(), skip_updates=True)
+    dp.include_router(router)
+    dp.startup.register(start_bot)
+    await dp.start_polling(bot)
