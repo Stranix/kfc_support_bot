@@ -2,12 +2,16 @@ import asyncio
 import logging
 
 import aiohttp
+
 from aiohttp import ClientTimeout
 
+from aiogram import F
+from aiogram import Router
 from aiogram import types
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State
-from aiogram.dispatcher.filters.state import StatesGroup
+from aiogram.filters import Command
+from aiogram.fsm.state import State
+from aiogram.fsm.state import StatesGroup
+from aiogram.fsm.context import FSMContext
 
 from django.conf import settings
 from asgiref.sync import sync_to_async
@@ -20,40 +24,44 @@ from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
 
 logger = logging.getLogger('support_bot')
+router = Router(name='sync_transits_handlers')
 
 
 class SyncTrState(StatesGroup):
-    waiting_for_tr_choice = State()
+    tr_choice = State()
 
 
-async def start(message: types.Message, state: FSMContext):
+@router.message(Command('sync_tr'))
+async def cmd_sync_tr(message: types.Message, state: FSMContext):
     logging.info(
         'Запрос на запуск синхронизации от %s',
         message.from_user.full_name
     )
-    await state.set_state(SyncTrState.waiting_for_tr_choice.state)
+    await state.set_state(SyncTrState.tr_choice)
     await message.reply(
         text='Какие транзиты будем синхронизировать?',
         reply_markup=await keyboards.get_choice_tr_keyboard()
     )
 
 
-async def choice(query: types.CallbackQuery, state: FSMContext):
+@router.callback_query(SyncTrState.tr_choice, F.data.startswith('tr_'))
+async def process_start_sync_tr(query: types.CallbackQuery, state: FSMContext):
     logger.debug('query: %s', query)
-    sync_statuses = await start_synchronized_transits(query.data)
+    transits_group = query.data.split('_')[1]
+    sync_statuses = await start_synchronized_transits(transits_group)
     message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
         query.from_user.id,
         'Transit',
         sync_statuses,
-        query.data,
+        transits_group,
     )
     await query.message.delete()
     await query.message.answer(
         message_for_send,
         reply_markup=await keyboards.get_report_keyboard(sync_report.id),
     )
-    await state.finish()
+    await state.clear()
 
 
 async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:

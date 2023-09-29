@@ -10,12 +10,12 @@ async def get_choice_tr_keyboard():
     logger.debug('Создаю клавиатуру выбора транзитов для синхронизации')
     inline_keyboard = [
         [
-            InlineKeyboardButton(text='YUM!', callback_data='yum'),
-            InlineKeyboardButton(text='IRB', callback_data='irb'),
-            InlineKeyboardButton(text='FZ', callback_data='fz'),
+            InlineKeyboardButton(text='YUM!', callback_data='tr_yum'),
+            InlineKeyboardButton(text='IRB', callback_data='tr_irb'),
+            InlineKeyboardButton(text='FZ', callback_data='tr_fz'),
         ],
         [
-            InlineKeyboardButton(text='Все', callback_data='all'),
+            InlineKeyboardButton(text='Все', callback_data='tr_all'),
             InlineKeyboardButton(text='Отмена', callback_data='cancel')
         ],
     ]

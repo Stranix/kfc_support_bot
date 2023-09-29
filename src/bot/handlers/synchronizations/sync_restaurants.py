@@ -2,93 +2,66 @@ import asyncio
 import logging
 
 import aiohttp
+
 from aiohttp import ClientTimeout
 
 import aiogram.utils.markdown as md
 
+from aiogram import F
+from aiogram import Router
 from aiogram import types
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State
-from aiogram.dispatcher.filters.state import StatesGroup
+from aiogram.filters import Command
+from aiogram.fsm.state import State
+from aiogram.fsm.state import StatesGroup
+from aiogram.fsm.context import FSMContext
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from src.bot import keyboards
-from src.bot.handlers.synchronizations.sync_report import report_save_in_db
-from src.bot.handlers.synchronizations.sync_report import create_sync_report
+from src.models import Restaurant
 from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
-from src.models import Restaurant
+from src.bot.handlers.synchronizations.sync_report import report_save_in_db
+from src.bot.handlers.synchronizations.sync_report import create_sync_report
 
 logger = logging.getLogger('support_bot')
+router = Router(name='sync_restaurants_handlers')
 
 
 class SyncRestState(StatesGroup):
-    waiting_for_choice = State()
-    waiting_rest_list = State()
-    waiting_rest_group = State()
+    sync_choice = State()
+    rest_list = State()
+    rest_group = State()
 
 
-async def start(message: types.Message, state: FSMContext):
+@router.message(Command('sync_rests'))
+async def cmd_sync_rests(message: types.Message, state: FSMContext):
     logging.info(
         'Запрос на запуск синхронизации ресторанов от %s',
         message.from_user.full_name
     )
-    await state.set_state(SyncRestState.waiting_for_choice.state)
+    await state.set_state(SyncRestState.sync_choice)
     await message.reply(
         text='Будем синхронизировать?',
         reply_markup=await keyboards.get_choice_rest_sync_keyboard()
     )
 
 
-async def choice(query: types.CallbackQuery, state: FSMContext):
-    user_choice = query.data
+@router.callback_query(SyncRestState.sync_choice, F.data == 'rest_list')
+async def process_rest_list(query: types.CallbackQuery, state: FSMContext):
     await query.message.delete()
-
-    if user_choice == 'rest_list':
-        await query.message.answer(
-            md.text(
-                'Жду код ресторана(ов). Можно передавать через пробел\n',
-                'Например: ' + md.hcode('5050 8080 3333')
-            )
+    await query.message.answer(
+        md.text(
+            'Жду код ресторана(ов). Можно передавать через пробел\n',
+            'Например: ' + md.hcode('5050 8080 3333')
         )
-        await state.set_state(SyncRestState.waiting_rest_list.state)
-
-    if user_choice == 'rest_group':
-        await query.message.answer(
-            text='Какие рестораны будем синхронизировать?',
-            reply_markup=await keyboards.get_choice_rest_owner_keyboard()
-        )
-        await state.set_state(SyncRestState.waiting_rest_group.state)
-
-    if user_choice == 'rest_all':
-        logger.info('Выбраны все рестораны для синхронизации')
-        restaurants = await sync_to_async(list)(
-            Restaurant.objects.filter(
-                server_ip__isnull=False,
-                is_sync=True,
-            )
-        )
-        sync_statuses = await start_synchronized_restaurants(restaurants)
-        message_for_send, _ = await create_sync_report(sync_statuses)
-        sync_report = await report_save_in_db(
-            query.from_user.id,
-            'Report',
-            sync_statuses,
-            user_choice,
-        )
-        await query.message.answer(
-            message_for_send,
-            reply_markup=await keyboards.get_report_keyboard(sync_report.id),
-        )
-        await state.finish()
+    )
+    await state.set_state(SyncRestState.rest_list)
 
 
-async def sync_by_list(
-        message: types.Message,
-        state: FSMContext
-):
+@router.message(SyncRestState.rest_list)
+async def process_sync_rest_list(message: types.Message, state: FSMContext):
     logger.info('Синхронизация ресторанов по списку от пользователя')
     logger.debug('message.text: %s', message.text)
     try:
@@ -123,10 +96,21 @@ async def sync_by_list(
         message_for_send,
         reply_markup=await keyboards.get_report_keyboard(sync_report.id),
     )
-    await state.finish()
+    await state.clear()
 
 
-async def sync_by_group(
+@router.callback_query(SyncRestState.sync_choice, F.data == 'rest_group')
+async def process_rest_group(query: types.CallbackQuery, state: FSMContext):
+    await query.message.delete()
+    await query.message.answer(
+        text='Какие рестораны будем синхронизировать?',
+        reply_markup=await keyboards.get_choice_rest_owner_keyboard()
+    )
+    await state.set_state(SyncRestState.rest_group)
+
+
+@router.callback_query(SyncRestState.rest_group, F.data.startswith('rest_'))
+async def process_sync_rest_group(
         query: types.CallbackQuery,
         state: FSMContext
 ):
@@ -154,7 +138,32 @@ async def sync_by_group(
         message_for_send,
         reply_markup=await keyboards.get_report_keyboard(sync_report.id),
     )
-    await state.finish()
+    await state.clear()
+
+
+@router.callback_query(SyncRestState.sync_choice, F.data == 'rest_all')
+async def process_sync_rest_all(query: types.CallbackQuery, state: FSMContext):
+    await query.message.delete()
+    logger.info('Выбраны все рестораны для синхронизации')
+    restaurants = await sync_to_async(list)(
+        Restaurant.objects.filter(
+            server_ip__isnull=False,
+            is_sync=True,
+        )
+    )
+    sync_statuses = await start_synchronized_restaurants(restaurants)
+    message_for_send, _ = await create_sync_report(sync_statuses)
+    sync_report = await report_save_in_db(
+        query.from_user.id,
+        'Report',
+        sync_statuses,
+        'rest_all',
+    )
+    await query.message.answer(
+        message_for_send,
+        reply_markup=await keyboards.get_report_keyboard(sync_report.id),
+    )
+    await state.clear()
 
 
 async def start_synchronized_restaurants(
@@ -176,7 +185,6 @@ async def start_synchronized_restaurants(
                 sync_referents(session, rest_web_server_url, restaurant.name)
             )
             tasks.append(task)
-
         sync_report = list(await asyncio.gather(*tasks))
         logger.debug('sync_report: %s', sync_report)
     return sync_report
