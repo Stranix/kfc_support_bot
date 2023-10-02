@@ -1,6 +1,7 @@
 import logging
 
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, \
+    KeyboardButton
 from aiogram.types import InlineKeyboardButton
 
 logger = logging.getLogger('support_bot')
@@ -96,6 +97,40 @@ async def get_shift_management_keyboard():
         [
             InlineKeyboardButton(text='Начать', callback_data='break_start'),
             InlineKeyboardButton(text='Завершить', callback_data='break_stop'),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def create_tg_keyboard_markup(
+        buttons_text: list,
+        buttons_per_row: int = 3,
+) -> ReplyKeyboardMarkup:
+    keyboard_buttons = [KeyboardButton(text=text) for text in buttons_text]
+
+    rows = [
+        keyboard_buttons[i:i + buttons_per_row] for i in
+        range(0, len(keyboard_buttons), buttons_per_row)
+    ]
+
+    return ReplyKeyboardMarkup(
+        keyboard=rows,
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+
+async def get_support_task_keyboard(task_id: int):
+    logger.debug('Создаю клавиатуру для инженера поддержки')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='Взять в работу',
+                callback_data=f'stask_{task_id}'
+            ),
         ],
         [
             InlineKeyboardButton(text='Отмена', callback_data='cancel')
