@@ -11,6 +11,7 @@ from src.models import (
     Restaurant,
     FranchiseOwner,
     SyncReport,
+    WorkShift,
 )
 
 
@@ -105,3 +106,8 @@ class SyncReportAdmin(admin.ModelAdmin):
         'server_type',
         'report',
     ]
+
+
+@admin.register(WorkShift)
+class WorkShiftAdmin(admin.ModelAdmin):
+    pass

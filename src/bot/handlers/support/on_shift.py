@@ -2,8 +2,9 @@ import logging
 
 import aiogram.utils.markdown as md
 
+from aiogram import Router
 from aiogram import types
-from aiogram.dispatcher import FSMContext
+from aiogram.filters import Command
 
 from django.utils import timezone
 
@@ -11,23 +12,18 @@ from src.models import Employee
 from src.models import WorkShift
 
 logger = logging.getLogger('support_bot')
+router = Router(name='common_handlers')
 
 
-async def on_shift(message: types.Message, state: FSMContext):
+@router.message(Command('on_shift'))
+async def on_shift(message: types.Message):
     logger.info('Сотрудник заступает на смену')
-    employee = await Employee.objects.aget(tg_id=message.from_user.id)
+    employee = await Employee.objects.prefetch_related('managers')\
+                                     .aget(tg_id=message.from_user.id)
     logger.debug('Фиксируем старт смены в БД')
-    shift = await WorkShift.objects.acreate(
+    await WorkShift.objects.acreate(
         employee=employee,
         shift_start_at=timezone.now(),
-    )
-    logger.debug('Сохраняем информацию в store')
-    await state.set_data(
-        {
-            message.from_user.id: {
-                'shift': shift
-            }
-        }
     )
     logger.info('Отправляю уведомление менеджеру и пользователю')
     await message.answer('Вы добавлены в очередь на получение задач')

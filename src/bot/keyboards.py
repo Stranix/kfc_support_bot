@@ -88,3 +88,17 @@ async def get_user_activate_keyboard(user_id: int):
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_shift_management_keyboard():
+    logger.debug('Создаю клавиатуру для управления сменой')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text='Начать', callback_data='break_start'),
+            InlineKeyboardButton(text='Завершить', callback_data='break_stop'),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
