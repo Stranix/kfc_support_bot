@@ -42,13 +42,13 @@ class SyncMiddleware(BaseMiddleware):
             logger.debug('нет подходящего отчета по синхронизации')
             return
 
-        if (timezone.now() - report.start_at).total_seconds() < 900:
-            logger.warning('С запуска синхронизации прошло меньше 15 минут')
+        if (timezone.now() - report.start_at).total_seconds() < 600:
+            logger.warning('С запуска синхронизации прошло меньше 10 минут')
             await callback.answer()
             report_start_at = format(report.start_at, 'd-m-Y H:i:s')
             await callback.message.answer(
                 md.text(
-                    'Запуск массовой синхронизации только раз в 15 минут\n\n',
+                    'Запуск массовой синхронизации только раз в 10 минут\n\n',
                     'Последний запуск от: ' + md.hcode(report.employee.name),
                     '\n Время запуска: ' + md.hcode(report_start_at)
                 ),
