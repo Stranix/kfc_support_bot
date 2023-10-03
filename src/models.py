@@ -9,6 +9,12 @@ class Employee(models.Model):
         db_index=True,
         unique=True,
     )
+    tg_nickname = models.CharField(
+        'Ник в телеге',
+        max_length=50,
+        blank=True,
+        default='',
+    )
     groups = models.ManyToManyField(
         'Group',
         related_name='employees',

@@ -31,6 +31,7 @@ async def cmd_start(message: types.Message):
         employee = await Employee.objects.acreate(
             name=message.from_user.full_name,
             tg_id=user_id,
+            tg_nickname='@' + message.from_user.username,
         )
         await message.bot.send_message(
             chat_id=settings.TG_BOT_ADMIN,
