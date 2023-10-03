@@ -137,3 +137,17 @@ async def get_support_task_keyboard(task_id: int):
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_approved_task_keyboard(task_number: str):
+    logger.debug('Создаю клавиатуру для подтверждения новой задачи')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='Подтвердить',
+                callback_data=f'approved_new_task-{task_number}',
+            ),
+            InlineKeyboardButton(text='Отмена', callback_data='cancel'),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

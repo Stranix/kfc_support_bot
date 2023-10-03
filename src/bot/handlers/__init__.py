@@ -7,6 +7,6 @@ from .support import router as support_router
 
 router = Router(name='main_handlers_router')
 router.include_router(common_router)
+router.include_router(support_router)
 router.include_router(scan_chats_router)
 router.include_router(sync_router)
-router.include_router(support_router)
