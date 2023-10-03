@@ -12,7 +12,7 @@ from src.models import Employee
 from src.models import WorkShift
 
 logger = logging.getLogger('support_bot')
-router = Router(name='common_handlers')
+router = Router(name='on_shift_handlers')
 
 
 @router.message(Command('on_shift'))

@@ -46,6 +46,17 @@ async def send_task(query: types.CallbackQuery):
         logger.warning('Не удалось получить задачу')
 
 
+@router.message(F.text.regexp(r'SD-(\d{7})+').as_('regexp'))
+async def local_service(message: types.Message, regexp: re.Match[str]):
+    logger.info(f'Нашел в сообщении номер локального тикета: {regexp.group()}')
+    task_number = regexp.group()
+    message_fo_send = await get_local_task_by_number(task_number)
+    if not message_fo_send:
+        await message.answer('А нету такого обращения в базе')
+        return
+    await message.reply(message_fo_send)
+
+
 async def get_task_by_number(task_number: str) -> tuple:
     try:
         task = await Task.objects.aget(number=task_number)
@@ -66,3 +77,22 @@ async def get_task_by_number(task_number: str) -> tuple:
     except Task.DoesNotExist:
         logger.warning('Нет такой задачи (%s) в БД', task_number)
         return None, None
+
+
+async def get_local_task_by_number(task_number: str) -> str | None:
+    try:
+        task = await Task.objects.aget(number=task_number)
+        time_formatted_mask = 'd-m-Y H:i:s'
+        start_at = format(task.start_at, time_formatted_mask)
+        message_fo_send = md.text(
+            md.hcode(task.number),
+            '\n\nУслуга: ' + md.hcode(task.service),
+            '\nЗаявитель:' + md.hcode(task.applicant),
+            '\nТип обращения: ' + md.hcode(task.title),
+            '\nДата регистрации: ' + md.hcode(start_at),
+            '\nТекста обращения: ' + md.hcode(task.description),
+        )
+        return message_fo_send
+    except Task.DoesNotExist:
+        logger.warning('Нет такой задачи (%s) в БД', task_number)
+        return
