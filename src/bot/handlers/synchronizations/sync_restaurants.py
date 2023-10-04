@@ -167,7 +167,7 @@ async def start_synchronized_restaurants(
             trust_env=True,
             connector=conn,
             raise_for_status=True,
-            timeout=ClientTimeout(total=3)
+            timeout=ClientTimeout(total=5)
     ) as session:
         tasks = []
         for restaurant in restaurants:
