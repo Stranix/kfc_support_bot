@@ -31,7 +31,12 @@ async def sync_referents(
         async with session.get(link_to_sync) as response:
             logger.debug('response_status: %s', response.status)
         return sync_status
-    except (asyncio.TimeoutError, aiohttp.ClientConnectionError):
+    except asyncio.TimeoutError:
+        sync_status.status = 'error'
+        sync_status.msg = 'Отсутствует подключение к серверу (timeout)'
+        return sync_status
+    except aiohttp.ClientConnectionError as error:
+        logger.debug('ClientConnectionError: %s', error.args)
         sync_status.status = 'error'
         sync_status.msg = 'Отсутствует подключение к серверу'
         return sync_status
