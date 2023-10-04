@@ -103,6 +103,7 @@ async def process_start_task(query: types.CallbackQuery):
         )
         return
     employee = await Employee.objects.aget(tg_id=query.from_user.id)
+    task_applicant = await Employee.objects.aget(name=task.applicant)
     task.performer = employee
     task.status = 'IN_WORK'
     await task.asave()
@@ -111,6 +112,11 @@ async def process_start_task(query: types.CallbackQuery):
         f'Вы взяли задачу {md.hbold(task.number)} в работу\n'
         'Для закрытия задачи, используйте команду /close_task',
         reply_markup=ReplyKeyboardRemove()
+    )
+    await query.bot.send_message(
+        task_applicant.tg_id,
+        f'Вашу задачу взял в работу инженер: {employee.name}\n'
+        f'Телеграм для связи: {employee.tg_nickname}'
     )
     logger.info('Задачу взял в работу сотрудник %s', employee.name)
 

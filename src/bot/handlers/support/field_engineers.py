@@ -128,7 +128,7 @@ async def sending_new_task_notify(
     message_for_send = md.text(
         'Инженеру требуется помощь по задаче',
         '\n\nОписание: ' + md.hcode(task.description),
-        '\ntelegram: ' + employee.tg_nickname,
+        '\nТелеграм для связи: ' + employee.tg_nickname,
     )
     if not recipients:
         logger.warning('На смене нет инженеров')
