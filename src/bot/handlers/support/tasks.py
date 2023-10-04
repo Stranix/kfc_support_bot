@@ -15,10 +15,12 @@ from aiogram.types import ReplyKeyboardRemove
 from asgiref.sync import sync_to_async
 from django.utils import timezone
 
-from src.bot.keyboards import create_tg_keyboard_markup, \
-    get_support_task_keyboard
 from src.models import Task
 from src.models import Employee
+from src.bot.keyboards import create_tg_keyboard_markup
+from src.bot.keyboards import get_support_task_keyboard
+from src.bot.keyboards import get_task_feedback_keyboard
+
 
 logger = logging.getLogger('support_bot')
 router = Router(name='support_task_handlers')
@@ -155,6 +157,7 @@ async def process_close_task(
     task = await Task.objects.select_related('performer')\
                              .aget(number=task_number)
     employee = await Employee.objects.aget(tg_id=message.from_user.id)
+    task_applicant = await Employee.objects.aget(name=task.applicant)
     if task.performer.name != employee.name:
         logger.warning('Исполнитель и закрывающий отличаются')
         await message.answer(
@@ -166,6 +169,12 @@ async def process_close_task(
     task.status = 'COMPLETED'
     task.finish_at = timezone.now()
     await task.asave()
+    await message.bot.send_message(
+        task_applicant.tg_id,
+        'Ваше обращение закрыто.\n'
+        'Оцените пожалуйста работу от 1 до 5',
+        reply_markup=await get_task_feedback_keyboard(task.id)
+    )
     await message.answer(
         'Задача завершена.\n'
         'Посмотреть список открытых задач: /get_task',

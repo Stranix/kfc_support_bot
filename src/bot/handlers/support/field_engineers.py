@@ -99,9 +99,17 @@ async def process_task_approved(query: types.CallbackQuery, state: FSMContext):
     logger.info('Процесс завершен')
 
 
-@router.callback_query(F.data.startswith('feedback_'))
+@router.callback_query(F.data.startswith('rating_'))
 async def task_feedback(query: types.CallbackQuery):
     logger.info('Оценка задачи')
+    rating = query.data.split('_')[1]
+    task_id = query.data.split('_')[2]
+    task = await Task.objects.aget(id=task_id)
+    task.rating = int(rating)
+    await task.asave()
+    await query.message.delete()
+    await query.message.answer(f'Спасибо за оценку задачи {task.number}')
+    logger.info('Оценка проставлена')
 
 
 async def sending_new_task_notify(

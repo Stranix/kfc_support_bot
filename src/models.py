@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.core.validators import MaxValueValidator
 
 
 class Employee(models.Model):
@@ -299,6 +300,12 @@ class Task(models.Model):
         blank=True,
         null=True,
         max_length=50,
+    )
+    rating = models.PositiveSmallIntegerField(
+        'Оценка',
+        validators=[MaxValueValidator(5)],
+        null=True,
+        blank=True,
     )
 
     class Meta:
