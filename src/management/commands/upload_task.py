@@ -66,7 +66,7 @@ async def fetch_mail():
                     keyboard,
                 )
         except (IndexError, ValueError):
-            logger.error('Ошибка при обработке сообщения')
+            logger.warning('Ошибка при обработке сообщения')
             logger.debug('Ошибочное сообщение: %s', mail)
 
 
