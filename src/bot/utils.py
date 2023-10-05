@@ -8,9 +8,16 @@ import aiohttp
 
 from aiohttp import ClientSession
 
+from aiogram import html
+from aiogram import types
+
 from bs4 import BeautifulSoup
 
+from django.conf import settings
+
+from src.models import Employee
 from src.bot.scheme import SyncStatus
+from src.bot.keyboards import get_user_activate_keyboard
 
 logger = logging.getLogger('support_bot')
 
@@ -74,3 +81,21 @@ async def check_conn_to_main_server(
         main_server,
     )
     return True
+
+
+async def user_registration(message: types.Message):
+    logger.info('Регистрация пользователя')
+    employee = await Employee.objects.acreate(
+        name=message.from_user.full_name,
+        tg_id=message.from_user.id,
+        tg_nickname='@' + message.from_user.username,
+    )
+    await message.bot.send_message(
+        chat_id=settings.TG_BOT_ADMIN,
+        text=html.text(
+            'Новый пользователь \n\n',
+            'Данные: \n' + html.code(message.from_user),
+        ),
+        reply_markup=await get_user_activate_keyboard(employee.id),
+    )
+    await message.answer('Заявка на регистрацию отправлена.')

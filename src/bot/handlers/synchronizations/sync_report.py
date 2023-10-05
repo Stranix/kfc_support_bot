@@ -2,16 +2,15 @@ import json
 import logging
 import dataclasses
 
-import aiogram.utils.markdown as md
-
 from aiogram import F
 from aiogram import Router
+from aiogram import html
 from aiogram import types
 
-from src.bot.scheme import SyncStatus
 from src.models import Employee
 from src.models import SyncReport
 from src.models import ServerType
+from src.bot.scheme import SyncStatus
 
 logger = logging.getLogger('support_bot')
 router = Router(name='report_handlers')
@@ -59,17 +58,16 @@ async def prepare_report_as_file(report_id: int) -> types.BufferedInputFile:
 
 
 async def report_save_in_db(
-        from_user_id: int,
+        employee: Employee,
         server_type_name: str,
         sync_statuses: list[SyncStatus],
         user_choice: str,
 ) -> SyncReport:
     logger.info('Сохраняю отчет о синхронизации в БД')
-    emp = await Employee.objects.aget(tg_id=from_user_id)
     server_type = await ServerType.objects.aget(name=server_type_name)
     report = [dataclasses.asdict(st) for st in sync_statuses]
     sync_report = await SyncReport.objects.acreate(
-        employee=emp,
+        employee=employee,
         server_type=server_type,
         report=report,
         user_choice=user_choice,
@@ -92,9 +90,7 @@ async def create_sync_report(
             sync_report['ok'].append(sync_status)
         else:
             sync_report['error'].append(sync_status)
-    message_report = md.text(
-        'Результат синхронизации:\n',
-        md.text('Успешно: ', md.hcode(len(sync_report['ok']))),
-        md.text('Ошибок: ', md.hcode(len(sync_report['error'])))
-    )
+    message_report = 'Результат синхронизации:\n'
+    message_report += 'Успешно: ' + html.code(len(sync_report['ok']))
+    message_report += 'Ошибок: ' + html.code(len(sync_report['error']))
     return message_report, sync_report

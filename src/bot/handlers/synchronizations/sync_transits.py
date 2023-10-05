@@ -16,12 +16,13 @@ from aiogram.fsm.context import FSMContext
 from django.conf import settings
 from asgiref.sync import sync_to_async
 
-from src.bot.handlers.synchronizations.sync_report import report_save_in_db
-from src.bot.handlers.synchronizations.sync_report import create_sync_report
+from src.models import Employee
 from src.models import Server
 from src.bot import keyboards
 from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
+from src.bot.handlers.synchronizations.sync_report import report_save_in_db
+from src.bot.handlers.synchronizations.sync_report import create_sync_report
 
 logger = logging.getLogger('support_bot')
 router = Router(name='sync_transits_handlers')
@@ -45,13 +46,17 @@ async def cmd_sync_tr(message: types.Message, state: FSMContext):
 
 
 @router.callback_query(SyncTrState.tr_choice, F.data.startswith('tr_'))
-async def process_start_sync_tr(query: types.CallbackQuery, state: FSMContext):
+async def process_start_sync_tr(
+        query: types.CallbackQuery,
+        employee: Employee,
+        state: FSMContext
+):
     logger.debug('query: %s', query)
     transits_group = query.data.split('_')[1]
     sync_statuses = await start_synchronized_transits(transits_group)
     message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
-        query.from_user.id,
+        employee,
         'Transit',
         sync_statuses,
         transits_group,

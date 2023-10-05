@@ -10,9 +10,9 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from src.bot.handlers import router
-from src.bot.middlewares.AuthMiddleware import AuthUpdateMiddleware
 from src.utils import configure_logging
+from src.bot.middlewares.AuthMiddleware import AuthUpdateMiddleware
+from src.bot.handlers import router
 
 logger = logging.getLogger('support_bot')
 

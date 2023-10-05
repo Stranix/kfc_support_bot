@@ -5,11 +5,10 @@ import aiohttp
 
 from aiohttp import ClientTimeout
 
-import aiogram.utils.markdown as md
-
 from aiogram import F
 from aiogram import Router
 from aiogram import types
+from aiogram import html
 from aiogram.filters import Command
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
@@ -18,8 +17,9 @@ from aiogram.fsm.context import FSMContext
 from asgiref.sync import sync_to_async
 from django.conf import settings
 
-from src.bot import keyboards
+from src.models import Employee
 from src.models import Restaurant
+from src.bot import keyboards
 from src.bot.scheme import SyncStatus
 from src.bot.utils import sync_referents
 from src.bot.handlers.synchronizations.sync_report import report_save_in_db
@@ -52,16 +52,18 @@ async def cmd_sync_rests(message: types.Message, state: FSMContext):
 async def process_rest_list(query: types.CallbackQuery, state: FSMContext):
     await query.message.delete()
     await query.message.answer(
-        md.text(
-            'Жду код ресторана(ов). Можно передавать через пробел\n',
-            'Например: ' + md.hcode('5050 8080 3333')
-        )
+        'Жду код ресторана(ов). Можно передавать через пробел\n'
+        'Например: ' + html.code('5050 8080 3333')
     )
     await state.set_state(SyncRestState.rest_list)
 
 
 @router.message(SyncRestState.rest_list)
-async def process_sync_rest_list(message: types.Message, state: FSMContext):
+async def process_sync_rest_list(
+        message: types.Message,
+        employee: Employee,
+        state: FSMContext,
+):
     logger.info('Синхронизация ресторанов по списку от пользователя')
     logger.debug('message.text: %s', message.text)
     try:
@@ -69,10 +71,8 @@ async def process_sync_rest_list(message: types.Message, state: FSMContext):
     except ValueError:
         logger.error('Не верный формат списка ресторанов')
         await message.answer(
-            md.text(
-                'Не верный формат ресторанов. Попробуйте еще раз. \n',
-                'Пример правильной записи: ' + md.hcode('5050 8080 3333')
-            )
+            'Не верный формат ресторанов. Попробуйте еще раз. \n'
+            'Пример правильной записи: ' + html.code('5050 8080 3333')
         )
         return
 
@@ -87,7 +87,7 @@ async def process_sync_rest_list(message: types.Message, state: FSMContext):
     sync_statuses = await start_synchronized_restaurants(restaurants)
     message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
-        message.from_user.id,
+        employee,
         'Report',
         sync_statuses,
         'rest_list',
@@ -112,7 +112,8 @@ async def process_rest_group(query: types.CallbackQuery, state: FSMContext):
 @router.callback_query(SyncRestState.rest_group, F.data.startswith('rest_'))
 async def process_sync_rest_group(
         query: types.CallbackQuery,
-        state: FSMContext
+        employee: Employee,
+        state: FSMContext,
 ):
     logger.info('Синхронизация ресторанов по выбранной группе')
     user_choice = query.data.split('_')[1]
@@ -129,7 +130,7 @@ async def process_sync_rest_group(
     sync_statuses = await start_synchronized_restaurants(restaurants)
     message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
-        query.from_user.id,
+        employee,
         'Report',
         sync_statuses,
         'rest_group',
@@ -142,7 +143,11 @@ async def process_sync_rest_group(
 
 
 @router.callback_query(SyncRestState.sync_choice, F.data == 'rest_all')
-async def process_sync_rest_all(query: types.CallbackQuery, state: FSMContext):
+async def process_sync_rest_all(
+        query: types.CallbackQuery,
+        employee: Employee,
+        state: FSMContext,
+):
     await query.message.delete()
     logger.info('Выбраны все рестораны для синхронизации')
     restaurants = await sync_to_async(list)(
@@ -154,7 +159,7 @@ async def process_sync_rest_all(query: types.CallbackQuery, state: FSMContext):
     sync_statuses = await start_synchronized_restaurants(restaurants)
     message_for_send, _ = await create_sync_report(sync_statuses)
     sync_report = await report_save_in_db(
-        query.from_user.id,
+        employee,
         'Report',
         sync_statuses,
         'rest_all',

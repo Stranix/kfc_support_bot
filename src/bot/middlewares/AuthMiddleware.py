@@ -36,7 +36,9 @@ class AuthUpdateMiddleware(BaseMiddleware):
             logger.info('Пытаемся получить пользователя из БД')
             try:
                 employee = await Employee.objects.prefetch_related(
-                    'groups', 'managers'
+                    'groups',
+                    'managers',
+                    'work_shifts',
                 ).aget(tg_id=user_id)
                 logger.info('Информация по пользователю получена. Фиксируем')
                 self.active_users[user_id] = employee

@@ -1,10 +1,9 @@
 import logging
 import re
 
-import aiogram.utils.markdown as md
-
 from aiogram import F
 from aiogram import Router
+from aiogram import html
 from aiogram import types
 from aiogram.filters import Command
 from aiogram.fsm.state import State
@@ -78,7 +77,7 @@ async def show_task_info(
         return
 
     await message.answer(
-        f'Информация по задаче {md.hcode(task_number)}\n\n'
+        f'Информация по задаче {html.code(task_number)}\n\n'
         f'Заявитель: {task.applicant}\n'
         f'Тема обращения: {task.title}\n'
         f'Описание: {task.description}\n',
@@ -90,7 +89,7 @@ async def show_task_info(
 
 
 @router.callback_query(F.data.startswith('stask_'))
-async def process_start_task(query: types.CallbackQuery):
+async def process_start_task(query: types.CallbackQuery, employee: Employee):
     logger.info('Берем задачу в работу')
     task_id = query.data.split('_')[1]
     task = await Task.objects.select_related('performer').aget(id=task_id)
@@ -102,14 +101,13 @@ async def process_start_task(query: types.CallbackQuery):
             'Поможет команда: /get_task'
         )
         return
-    employee = await Employee.objects.aget(tg_id=query.from_user.id)
     task_applicant = await Employee.objects.aget(name=task.applicant)
     task.performer = employee
     task.status = 'IN_WORK'
     await task.asave()
     await query.message.delete()
     await query.message.answer(
-        f'Вы взяли задачу {md.hbold(task.number)} в работу\n'
+        f'Вы взяли задачу {html.bold(task.number)} в работу\n'
         'Для закрытия задачи, используйте команду /close_task',
         reply_markup=ReplyKeyboardRemove()
     )
@@ -155,6 +153,7 @@ async def close_task(message: types.Message, state: FSMContext):
 )
 async def process_close_task(
         message: types.Message,
+        employee: Employee,
         regexp: re.Match[str],
         state: FSMContext,
 ):
@@ -162,7 +161,6 @@ async def process_close_task(
     task_number = regexp.group()
     task = await Task.objects.select_related('performer')\
                              .aget(number=task_number)
-    employee = await Employee.objects.aget(tg_id=message.from_user.id)
     task_applicant = await Employee.objects.aget(name=task.applicant)
     if task.performer.name != employee.name:
         logger.warning('Исполнитель и закрывающий отличаются')

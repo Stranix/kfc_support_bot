@@ -1,10 +1,10 @@
 import re
 import logging
 
-import aiogram.utils.markdown as md
 
 from aiogram import F
 from aiogram import Router
+from aiogram import html
 from aiogram import types
 
 from django.utils.dateformat import format
@@ -40,7 +40,7 @@ async def send_task(query: types.CallbackQuery):
         task = await Task.objects.aget(id=task_id)
         await query.answer()
         task_description = re.sub(r'<[^>]*>', '', task.description)
-        await query.message.answer(md.hcode(task_description))
+        await query.message.answer(html.code(task_description))
         await query.message.delete()
     except Task.DoesNotExist:
         logger.warning('Не удалось получить задачу')
@@ -63,15 +63,13 @@ async def get_task_by_number(task_number: str) -> tuple:
         time_formatted_mask = 'd-m-Y H:i:s'
         start_at = format(task.start_at, time_formatted_mask)
         expired_at = format(task.expired_at, time_formatted_mask)
-        message_fo_send = md.text(
-            md.hcode(task.number),
-            '\n\nУслуга: ' + md.hcode(task.service),
-            '\nТип обращения: ' + md.hcode(task.title),
-            '\nЗаявитель: ' + md.hcode(task.applicant),
-            '\nНа группе: ' + md.hcode(task.gsd_group),
-            '\nДата регистрации: ' + md.hcode(start_at),
-            '\nСрок обработки: ' + md.hcode(expired_at),
-        )
+        message_fo_send = html.code(task.number) + \
+            '\n\nУслуга: ' + html.code(task.service) + \
+            '\nТип обращения: ' + html.code(task.title) + \
+            '\nЗаявитель: ' + html.code(task.applicant) + \
+            '\nНа группе: ' + html.code(task.gsd_group) + \
+            '\nДата регистрации: ' + html.code(start_at) + \
+            '\nСрок обработки: ' + html.code(expired_at)
         keyboard = await get_task_keyboard(task.id)
         return message_fo_send, keyboard
     except Task.DoesNotExist:
@@ -84,14 +82,12 @@ async def get_local_task_by_number(task_number: str) -> str | None:
         task = await Task.objects.aget(number=task_number)
         time_formatted_mask = 'd-m-Y H:i:s'
         start_at = format(task.start_at, time_formatted_mask)
-        message_fo_send = md.text(
-            md.hcode(task.number),
-            '\n\nУслуга: ' + md.hcode(task.service),
-            '\nЗаявитель:' + md.hcode(task.applicant),
-            '\nТип обращения: ' + md.hcode(task.title),
-            '\nДата регистрации: ' + md.hcode(start_at),
-            '\nТекста обращения: ' + md.hcode(task.description),
-        )
+        message_fo_send = html.code(task.number) + \
+            '\n\nУслуга: ' + html.code(task.service) + \
+            '\nЗаявитель: ' + html.code(task.applicant) + \
+            '\nТип обращения: ' + html.code(task.title) + \
+            '\nДата регистрации: ' + html.code(start_at) + \
+            '\nТекста обращения: ' + html.code(task.description)
         return message_fo_send
     except Task.DoesNotExist:
         logger.warning('Нет такой задачи (%s) в БД', task_number)

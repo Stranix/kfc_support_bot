@@ -1,9 +1,8 @@
 import logging
 
-import aiogram.utils.markdown as md
-
 from aiogram import Router
 from aiogram import types
+from aiogram import html
 from aiogram.filters import Command
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
@@ -22,11 +21,7 @@ class WorkShiftBreakState(StatesGroup):
 
 
 @router.message(Command('break_start'))
-async def start_break_shift(message: types.Message):
-    employee = await Employee.objects.prefetch_related(
-                                        'work_shifts',
-                                        'managers',
-    ).aget(tg_id=message.from_user.id)
+async def start_break_shift(message: types.Message, employee: Employee):
     try:
         work_shift = await employee.work_shifts.aget(
             shift_start_at__isnull=False,
@@ -52,19 +47,12 @@ async def start_break_shift(message: types.Message):
     for manager in employee.managers.all():
         await message.bot.send_message(
             manager.tg_id,
-            md.text(
-                'Сотрудник: ' + md.hcode(employee.name),
-                '\nУшел на перерыв',
-            ),
+            f'Сотрудник: {html.code(employee.name)}\nУшел на перерыв',
         )
 
 
 @router.message(Command('break_stop'))
-async def stop_break_shift(message: types.Message):
-    employee = await Employee.objects.prefetch_related(
-                                        'work_shifts',
-                                        'managers'
-    ).aget(tg_id=message.from_user.id)
+async def stop_break_shift(message: types.Message, employee: Employee):
     try:
         work_shift = await employee.work_shifts.aget(
             shift_start_at__isnull=False,
@@ -91,8 +79,5 @@ async def stop_break_shift(message: types.Message):
     for manager in employee.managers.all():
         await message.bot.send_message(
             manager.tg_id,
-            md.text(
-                'Сотрудник: ' + md.hcode(employee.name),
-                '\nЗавершил перерыв',
-            ),
+            f'Сотрудник: {html.code(employee.name)}\nЗавершил перерыв',
         )

@@ -1,8 +1,7 @@
 import logging
 
-import aiogram.utils.markdown as md
-
 from aiogram import Router
+from aiogram import html
 from aiogram import types
 from aiogram.filters import Command
 from django.utils import timezone
@@ -15,12 +14,8 @@ router = Router(name='end_shift_handlers')
 
 
 @router.message(Command('end_shift'))
-async def end_shift(message: types.Message):
+async def end_shift(message: types.Message, employee: Employee):
     logger.info('Старт процесса завершения смены')
-    employee = await Employee.objects.prefetch_related(
-        'work_shifts',
-        'managers',
-    ).aget(tg_id=message.from_user.id)
     try:
         work_shift = await employee.work_shifts.aget(
             shift_start_at__isnull=False,
@@ -46,8 +41,5 @@ async def end_shift(message: types.Message):
     for manager in employee.managers.all():
         await message.bot.send_message(
             manager.tg_id,
-            md.text(
-                'Сотрудник: ' + md.hcode(employee.name),
-                '\nЗавершил смену',
-            ),
+            f'Сотрудник: {html.code(employee.name)}\nЗавершил смену',
         )

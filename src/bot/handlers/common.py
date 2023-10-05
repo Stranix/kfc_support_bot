@@ -1,7 +1,5 @@
 import logging
 
-import aiogram.utils.markdown as md
-
 from aiogram import F
 from aiogram import types
 from aiogram import Router
@@ -10,38 +8,25 @@ from aiogram.fsm.context import FSMContext
 
 from django.conf import settings
 
-from src.bot.keyboards import get_user_activate_keyboard
 from src.models import Employee
+from src.bot.utils import user_registration
 
 logger = logging.getLogger('support_bot')
 router = Router(name='common_handlers')
 
 
 @router.message(Command('start'))
-async def cmd_start(message: types.Message):
-    user_id = message.from_user.id
-    try:
-        employee = await Employee.objects.aget(tg_id=user_id)
-        emp_status = 'Активна' if employee.is_active else 'Не активна'
-        await message.answer(
-            f'Приветствую {employee.name}!\n'
-            f'Статус учетной записи: {emp_status}'
-        )
-    except Employee.DoesNotExist:
-        employee = await Employee.objects.acreate(
-            name=message.from_user.full_name,
-            tg_id=user_id,
-            tg_nickname='@' + message.from_user.username,
-        )
-        await message.bot.send_message(
-            chat_id=settings.TG_BOT_ADMIN,
-            text=md.text(
-                'Новый пользователь \n\n',
-                'Данные: \n' + md.hcode(message.from_user),
-            ),
-            reply_markup=await get_user_activate_keyboard(employee.id)
-        )
-        await message.answer('Заявка на регистрацию отправлена.')
+async def cmd_start(message: types.Message, employee: Employee):
+    logger.debug('Обработчик команды /start')
+    if not employee:
+        logger.info('Новый пользователь')
+        await user_registration(message)
+        return
+    emp_status = 'Активна' if employee.is_active else 'Не активна'
+    await message.answer(
+        f'Приветствую {employee.name}!\n'
+        f'Статус учетной записи: {emp_status}'
+    )
 
 
 @router.callback_query(F.data.startswith('activate_'))

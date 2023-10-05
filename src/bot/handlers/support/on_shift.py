@@ -1,8 +1,7 @@
 import logging
 
-import aiogram.utils.markdown as md
-
 from aiogram import Router
+from aiogram import html
 from aiogram import types
 from aiogram.filters import Command
 
@@ -16,10 +15,8 @@ router = Router(name='on_shift_handlers')
 
 
 @router.message(Command('on_shift'))
-async def on_shift(message: types.Message):
+async def on_shift(message: types.Message, employee: Employee):
     logger.info('Сотрудник заступает на смену')
-    employee = await Employee.objects.prefetch_related('managers')\
-                                     .aget(tg_id=message.from_user.id)
     if await is_active_shift(employee):
         await message.answer('У вас уже есть открытая смена')
         return
@@ -33,10 +30,7 @@ async def on_shift(message: types.Message):
     for manager in employee.managers.all():
         await message.bot.send_message(
             manager.tg_id,
-            md.text(
-                'Сотрудник: ' + md.hcode(employee.name),
-                '\nЗаступил на смену',
-            ),
+            f'Сотрудник: {html.code(employee.name)}\nЗаступил на смену',
         )
 
 
