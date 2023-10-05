@@ -11,6 +11,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from src.bot.handlers import router
+from src.bot.middlewares.AuthMiddleware import AuthUpdateMiddleware
 from src.utils import configure_logging
 
 logger = logging.getLogger('support_bot')
@@ -52,4 +53,5 @@ async def run_bot():
     dp = Dispatcher(storage=MemoryStorage(), skip_updates=True)
     dp.include_router(router)
     dp.startup.register(start_bot)
+    dp.update.outer_middleware(AuthUpdateMiddleware())
     await dp.start_polling(bot)
