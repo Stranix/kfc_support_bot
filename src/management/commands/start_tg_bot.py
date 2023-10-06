@@ -10,9 +10,11 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
+
 from src.utils import configure_logging
-from src.bot.middlewares.AuthMiddleware import AuthUpdateMiddleware
 from src.bot.handlers import router
+from src.bot.middlewares import AuthUpdateMiddleware
+from src.bot.middlewares import EmployeeStatusMiddleware
 
 logger = logging.getLogger('support_bot')
 
@@ -54,4 +56,5 @@ async def run_bot():
     dp.include_router(router)
     dp.startup.register(start_bot)
     dp.update.outer_middleware(AuthUpdateMiddleware())
+    dp.message.outer_middleware(EmployeeStatusMiddleware())
     await dp.start_polling(bot)
