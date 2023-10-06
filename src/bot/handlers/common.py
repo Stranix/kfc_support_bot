@@ -9,7 +9,6 @@ from aiogram.fsm.context import FSMContext
 from django.conf import settings
 
 from src.models import Employee
-from src.bot.utils import user_registration
 
 logger = logging.getLogger('support_bot')
 router = Router(name='common_handlers')
@@ -18,10 +17,6 @@ router = Router(name='common_handlers')
 @router.message(Command('start'))
 async def cmd_start(message: types.Message, employee: Employee):
     logger.debug('Обработчик команды /start')
-    if not employee:
-        logger.info('Новый пользователь')
-        await user_registration(message)
-        return
     emp_status = 'Активна' if employee.is_active else 'Не активна'
     await message.answer(
         f'Приветствую {employee.name}!\n'
