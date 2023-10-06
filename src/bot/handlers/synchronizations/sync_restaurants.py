@@ -174,7 +174,7 @@ async def process_sync_rest_all(
 async def start_synchronized_restaurants(
         restaurants: list[Restaurant]
 ) -> list[SyncStatus]:
-    logger.info('Запуск синхронизации ресторанов %s', restaurants)
+    logger.info('Запуск синхронизации ресторанов')
     conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
 
     async with aiohttp.ClientSession(
@@ -191,5 +191,5 @@ async def start_synchronized_restaurants(
             )
             tasks.append(task)
         sync_report = list(await asyncio.gather(*tasks))
-        logger.debug('sync_report: %s', sync_report)
+        logger.info('Синхронизация завершена')
     return sync_report

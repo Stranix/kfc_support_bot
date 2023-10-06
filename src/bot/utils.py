@@ -57,7 +57,7 @@ async def check_conn_to_main_server(
         session: ClientSession,
         web_server_url: str
 ) -> bool:
-    logger.info('Старт проверки подключения к вышестоящему серверу')
+    logger.debug('Старт проверки подключения к вышестоящему серверу')
     conn_tab = urljoin(web_server_url, 'Connects')
 
     async with session.get(conn_tab) as response:
