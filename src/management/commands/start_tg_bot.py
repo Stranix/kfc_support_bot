@@ -40,8 +40,8 @@ async def start_bot(bot: Bot):
 async def set_commands(bot: Bot):
     available_commands = [
         types.BotCommand(
-            command='sync_rests',
-            description='Синхронизация ресторанов',
+            command='help',
+            description='Посмотреть список доступных команд',
         ),
     ]
     await bot.set_my_commands(

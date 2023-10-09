@@ -5,10 +5,11 @@ from aiogram import types
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from asgiref.sync import sync_to_async
 
 from django.conf import settings
 
-from src.models import Employee
+from src.models import Employee, BotCommand
 
 logger = logging.getLogger('support_bot')
 router = Router(name='common_handlers')
@@ -44,14 +45,22 @@ async def activate_user(query: types.CallbackQuery):
 
 
 @router.message(Command('help'))
-async def cmd_help(message: types.Message):
-    text = [
-        'Список команд: ',
-        '/help - Получить справку',
-        '/sync_tr - Синхронизация транзитов',
-        '/sync_rest - Синхронизация ресторана(ов)',
-    ]
-    await message.answer('\n'.join(text))
+async def cmd_help(message: types.Message, employee: Employee):
+    logger.debug('Обработчик команды /help')
+    emp_groups = employee.groups.all()
+    bot_commands = await sync_to_async(list)(
+        BotCommand.objects.prefetch_related('groups').filter(
+            groups__in=emp_groups,
+        )
+    )
+    available_commands = ['Список команд:\n']
+    for command in bot_commands:
+        text = f'{command.name} - {command.description}'
+        available_commands.append(text)
+
+    await message.answer(
+        '\n'.join(available_commands)
+    )
 
 
 @router.message(Command('cancel'))
