@@ -370,3 +370,21 @@ class SyncReport(models.Model):
 
     def __str__(self):
         return f'{self.start_at}'
+
+
+class BotCommand(models.Model):
+    name = models.CharField('Команда', max_length=25, unique=True)
+    description = models.TextField('Описание команды', blank=True, default='')
+    groups = models.ManyToManyField(
+        'Group',
+        related_name='bot_commands',
+        verbose_name='Доступна для групп',
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Команда Бота'
+        verbose_name_plural = 'Команды Бота'
+
+    def __str__(self):
+        return self.name

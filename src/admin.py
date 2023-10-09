@@ -12,6 +12,7 @@ from src.models import (
     FranchiseOwner,
     SyncReport,
     WorkShift,
+    BotCommand,
 )
 
 
@@ -110,4 +111,9 @@ class SyncReportAdmin(admin.ModelAdmin):
 
 @admin.register(WorkShift)
 class WorkShiftAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(BotCommand)
+class BotCommandAdmin(admin.ModelAdmin):
     pass
