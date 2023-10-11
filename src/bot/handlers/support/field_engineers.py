@@ -1,5 +1,7 @@
-import logging
 import re
+import logging
+
+from datetime import timedelta
 
 from aiogram import F
 from aiogram import Router
@@ -10,10 +12,16 @@ from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.context import FSMContext
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from asgiref.sync import sync_to_async
+
+from django.utils import timezone
 
 from src.bot.keyboards import get_support_task_keyboard
 from src.bot.keyboards import get_approved_task_keyboard
+from src.bot.handlers.schedulers import check_task_deadline
+from src.bot.handlers.schedulers import check_task_activate_step_1
 from src.models import Task
 from src.models import Employee
 from src.models import WorkShift
@@ -78,6 +86,7 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
 async def process_task_approved(
         query: types.CallbackQuery,
         employee: Employee,
+        scheduler: AsyncIOScheduler,
         state: FSMContext,
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
@@ -90,6 +99,24 @@ async def process_task_approved(
         title=f'Помощь по заявке SС-{data["get_gsd_number"]}',
         description=data['descriptions']
     )
+    logger.debug('Добавление временных проверок по задаче')
+    scheduler.add_job(
+        check_task_activate_step_1,
+        'date',
+        run_date=timezone.now() + timedelta(minutes=10),
+        timezone='Europe/Moscow',
+        args=(query.bot, task.number, scheduler),
+        id=f'job_{task.number}_step1',
+    )
+    scheduler.add_job(
+        check_task_deadline,
+        'date',
+        run_date=timezone.now() + timedelta(hours=1),
+        timezone='Europe/Moscow',
+        args=(query.bot, task.number),
+        id=f'job_{task.number}_deadline',
+    )
+    logger.debug('Проверки добавлены')
     await sending_new_task_notify(query, task, employee)
     await query.message.answer(
         'Заявка принята. \n'

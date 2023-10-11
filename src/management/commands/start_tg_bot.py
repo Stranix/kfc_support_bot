@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -10,10 +12,10 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-
 from src.utils import configure_logging
 from src.bot.handlers import router
 from src.bot.middlewares import AuthUpdateMiddleware
+from src.bot.middlewares import SchedulerMiddleware
 from src.bot.middlewares import EmployeeStatusMiddleware
 
 logger = logging.getLogger('support_bot')
@@ -51,10 +53,13 @@ async def set_commands(bot: Bot):
 
 
 async def run_bot():
+    scheduler = AsyncIOScheduler()
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     dp = Dispatcher(storage=MemoryStorage(), skip_updates=True)
     dp.include_router(router)
     dp.startup.register(start_bot)
     dp.update.outer_middleware(AuthUpdateMiddleware())
+    dp.update.outer_middleware(SchedulerMiddleware(scheduler))
     dp.message.outer_middleware(EmployeeStatusMiddleware())
+    scheduler.start()
     await dp.start_polling(bot)
