@@ -10,6 +10,7 @@ from aiogram.fsm.state import StatesGroup
 from django.utils import timezone
 
 from src.models import WorkShift
+from src.models import BreakShift
 from src.models import Employee
 
 logger = logging.getLogger('support_bot')
@@ -38,7 +39,10 @@ async def start_break_shift(message: types.Message, employee: Employee):
     logger.debug('work_shift: %s', work_shift)
 
     logger.debug('Фиксируем перерыв в БД')
-    work_shift.shift_start_break_at = timezone.now()
+    if not work_shift.is_works:
+        await message.answer('Есть незавершенный перерыв. Завершите его.')
+        return
+    await work_shift.break_shift.acreate(employee=employee)
     work_shift.is_works = False
     await work_shift.asave()
     await message.answer('Ваш перерыв начат')
@@ -57,7 +61,6 @@ async def stop_break_shift(message: types.Message, employee: Employee):
         work_shift = await employee.work_shifts.aget(
             shift_start_at__isnull=False,
             shift_end_at__isnull=True,
-            shift_start_break_at__isnull=False,
         )
     except WorkShift.DoesNotExist:
         logger.warning('Не нашел активный перерыв')
@@ -70,9 +73,18 @@ async def stop_break_shift(message: types.Message, employee: Employee):
     logger.debug('work_shift: %s', work_shift)
 
     logger.debug('Фиксируем завершение перерыва в БД')
-    work_shift.shift_end_break_at = timezone.now()
+    try:
+        active_break = await work_shift.break_shift.select_related('employee')\
+                                                   .aget(is_active=True)
+    except BreakShift.DoesNotExist:
+        await message.answer('У вас нет активных перерывов 🤷‍♂')
+        return
+    active_break.end_break_at = timezone.now()
+    active_break.is_active = False
     work_shift.is_works = True
+    await active_break.asave()
     await work_shift.asave()
+
     await message.answer('Ваш перерыв завершен')
 
     logger.info('Отправляю уведомление менеджеру и пользователю')

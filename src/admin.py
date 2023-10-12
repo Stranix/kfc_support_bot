@@ -13,6 +13,7 @@ from src.models import (
     SyncReport,
     WorkShift,
     BotCommand,
+    BreakShift,
 )
 
 
@@ -117,3 +118,17 @@ class WorkShiftAdmin(admin.ModelAdmin):
 @admin.register(BotCommand)
 class BotCommandAdmin(admin.ModelAdmin):
     pass
+
+
+@admin.register(BreakShift)
+class BreakShiftAdmin(admin.ModelAdmin):
+    readonly_fields = [
+        'start_break_at',
+        'end_break_at',
+    ]
+    list_display = [
+        'id',
+        'start_break_at',
+        'end_break_at',
+        'is_active',
+    ]

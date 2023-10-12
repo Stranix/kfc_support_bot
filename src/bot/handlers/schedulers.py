@@ -5,7 +5,6 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 
 from django.utils import timezone
-from django.utils.timezone import make_aware
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 

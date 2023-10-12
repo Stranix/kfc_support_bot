@@ -48,19 +48,15 @@ class WorkShift(models.Model):
         related_name='work_shifts',
     )
     shift_start_at = models.DateTimeField('Старт смены')
-    shift_start_break_at = models.DateTimeField(
-        'Старт перерыва',
-        null=True,
-        blank=True,
-    )
-    shift_end_break_at = models.DateTimeField(
-        'Завершение перерыва',
-        null=True,
-        blank=True,
-    )
     shift_end_at = models.DateTimeField(
         'Завершение смены',
         null=True,
+        blank=True,
+    )
+    break_shift = models.ManyToManyField(
+        'BreakShift',
+        related_name='work_shifts',
+        verbose_name='Перерывы',
         blank=True,
     )
     is_works = models.BooleanField('Работает?', default=True)
@@ -71,6 +67,32 @@ class WorkShift(models.Model):
 
     def __str__(self):
         return f'{self.employee.name} - {self.shift_start_at}'
+
+
+class BreakShift(models.Model):
+    employee = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        verbose_name='Сотрудник',
+        related_name='break_shifts',
+    )
+    start_break_at = models.DateTimeField(
+        'Старт перерыва',
+        auto_now_add=True,
+    )
+    end_break_at = models.DateTimeField(
+        'Завершение перерыва',
+        null=True,
+        blank=True,
+    )
+    is_active = models.BooleanField('Активен?', default=True)
+
+    class Meta:
+        verbose_name = 'Перерыв'
+        verbose_name_plural = 'Перерывы'
+
+    def __str__(self):
+        return f'{self.employee.name} - {self.start_break_at}'
 
 
 class Group(models.Model):
