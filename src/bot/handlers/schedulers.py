@@ -5,6 +5,7 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 
 from django.utils import timezone
+from django.utils.timezone import make_aware
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -18,6 +19,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
 
+from src.models import WorkShift
 from src.models import Employee
 from src.models import Group
 from src.models import Task
@@ -39,7 +41,7 @@ async def get_scheduler_jobs(
     message_for_send = ['Активные задачи scheduler:\n']
     for job in jobs:
         job_next_run_time = html.code(
-            job.next_run_time.strftime('%m-%d-%Y %H:%M:%S'),
+            job.next_run_time.strftime('%d-%m-%Y %H:%M:%S'),
         )
         job_info = f'<b>Job id:</b> {html.code(job.id)}\n' \
                    f'<b>Job next_run_time:</b> {job_next_run_time}\n'
@@ -146,8 +148,29 @@ async def check_task_deadline(bot: Bot, task_number: str):
     await send_schedulers_notify(bot, managers, notify)
 
 
-async def check_end_of_shift():
-    pass
+async def check_end_of_shift(bot: Bot, shift_id: int):
+    logger.debug('Проверка завершении смены сотрудником после 9 часов')
+    shift = await WorkShift.objects.select_related('employee')\
+                                   .aget(id=shift_id)
+    engineer = shift.employee
+    notify = f'🔴 У сотрудника {engineer.name} не закрыта смена спустя 9 часов'
+    if shift.shift_end_at:
+        logger.debug(
+            'Смена %s сотрудника %s, закрыта в %s',
+            shift.id,
+            engineer.name,
+            shift.shift_end_at.strftime('%d-%m-%Y %H:%M:%S'),
+        )
+        return
+    logger.warning(
+        'У сотрудника %s не закрыта смена %s',
+        engineer.name,
+        shift.id,
+    )
+    logger.debug('Отправка уведомления менеджерам')
+    managers = await sync_to_async(list)(engineer.managers.all())
+    await send_schedulers_notify(bot, managers, notify)
+    logger.debug('Проверка завершена')
 
 
 async def send_schedulers_notify(

@@ -35,7 +35,7 @@ async def prepare_report_as_file(report_id: int) -> types.BufferedInputFile:
     ).aget(id=report_id)
     final_report = {
         'initiator': sync_report.employee.name,
-        'start_at': sync_report.start_at.strftime('%m-%d-%Y %H:%M:%S'),
+        'start_at': sync_report.start_at.strftime('%d-%m-%Y %H:%M:%S'),
         'server_type': sync_report.server_type.name,
         'report': {
             'errors': [],
