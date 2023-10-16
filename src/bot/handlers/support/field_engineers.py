@@ -15,6 +15,7 @@ from aiogram.fsm.context import FSMContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from asgiref.sync import sync_to_async
+from django.db.models import Q
 
 from django.utils import timezone
 
@@ -37,8 +38,21 @@ class NewTaskState(StatesGroup):
 
 
 @router.message(Command('support_help'))
-async def new_task(message: types.Message, state: FSMContext):
-    logger.info('Запрос на создание новой задачи')
+async def new_task(
+        message: types.Message,
+        employee: Employee,
+        state: FSMContext,
+):
+    logger.info('Запрос на создание новой выездной задачи')
+    if not await employee.groups.filter(
+            Q(name__contains='Подрядчик') | Q(name='Администраторы')
+    ).afirst():
+        logger.warning(
+            'Пользователь %s не состоит в группе Подрядчики',
+            employee.name,
+        )
+        await message.answer('Нет прав на использование команды')
+        return
     await message.answer(
         'Напишите номер заявки по которой вы приехали\n'
         f'Например: {html.code("1395412")}'

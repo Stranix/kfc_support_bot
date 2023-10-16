@@ -5,17 +5,19 @@ import logging
 from urllib.parse import urljoin
 
 import aiohttp
+from aiogram.types import InlineKeyboardMarkup
 
 from aiohttp import ClientSession
 
-from aiogram import html
+from aiogram import html, Bot
 from aiogram import types
+from asgiref.sync import sync_to_async
 
 from bs4 import BeautifulSoup
 
 from django.conf import settings
 
-from src.models import Employee
+from src.models import Employee, Group
 from src.bot.scheme import SyncStatus
 from src.bot.keyboards import get_user_activate_keyboard
 
@@ -90,10 +92,40 @@ async def user_registration(message: types.Message):
         tg_id=message.from_user.id,
         tg_nickname='@' + message.from_user.username,
     )
-    await message.bot.send_message(
-        chat_id=settings.TG_BOT_ADMIN,
-        text='Новый пользователь \n\n'
-             'Данные: \n' + html.code(message.from_user),
-        reply_markup=await get_user_activate_keyboard(employee.id),
-    )
+    senior_engineers = await get_senior_engineers()
+    notify = f'Новый пользователь \n\n' \
+             f'Телеграм id: {html.code(message.from_user.id)}\n' \
+             f'Телеграм username {html.code(message.from_user.username)}\n' \
+             f'Имя: {html.code(message.from_user.full_name)}\n'
+    notify_keyboard = await get_user_activate_keyboard(employee.id)
+    await send_notify(message.bot, senior_engineers, notify, notify_keyboard)
     await message.answer('Заявка на регистрацию отправлена.')
+
+
+async def send_notify(
+        bot: Bot,
+        employees: list[Employee],
+        message: str,
+        keyboard: InlineKeyboardMarkup = None,
+):
+    logger.info('Отправка уведомления шедулера')
+    if not employees:
+        logger.warning('Пустой список для отправки уведомлений')
+        return
+    for employee in employees:
+        logger.debug('Уведомление для: %s', employee.name)
+        await bot.send_message(employee.tg_id, message, keyboard)
+    logger.info('Отправка уведомлений завершена')
+
+
+async def get_senior_engineers() -> list[Employee] | None:
+    senior_engineers_group = await Group.objects.aget(name='Ведущие инженеры')
+    senior_engineers = await sync_to_async(list)(
+        Employee.objects.filter(
+            groups=senior_engineers_group,
+        )
+    )
+    logger.debug('senior_engineers: %s', senior_engineers)
+    if not senior_engineers:
+        logger.error('В системе не назначены ведущие инженеры')
+        return

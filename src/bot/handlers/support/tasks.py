@@ -12,14 +12,15 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 
 from asgiref.sync import sync_to_async
+from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateformat import format
 
-from src.models import Task
+from src.models import Task, Group
 from src.models import Employee
 from src.bot.keyboards import create_tg_keyboard_markup
 from src.bot.keyboards import get_support_task_keyboard
 from src.bot.keyboards import get_task_feedback_keyboard
-
 
 logger = logging.getLogger('support_bot')
 router = Router(name='support_task_handlers')
@@ -30,14 +31,20 @@ class TaskState(StatesGroup):
     close_task = State()
 
 
+class AssignedTaskState(StatesGroup):
+    task = State()
+    engineers_on_shift = State()
+    task_applicant = State()
+
+
 @router.message(Command('get_task'))
-async def gel_task(message: types.Message, state: FSMContext):
+async def get_task(message: types.Message, state: FSMContext):
     logger.info('Получаем список доступных задач')
     tasks = await sync_to_async(list)(
         Task.objects.filter(
             status='NEW',
             number__istartswith='sd',
-        )
+        ).order_by('-id')
     )
     if not tasks:
         logger.warning('Нет новых задач')
@@ -64,8 +71,8 @@ async def show_task_info(
 ):
     logger.info(f'Запрос показа информации по задаче: {regexp.group()}')
     task_number = regexp.group()
-    task = await Task.objects.select_related('performer')\
-                             .aget(number=task_number)
+    task = await Task.objects.select_related('performer') \
+        .aget(number=task_number)
     if task.performer:
         logger.warning('Заявку уже назначена на сотрудника')
         await message.answer(
@@ -119,20 +126,88 @@ async def process_start_task(query: types.CallbackQuery, employee: Employee):
     logger.info('Задачу взял в работу сотрудник %s', employee.name)
 
 
+# TODO дописать назначение задачи на сотрудника
+@router.callback_query(F.data.startswith('atask_'))
+async def process_assigned_task(
+        query: types.CallbackQuery,
+        employee: Employee,
+        state: FSMContext,
+):
+    logger.info('Назначить задачу на сотрудника')
+    task_id = query.data.split('_')[1]
+    task = await Task.objects.select_related('performer').aget(id=task_id)
+
+    if task.performer:
+        logger.warning('Заявку уже назначена на сотрудника')
+        await query.answer()
+        await query.message.answer(
+            f'Заявку взял другой сотрудник: {task.performer.name}'
+        )
+        return
+
+    employee_engineer_group = await employee.groups.aget(
+        Q(name__icontains='Администратор') | Q(name__icontains='инженер'),
+    )
+    logger.debug('employee_engineer_group: %s', employee_engineer_group)
+    engineers_on_shift = await get_engineers_for_assigned_task(
+        employee_engineer_group,
+        employee.id,
+    )
+    if not engineers_on_shift:
+        await query.message.answer(
+            'Нет инженеров на смене на которых вы можете назначить задачу'
+        )
+        return
+    engineers_names = [engineer.name for engineer in engineers_on_shift]
+    keyboard = await create_tg_keyboard_markup(engineers_names)
+    task_applicant = await Employee.objects.aget(name=task.applicant)
+    await state.update_data(
+        task=task,
+        engineers_on_shift=engineers_on_shift,
+        task_applicant=task_applicant
+    )
+    await query.message.answer('Инженеры на смене', reply_markup=keyboard)
+    await state.set_state(AssignedTaskState.task)
+
+
+@sync_to_async
+def get_engineers_for_assigned_task(
+        current_employee_group: Group,
+        current_employee_id: int,
+):
+    engineers_on_shift = Employee.objects.filter(work_shifts__is_works=True)
+    logger.debug('Текущая группа сотрудника: %s', current_employee_group)
+    if current_employee_group.name == 'Администраторы':
+        logger.debug('Поиск всех инженеров на смене')
+        engineers_on_shift = engineers_on_shift.filter(
+            groups__name__in=(
+                'Ведущие инженеры',
+                'Старшие инженеры',
+                'Инженеры',
+            ),
+        )
+    if current_employee_group.name == 'Ведущие инженеры':
+        logger.debug('Поиск Старших и обычных инженеров на смене')
+        engineers_on_shift = engineers_on_shift.filter(
+            groups__name__in=('Старшие инженеры', 'Инженеры'),
+        )
+    if current_employee_group.name == 'Старшие инженеры':
+        logger.debug('Поиск обычных инженеров на смене')
+        engineers_on_shift = engineers_on_shift.filter(groups__name='Инженеры')
+
+    if not engineers_on_shift.exclude(id=current_employee_id):
+        logger.warning('Нет инженеров на смене')
+        return
+    logger.debug('engineers_on_shift: %s', engineers_on_shift)
+    logger.info('Нашел подходящих инженеров')
+    return list(engineers_on_shift)
+
+
 @router.message(Command('close_task'))
 async def close_task(message: types.Message, state: FSMContext):
     logger.info('Запрос на закрытие задачи')
-    tasks = await sync_to_async(list)(
-        Task.objects.prefetch_related('performer').filter(
-            performer__tg_id=message.from_user.id,
-            status='IN_WORK',
-        )
-    )
+    tasks = await get_task_in_work_by_employee(message.from_user.id)
     if not tasks:
-        logger.warning(
-            'У сотрудника %s нет задач в работе',
-            message.from_user.id,
-        )
         await message.answer(
             'У вас нет задач в работе. \n'
             'Чтобы взять задачу в работу используйте команду /start_task \n'
@@ -159,8 +234,8 @@ async def process_close_task(
 ):
     logger.info(f'Закрываем задачу: {regexp.group()}')
     task_number = regexp.group()
-    task = await Task.objects.select_related('performer')\
-                             .aget(number=task_number)
+    task = await Task.objects.select_related('performer') \
+        .aget(number=task_number)
     task_applicant = await Employee.objects.aget(name=task.applicant)
     if task.performer.name != employee.name:
         logger.warning('Исполнитель и закрывающий отличаются')
@@ -186,3 +261,57 @@ async def process_close_task(
     )
     await state.clear()
     logger.info('Задача %s закрыта', task.number)
+
+
+@router.message(Command('my_active_tasks'))
+async def get_employee_active_task(
+        message: types.Message,
+):
+    logger.info('Получение назначенных задач')
+    tasks = await get_task_in_work_by_employee(message.from_user.id)
+    if not tasks:
+        await message.answer('У вас нет задач в работе')
+    file_to_send = await prepare_active_tasks_as_file(tasks)
+    await message.answer_document(
+        file_to_send,
+        caption='Задачи в работе',
+    )
+
+
+async def prepare_active_tasks_as_file(
+        tasks: list[Task]
+) -> types.BufferedInputFile:
+    logger.info('Подготовка  списка задач на пользователе в виде файла')
+    report = ['У вас в работе следующие задачи: \n']
+    time_formatted_mask = 'd-m-Y H:i:s'
+    for task in tasks:
+        start_at = format(task.start_at, time_formatted_mask)
+        text = f'{task.number}\n\n' \
+               f'Заявитель: {task.applicant}\n' \
+               f'Тип обращения: {task.title}\n' \
+               f'Дата регистрации: {start_at}\n' \
+               f'Текста обращения: {task.description}'
+        report.append(text)
+
+    file = '\n\n'.join(report).encode('utf-8')
+    file_name = format(timezone.now(), 'd-m-Y') + '_tasks.txt'
+    logger.info('Подготовка завершена')
+    return types.BufferedInputFile(file, filename=file_name)
+
+
+async def get_task_in_work_by_employee(employee_id: id) -> list[Task] | None:
+    logger.info('Получение задач в работе по сотруднику с id: %s', employee_id)
+    tasks = await sync_to_async(list)(
+        Task.objects.prefetch_related('performer').filter(
+            performer__tg_id=employee_id,
+            status='IN_WORK',
+        )
+    )
+    if not tasks:
+        logger.warning(
+            'У сотрудника %s нет задач в работе',
+            employee_id,
+        )
+        return
+    logger.info('Задачи получены')
+    return tasks
