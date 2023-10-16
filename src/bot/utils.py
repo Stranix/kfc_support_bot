@@ -92,10 +92,8 @@ async def user_registration(message: types.Message):
     )
     await message.bot.send_message(
         chat_id=settings.TG_BOT_ADMIN,
-        text=html.text(
-            'Новый пользователь \n\n',
-            'Данные: \n' + html.code(message.from_user),
-        ),
+        text='Новый пользователь \n\n'
+             'Данные: \n' + html.code(message.from_user),
         reply_markup=await get_user_activate_keyboard(employee.id),
     )
     await message.answer('Заявка на регистрацию отправлена.')
