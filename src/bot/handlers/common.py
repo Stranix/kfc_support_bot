@@ -9,12 +9,10 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardRemove
 from asgiref.sync import sync_to_async
 
-from django.conf import settings
-
-from src.bot.keyboards import create_tg_keyboard_markup
 from src.models import Group
 from src.models import Employee
 from src.models import BotCommand
+from src.bot.keyboards import create_tg_keyboard_markup
 
 logger = logging.getLogger('support_bot')
 router = Router(name='common_handlers')

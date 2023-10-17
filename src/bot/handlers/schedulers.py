@@ -5,6 +5,7 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 
 from django.utils import timezone
+from django.conf import settings
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -22,7 +23,8 @@ from src.models import WorkShift
 from src.models import Employee
 from src.models import Group
 from src.models import Task
-from src.bot.utils import send_notify, get_senior_engineers
+from src.bot.utils import send_notify
+from src.bot.utils import get_senior_engineers
 
 logger = logging.getLogger('support_bot')
 router = Router(name='scheduler_handlers')
@@ -101,7 +103,7 @@ async def check_task_activate_step_1(
     scheduler.add_job(
         check_task_activate_step_2,
         'date',
-        run_date=timezone.now() + timedelta(minutes=10),
+        run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
         timezone='Europe/Moscow',
         args=(bot, task_number),
         id=f'job_{task_number}_step2',

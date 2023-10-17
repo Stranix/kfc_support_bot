@@ -16,16 +16,16 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from asgiref.sync import sync_to_async
 from django.db.models import Q
-
+from django.conf import settings
 from django.utils import timezone
 
+from src.models import Task
+from src.models import Employee
+from src.models import WorkShift
 from src.bot.keyboards import get_support_task_keyboard
 from src.bot.keyboards import get_approved_task_keyboard
 from src.bot.handlers.schedulers import check_task_deadline
 from src.bot.handlers.schedulers import check_task_activate_step_1
-from src.models import Task
-from src.models import Employee
-from src.models import WorkShift
 
 logger = logging.getLogger('support_bot')
 router = Router(name='field_engineers_handlers')
@@ -117,7 +117,7 @@ async def process_task_approved(
     scheduler.add_job(
         check_task_activate_step_1,
         'date',
-        run_date=timezone.now() + timedelta(minutes=10),
+        run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
         timezone='Europe/Moscow',
         args=(query.bot, task.number, scheduler),
         id=f'job_{task.number}_step1',
@@ -125,7 +125,7 @@ async def process_task_approved(
     scheduler.add_job(
         check_task_deadline,
         'date',
-        run_date=timezone.now() + timedelta(hours=1),
+        run_date=timezone.now() + timedelta(minutes=settings.TASK_DEADLINE),
         timezone='Europe/Moscow',
         args=(query.bot, task.number),
         id=f'job_{task.number}_deadline',

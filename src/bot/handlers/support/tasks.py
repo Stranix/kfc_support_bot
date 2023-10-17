@@ -16,7 +16,8 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateformat import format
 
-from src.models import Task, Group
+from src.models import Task
+from src.models import Group
 from src.models import Employee
 from src.bot.keyboards import create_tg_keyboard_markup
 from src.bot.keyboards import get_support_task_keyboard
@@ -126,7 +127,6 @@ async def process_start_task(query: types.CallbackQuery, employee: Employee):
     logger.info('Задачу взял в работу сотрудник %s', employee.name)
 
 
-# TODO дописать назначение задачи на сотрудника
 @router.callback_query(F.data.startswith('atask_'))
 async def process_assigned_task(
         query: types.CallbackQuery,
@@ -166,8 +166,69 @@ async def process_assigned_task(
         engineers_on_shift=engineers_on_shift,
         task_applicant=task_applicant
     )
-    await query.message.answer('Инженеры на смене', reply_markup=keyboard)
+    await query.message.answer(
+        'Выберите инженера на смене для назначения',
+        reply_markup=keyboard,
+    )
+    await query.message.delete()
     await state.set_state(AssignedTaskState.task)
+
+
+@router.message(AssignedTaskState.task)
+async def process_assigned_task_step_2(
+        message: types.Message,
+        employee: Employee,
+        state: FSMContext,
+):
+    logger.info('Назначения задачи на инженера шаг 2')
+    data = await state.get_data()
+    task = Task.objects.select_related('performer').aget(id=data['task'].id)
+    if task.performer:
+        await message.answer(
+            f'Задачу взял другой инженер {task.performer.name}'
+        )
+        await state.clear()
+        return
+    selected_engineer_name = message.text
+    engineers_on_shift = data['engineers_on_shift']
+    task_applicant = data['task_applicant']
+    selected_engineer = None
+
+    for engineer in engineers_on_shift:
+        if engineer.name == selected_engineer_name:
+            selected_engineer = engineer
+            break
+    logger.debug('engineers_on_shift: %s', engineers_on_shift)
+    logger.debug('selected_engineer: %s', selected_engineer)
+    task.performer = selected_engineer
+    await task.asave()
+    logger.info(
+        'Инженер %s назначен на задачу %s',
+        selected_engineer.name,
+        task.number,
+    )
+    logger.info('Отправляю уведомление назначившему инженеру')
+    await message.answer(
+        f'Задача {html.code(task.number)} '
+        f'назначена инженеру {html.code(selected_engineer.name)}'
+    )
+    logger.info('Отправлено')
+    logger.info('Отправка уведомления исполнителю')
+    await message.bot.send_message(
+        selected_engineer.tg_id,
+        f'{employee.name} назначил на вас задачу {task.number}\n.'
+        f'Контакт для связи {task_applicant.name} '
+        f'({task_applicant.tg_nickname})'
+    )
+    logger.info('Отправлено')
+    logger.info('Отправка уведомления постановщику задачи')
+    await message.bot.send_message(
+        task_applicant.tg_id,
+        f'Задача взята в работу инженером {html.code(selected_engineer.name)}'
+        f'\nТелеграм для связи: {selected_engineer.tg_nickname}'
+    )
+    logger.info('Отправлено')
+    await state.clear()
 
 
 @sync_to_async
@@ -264,14 +325,37 @@ async def process_close_task(
 
 
 @router.message(Command('my_active_tasks'))
-async def get_employee_active_task(
+async def get_employee_active_tasks(
         message: types.Message,
 ):
     logger.info('Получение назначенных задач')
     tasks = await get_task_in_work_by_employee(message.from_user.id)
     if not tasks:
         await message.answer('У вас нет задач в работе')
+        return
     file_to_send = await prepare_active_tasks_as_file(tasks)
+    await message.answer_document(
+        file_to_send,
+        caption='Задачи в работе',
+    )
+
+
+@router.message(Command('new_tasks'))
+async def get_new_tasks(
+        message: types.Message,
+):
+    logger.info('Получение всех не назначенных задач')
+    tasks = await sync_to_async(list)(
+        Task.objects.filter(
+            number__startswith='SD-',
+            performer__isnull=True,
+        )
+    )
+    logger.debug('Список найденных новых задач: %s', tasks)
+    if not tasks:
+        await message.answer('Нет новый задач')
+        return
+    file_to_send = await prepare_new_tasks_as_file(tasks)
     await message.answer_document(
         file_to_send,
         caption='Задачи в работе',
@@ -290,11 +374,32 @@ async def prepare_active_tasks_as_file(
                f'Заявитель: {task.applicant}\n' \
                f'Тип обращения: {task.title}\n' \
                f'Дата регистрации: {start_at}\n' \
-               f'Текста обращения: {task.description}'
+               f'Текст обращения: {task.description}'
         report.append(text)
 
     file = '\n\n'.join(report).encode('utf-8')
     file_name = format(timezone.now(), 'd-m-Y') + '_tasks.txt'
+    logger.info('Подготовка завершена')
+    return types.BufferedInputFile(file, filename=file_name)
+
+
+async def prepare_new_tasks_as_file(
+        tasks: list[Task]
+) -> types.BufferedInputFile:
+    logger.info('Подготовка  списка не назначенных задач в виде файла')
+    report = ['Новые задачи: \n']
+    time_formatted_mask = 'd-m-Y H:i:s'
+    for task in tasks:
+        start_at = format(task.start_at, time_formatted_mask)
+        text = f'{task.number}\n\n' \
+               f'Заявитель: {task.applicant}\n' \
+               f'Тип обращения: {task.title}\n' \
+               f'Дата регистрации: {start_at}\n' \
+               f'Текст обращения: {task.description}'
+        report.append(text)
+
+    file = '\n\n'.join(report).encode('utf-8')
+    file_name = format(timezone.now(), 'd-m-Y') + '_new_tasks.txt'
     logger.info('Подготовка завершена')
     return types.BufferedInputFile(file, filename=file_name)
 
