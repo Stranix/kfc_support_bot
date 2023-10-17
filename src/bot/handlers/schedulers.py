@@ -5,6 +5,7 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 
 from django.utils import timezone
+from django.conf import settings
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -22,6 +23,8 @@ from src.models import WorkShift
 from src.models import Employee
 from src.models import Group
 from src.models import Task
+from src.bot.utils import send_notify
+from src.bot.utils import get_senior_engineers
 
 logger = logging.getLogger('support_bot')
 router = Router(name='scheduler_handlers')
@@ -96,11 +99,11 @@ async def check_task_activate_step_1(
     if not middle_engineers:
         logger.warning('На смене нет старших инженеров!')
         return
-    await send_schedulers_notify(bot, middle_engineers, notify)
+    await send_notify(bot, middle_engineers, notify)
     scheduler.add_job(
         check_task_activate_step_2,
         'date',
-        run_date=timezone.now() + timedelta(minutes=10),
+        run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
         timezone='Europe/Moscow',
         args=(bot, task_number),
         id=f'job_{task_number}_step2',
@@ -115,17 +118,8 @@ async def check_task_activate_step_2(bot: Bot, task_number: str):
     if task.performer:
         logger.info('На задачу назначен инженер')
         return
-    senior_engineers_group = await Group.objects.aget(name='Ведущие инженеры')
-    senior_engineers = await sync_to_async(list)(
-        Employee.objects.filter(
-            groups=senior_engineers_group,
-        )
-    )
-    logger.debug('senior_engineers: %s', senior_engineers)
-    if not senior_engineers:
-        logger.error('В системе не назначены ведущие инженеры')
-        return
-    await send_schedulers_notify(bot, senior_engineers, notify)
+    senior_engineers = await get_senior_engineers()
+    await send_notify(bot, senior_engineers, notify)
 
 
 async def check_task_deadline(bot: Bot, task_number: str):
@@ -144,7 +138,7 @@ async def check_task_deadline(bot: Bot, task_number: str):
         return
     engineer = task.performer
     managers = sync_to_async(list)(engineer.managers.all())
-    await send_schedulers_notify(bot, managers, notify)
+    await send_notify(bot, managers, notify)
 
 
 async def check_end_of_shift(bot: Bot, shift_id: int):
@@ -168,20 +162,5 @@ async def check_end_of_shift(bot: Bot, shift_id: int):
     )
     logger.debug('Отправка уведомления менеджерам')
     managers = await sync_to_async(list)(engineer.managers.all())
-    await send_schedulers_notify(bot, managers, notify)
+    await send_notify(bot, managers, notify)
     logger.debug('Проверка завершена')
-
-
-async def send_schedulers_notify(
-        bot: Bot,
-        employees: list[Employee],
-        message: str,
-):
-    logger.info('Отправка уведомления шедулера')
-    if not employees:
-        logger.warning('Пустой список для отправки уведомлений')
-        return
-    for employee in employees:
-        logger.debug('Уведомление для: %s', employee.name)
-        await bot.send_message(employee.tg_id, message)
-    logger.info('Отправка уведомлений завершена')

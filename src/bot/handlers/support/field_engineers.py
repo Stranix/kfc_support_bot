@@ -15,16 +15,17 @@ from aiogram.fsm.context import FSMContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from asgiref.sync import sync_to_async
-
+from django.db.models import Q
+from django.conf import settings
 from django.utils import timezone
 
+from src.models import Task
+from src.models import Employee
+from src.models import WorkShift
 from src.bot.keyboards import get_support_task_keyboard
 from src.bot.keyboards import get_approved_task_keyboard
 from src.bot.handlers.schedulers import check_task_deadline
 from src.bot.handlers.schedulers import check_task_activate_step_1
-from src.models import Task
-from src.models import Employee
-from src.models import WorkShift
 
 logger = logging.getLogger('support_bot')
 router = Router(name='field_engineers_handlers')
@@ -37,8 +38,21 @@ class NewTaskState(StatesGroup):
 
 
 @router.message(Command('support_help'))
-async def new_task(message: types.Message, state: FSMContext):
-    logger.info('Запрос на создание новой задачи')
+async def new_task(
+        message: types.Message,
+        employee: Employee,
+        state: FSMContext,
+):
+    logger.info('Запрос на создание новой выездной задачи')
+    if not await employee.groups.filter(
+            Q(name__contains='Подрядчик') | Q(name='Администраторы')
+    ).afirst():
+        logger.warning(
+            'Пользователь %s не состоит в группе Подрядчики',
+            employee.name,
+        )
+        await message.answer('Нет прав на использование команды')
+        return
     await message.answer(
         'Напишите номер заявки по которой вы приехали\n'
         f'Например: {html.code("1395412")}'
@@ -103,7 +117,7 @@ async def process_task_approved(
     scheduler.add_job(
         check_task_activate_step_1,
         'date',
-        run_date=timezone.now() + timedelta(minutes=10),
+        run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
         timezone='Europe/Moscow',
         args=(query.bot, task.number, scheduler),
         id=f'job_{task.number}_step1',
@@ -111,7 +125,7 @@ async def process_task_approved(
     scheduler.add_job(
         check_task_deadline,
         'date',
-        run_date=timezone.now() + timedelta(hours=1),
+        run_date=timezone.now() + timedelta(minutes=settings.TASK_DEADLINE),
         timezone='Europe/Moscow',
         args=(query.bot, task.number),
         id=f'job_{task.number}_deadline',
