@@ -15,8 +15,6 @@ from asgiref.sync import sync_to_async
 
 from bs4 import BeautifulSoup
 
-from django.conf import settings
-
 from src.models import Employee, Group
 from src.bot.scheme import SyncStatus
 from src.bot.keyboards import get_user_activate_keyboard
@@ -85,7 +83,7 @@ async def check_conn_to_main_server(
     return True
 
 
-async def user_registration(message: types.Message):
+async def user_registration(message: types.Message) -> Employee:
     logger.info('Регистрация пользователя')
     employee = await Employee.objects.acreate(
         name=message.from_user.full_name,
@@ -93,13 +91,16 @@ async def user_registration(message: types.Message):
         tg_nickname='@' + message.from_user.username,
     )
     senior_engineers = await get_senior_engineers()
+    logger.debug('senior_engineers: %s', senior_engineers)
     notify = f'Новый пользователь \n\n' \
              f'Телеграм id: {html.code(message.from_user.id)}\n' \
              f'Телеграм username {html.code(message.from_user.username)}\n' \
              f'Имя: {html.code(message.from_user.full_name)}\n'
+    logger.debug('notify: %s', notify)
     notify_keyboard = await get_user_activate_keyboard(employee.id)
     await send_notify(message.bot, senior_engineers, notify, notify_keyboard)
     await message.answer('Заявка на регистрацию отправлена.')
+    return employee
 
 
 async def send_notify(
@@ -108,13 +109,13 @@ async def send_notify(
         message: str,
         keyboard: InlineKeyboardMarkup = None,
 ):
-    logger.info('Отправка уведомления шедулера')
+    logger.info('Отправка уведомления')
     if not employees:
         logger.warning('Пустой список для отправки уведомлений')
         return
     for employee in employees:
         logger.debug('Уведомление для: %s', employee.name)
-        await bot.send_message(employee.tg_id, message, keyboard)
+        await bot.send_message(employee.tg_id, message, reply_markup=keyboard)
     logger.info('Отправка уведомлений завершена')
 
 
@@ -129,3 +130,4 @@ async def get_senior_engineers() -> list[Employee] | None:
     if not senior_engineers:
         logger.error('В системе не назначены ведущие инженеры')
         return
+    return senior_engineers

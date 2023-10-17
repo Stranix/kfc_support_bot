@@ -41,7 +41,7 @@ async def activate_user(query: types.CallbackQuery, state: FSMContext):
     await query.message.delete()
     await employee.asave()
     await state.update_data(employee=employee)
-    groups = sync_to_async(list)(
+    groups = await sync_to_async(list)(
         Group.objects.exclude(name__contains='Администратор')
     )
     available_groups_name = [group.name for group in groups]
@@ -61,15 +61,15 @@ async def activate_user_step_2(message: types.Message, state: FSMContext):
     group_name = message.text
     group = await Group.objects.aget(name=group_name)
     new_employee: Employee = data['employee']
-    new_employee.groups.add(group)
+    await sync_to_async(new_employee.groups.add)(group)
     await new_employee.asave()
     await message.answer(f'Активировал пользователя {new_employee.name}')
     await message.bot.send_message(
         chat_id=new_employee.tg_id,
         text='Учетная запись активирована. \n'
              'При возникновении проблем обращайтесь к @SmurovK',
+        reply_markup=ReplyKeyboardRemove(),
     )
-    ReplyKeyboardRemove()
     await message.delete()
     await state.clear()
 

@@ -47,6 +47,10 @@ class AuthUpdateMiddleware(BaseMiddleware):
             logger.debug('Пользователь в базе и активен. Фиксируем в кеше')
             self.active_users[self.user_tg_id] = employee_in_db
         data['employee'] = employee_in_db
+        logger.debug(
+            'AuthUpdateMiddleware data["employee"]: %s',
+            data['employee']
+        )
         return await handler(event, data)
 
     async def get_employee_from_db(self) -> Employee | None:
