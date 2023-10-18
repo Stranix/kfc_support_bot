@@ -60,11 +60,7 @@ async def local_service(
         return
     keyboard = None
     if await employee.groups.filter(
-            name__in=(
-                    'Старшие инженеры',
-                    'Ведущие инженеры',
-                    'Администраторы',
-            )
+            name__in=('Старшие инженеры', 'Ведущие инженеры', 'Администраторы')
     ).afirst() and not task.performer:
         keyboard = await assign_task_keyboard(task.id)
     if task.performer:

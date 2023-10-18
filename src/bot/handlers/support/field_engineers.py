@@ -68,8 +68,8 @@ async def process_get_gsd_number(message: types.Message, state: FSMContext):
         logger.warning('Не правильный номер задачи')
         await message.answer(
             'Не правильный формат номера задачи\n'
-            f'Пример: {html.code("1395412")} \n\n' +
-            html.italic('Если передумал - используй команду отмены /cancel')
+            f'Пример: {html.code("1395412")} \n\n'
+            + html.italic('Если передумал - используй команду отмены /cancel')
         )
         return
     await state.update_data(get_gsd_number=task_number.group())
@@ -148,8 +148,8 @@ async def process_task_approved(
     await sending_new_task_notify(query, task, employee)
     await query.message.answer(
         'Заявка принята. \n'
-        'Инженерам отправлено уведомление\n\n' +
-        html.italic('Регламентное время связи 10 минут')
+        'Инженерам отправлено уведомление\n\n'
+        + html.italic('Регламентное время связи 10 минут')
     )
     await query.message.delete()
     await state.clear()
