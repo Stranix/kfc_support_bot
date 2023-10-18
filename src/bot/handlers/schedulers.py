@@ -116,9 +116,8 @@ async def check_task_activate_step_1(
         await send_notify(bot, senior_engineers, notify_for_senior)
         await send_notify(bot, engineers, notify)
         return
-    engineers_on_shift = middle_engineers.extend(engineers)
-    logger.debug('engineers_on_shift: %s', engineers_on_shift)
-    await send_notify(bot, engineers_on_shift, notify)
+    await send_notify(bot, middle_engineers, notify)
+    await send_notify(bot, engineers, notify)
     scheduler.add_job(
         check_task_activate_step_2,
         'date',
@@ -158,8 +157,8 @@ async def check_task_deadline(bot: Bot, task_number: str):
     engineer = task.performer
     managers = await sync_to_async(list)(engineer.managers.all())
     senior_engineers = await get_senior_engineers()
-    recipients = managers.extend(senior_engineers)
-    await send_notify(bot, recipients, notify)
+    await send_notify(bot, managers, notify)
+    await send_notify(bot, senior_engineers, notify)
 
 
 async def check_end_of_shift(bot: Bot, shift_id: int):
