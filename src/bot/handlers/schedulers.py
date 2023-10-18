@@ -156,8 +156,10 @@ async def check_task_deadline(bot: Bot, task_number: str):
         logger.debug('Задача завершена')
         return
     engineer = task.performer
-    managers = sync_to_async(list)(engineer.managers.all())
-    await send_notify(bot, managers, notify)
+    managers = await sync_to_async(list)(engineer.managers.all())
+    senior_engineers = await get_senior_engineers()
+    recipients = managers.extend(senior_engineers)
+    await send_notify(bot, recipients, notify)
 
 
 async def check_end_of_shift(bot: Bot, shift_id: int):
