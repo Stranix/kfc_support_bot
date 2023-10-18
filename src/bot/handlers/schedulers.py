@@ -142,7 +142,7 @@ async def check_task_activate_step_2(bot: Bot, task_number: str):
 
 async def check_task_deadline(bot: Bot, task_number: str):
     logger.debug('Проверка задачи %s через два часа', task_number)
-    notify = '🆘Задача не закрыта за два часа'
+    notify = f'🆘Задача {html.code(task_number)} не закрыта за два часа'
     task = await Task.objects.select_related('performer')\
                              .aget(number=task_number)
     if not task.performer:
