@@ -3,8 +3,6 @@
 set -e
 
 
-cd /opt/rnd/kfc_support_bot/
-
 echo -e "Останавливаем текущие контейнеры проекта..."
 docker compose down
 
