@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardRemove
 from asgiref.sync import sync_to_async
+from django.conf import settings
 
 from src.models import Group
 from src.models import Employee
@@ -20,6 +21,10 @@ router = Router(name='common_handlers')
 
 class UserActivationState(StatesGroup):
     employee = State()
+
+
+class UserFeedBackState(StatesGroup):
+    feedback = State()
 
 
 @router.message(Command('start'))
@@ -107,4 +112,27 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
 async def callback_cmd_cancel(query: types.CallbackQuery, state: FSMContext):
     await query.answer('Действие отменено', show_alert=True)
     await query.message.delete()
+    await state.clear()
+
+
+@router.message(Command('feedback'))
+async def cmd_feedback(message: types.Message, state: FSMContext):
+    await message.answer(
+        'Оставьте пожелания по работе бота\n'
+        'Для отмены используйте команду /cancel'
+    )
+    await state.set_state(UserFeedBackState.feedback)
+
+
+@router.message(UserFeedBackState.feedback)
+async def process_feedback(
+        message: types.Message,
+        employee: Employee,
+        state: FSMContext,
+):
+    feedback = message.text
+    await message.bot.send_message(
+        settings.TG_BOT_ADMIN,
+        f'Фидбек от пользователя {employee.name}\n\n{feedback}\n\n\n#feedback')
+    await message.answer('FeedBack отправлен. Спасибо за обратную связь!')
     await state.clear()

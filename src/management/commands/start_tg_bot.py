@@ -45,6 +45,14 @@ async def set_commands(bot: Bot):
             command='help',
             description='Посмотреть список доступных команд',
         ),
+        types.BotCommand(
+            command='feedback',
+            description='🪬Отправить обратную связь по боту',
+        ),
+        types.BotCommand(
+            command='cancel',
+            description='Прервать диалог на любом этапе',
+        ),
     ]
     await bot.set_my_commands(
         available_commands,

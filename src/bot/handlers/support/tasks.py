@@ -115,7 +115,9 @@ async def process_start_task(query: types.CallbackQuery, employee: Employee):
     await task.asave()
     await query.message.delete()
     await query.message.answer(
-        f'Вы взяли задачу {html.bold(task.number)} в работу\n'
+        f'💼Вы взяли задачу {html.bold(task.number)} в работу\n'
+        f'Контакт для обратной связи: {task_applicant.name} '
+        f'({task_applicant.tg_nickname})\n\n'
         'Для закрытия задачи, используйте команду /close_task',
         reply_markup=ReplyKeyboardRemove()
     )

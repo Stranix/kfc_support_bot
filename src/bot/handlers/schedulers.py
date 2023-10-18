@@ -77,7 +77,7 @@ async def check_task_activate_step_1(
         scheduler: AsyncIOScheduler,
 ):
     logger.debug('Проверка задачи %s первые 10 минут', task_number)
-    notify = f'Внимание задачу {task_number} не взяли в работу спустя 10 мин'
+    notify = f'❗Внимание задачу {task_number} не взяли в работу спустя 10 мин'
     try:
         task = await Task.objects.select_related('performer')\
                                  .aget(number=task_number)
@@ -88,6 +88,13 @@ async def check_task_activate_step_1(
     if task.performer:
         logger.info('На задачу назначен инженер')
         return
+    engineers_group = await Group.objects.aget(name='Инженеры')
+    engineers = await sync_to_async(list)(
+        Employee.objects.filter(
+            groups=engineers_group,
+            work_shifts__is_works=True,
+        )
+    )
     middle_engineers_group = await Group.objects.aget(name='Старшие инженеры')
     middle_engineers = await sync_to_async(list)(
         Employee.objects.filter(
@@ -95,11 +102,23 @@ async def check_task_activate_step_1(
             work_shifts__is_works=True,
         )
     )
+    senior_engineers_group = await Group.objects.aget(name='Ведущие инженеры')
+    senior_engineers = await sync_to_async(list)(
+        Employee.objects.filter(
+            groups=senior_engineers_group,
+            work_shifts__is_works=True,
+        )
+    )
     logger.debug('middle_engineers: %s', middle_engineers)
     if not middle_engineers:
         logger.warning('На смене нет старших инженеров!')
+        notify_for_senior = '‼Первая эскалация,на смене нет старших инженеров!'
+        await send_notify(bot, senior_engineers, notify_for_senior)
+        await send_notify(bot, engineers, notify)
         return
-    await send_notify(bot, middle_engineers, notify)
+    engineers_on_shift = middle_engineers.extend(engineers)
+    logger.debug('engineers_on_shift: %s', engineers_on_shift)
+    await send_notify(bot, engineers_on_shift, notify)
     scheduler.add_job(
         check_task_activate_step_2,
         'date',

@@ -96,6 +96,7 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
     logger.info('Описание получено')
 
 
+# TODO продумать логику уведомлений если задача уже в работе
 @router.callback_query(F.data.startswith('approved_new_task'))
 async def process_task_approved(
         query: types.CallbackQuery,
@@ -105,32 +106,45 @@ async def process_task_approved(
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
     data = await state.get_data()
+    task_escalation = settings.TASK_ESCALATION
+    task_deadline = settings.TASK_DEADLINE
     logger.debug('state_data: %s', data)
-    task = await Task.objects.acreate(
+    task, is_created = await Task.objects.aupdate_or_create(
         number=f'SD-{data["get_gsd_number"]}',
         applicant=employee.name,
-        service='Локальная поддержка инженеров',
-        title=f'Помощь по заявке SС-{data["get_gsd_number"]}',
-        description=data['descriptions']
+        defaults={
+            'service': 'Локальная поддержка инженеров',
+            'title': f'Помощь по заявке SС-{data["get_gsd_number"]}',
+        },
     )
-    logger.debug('Добавление временных проверок по задаче')
-    scheduler.add_job(
-        check_task_activate_step_1,
-        'date',
-        run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
-        timezone='Europe/Moscow',
-        args=(query.bot, task.number, scheduler),
-        id=f'job_{task.number}_step1',
-    )
-    scheduler.add_job(
-        check_task_deadline,
-        'date',
-        run_date=timezone.now() + timedelta(minutes=settings.TASK_DEADLINE),
-        timezone='Europe/Moscow',
-        args=(query.bot, task.number),
-        id=f'job_{task.number}_deadline',
-    )
-    logger.debug('Проверки добавлены')
+    if is_created:
+        logger.debug('Создана новая задача')
+        task.description = data['descriptions']
+        logger.debug('Добавление временных проверок по задаче')
+        scheduler.add_job(
+            check_task_activate_step_1,
+            'date',
+            run_date=timezone.now() + timedelta(minutes=task_escalation),
+            timezone='Europe/Moscow',
+            args=(query.bot, task.number, scheduler),
+            id=f'job_{task.number}_step1',
+        )
+        scheduler.add_job(
+            check_task_deadline,
+            'date',
+            run_date=timezone.now() + timedelta(minutes=task_deadline),
+            timezone='Europe/Moscow',
+            args=(query.bot, task.number),
+            id=f'job_{task.number}_deadline',
+        )
+        logger.debug('Проверки добавлены')
+    if not is_created:
+        logger.debug('Повторный запрос по задаче. Дополняю описание')
+        task_description = f'{task.description}\n Обновление ' \
+                           f'{timezone.now()}\n {data["descriptions"]}'
+        task.description = task_description
+    await task.asave()
+    logger.debug('Задача зафиксирована в БД')
     await sending_new_task_notify(query, task, employee)
     await query.message.answer(
         'Заявка принята. \n'
