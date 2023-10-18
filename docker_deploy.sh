@@ -23,6 +23,6 @@ docker compose exec web python manage.py collectstatic --no-input --clear
 echo -e "Отправляем уведомление в Rollbar..."
 curl -H "X-Rollbar-Access-Token: $ROLLBAR_POST_ACCESS_TOKEN" \
      -H "Content-Type: application/json" \
-     -X POST 'https://api.rollbar.com/api/1/deploy' -d '{"environment": "production", "revision": "'$COMMIT'", "local_username": "'$LOCAL_USERNAME'"}'
+     -X POST 'https://api.rollbar.com/api/1/deploy' -d '{"environment": "'$ROLLBAR_ENV'", "revision": "'$COMMIT'", "local_username": "'$LOCAL_USERNAME'"}'
 
 echo -e "Всё готово!"
