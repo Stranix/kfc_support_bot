@@ -145,18 +145,20 @@ async def check_task_deadline(bot: Bot, task_number: str):
     notify = f'🆘Задача {html.code(task_number)} не закрыта за два часа'
     task = await Task.objects.select_related('performer')\
                              .aget(number=task_number)
+    senior_engineers = await get_senior_engineers()
     if not task.performer:
         logger.warning(
             'Прошло два часа, а на задаче %s нет инженера',
             task_number,
         )
+        notify = f'🧨Прошло два часа, а на задаче {task_number} нет инженера!'
+        await send_notify(bot, senior_engineers, notify)
         return
     if task.finish_at:
         logger.debug('Задача завершена')
         return
     engineer = task.performer
     managers = await sync_to_async(list)(engineer.managers.all())
-    senior_engineers = await get_senior_engineers()
     await send_notify(bot, managers, notify)
     await send_notify(bot, senior_engineers, notify)
 
