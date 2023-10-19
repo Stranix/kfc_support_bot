@@ -112,7 +112,12 @@ class SyncReportAdmin(admin.ModelAdmin):
 
 @admin.register(WorkShift)
 class WorkShiftAdmin(admin.ModelAdmin):
-    pass
+    list_display = [
+        'employee',
+        'shift_start_at',
+        'shift_end_at',
+        'is_works',
+    ]
 
 
 @admin.register(BotCommand)
@@ -127,7 +132,7 @@ class BreakShiftAdmin(admin.ModelAdmin):
         'end_break_at',
     ]
     list_display = [
-        'id',
+        'employee',
         'start_break_at',
         'end_break_at',
         'is_active',

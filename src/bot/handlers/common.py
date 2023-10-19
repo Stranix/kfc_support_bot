@@ -89,13 +89,14 @@ async def cmd_help(message: types.Message, employee: Employee):
             groups__in=emp_groups,
         )
     )
-    available_commands = ['Список команд:\n']
+    available_commands = []
     for command in bot_commands:
         text = f'{command.name} - {command.description}'
         available_commands.append(text)
 
     await message.answer(
-        '\n'.join(available_commands)
+        'Список доступных команд:\n\n'
+        + '\n'.join(set(available_commands))
     )
 
 
