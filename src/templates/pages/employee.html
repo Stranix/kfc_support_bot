@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <div class="table-responsive">
+    <table class="table table-hover caption-top">
+      <caption>Зарегистрированные пользователи</caption>
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          {% for header in table_employees.headers %}
+            <th scope="col">{{ header }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for employee in table_employees.users %}
+        <tr>
+          <th scope="row">{{ employee.id }}</th>
+          <td>{{ employee.name }}</td>
+          <td><a href="https://t.me/{{ employee.tg_nickname|cut:'@'}}">{{ employee.tg_nickname }}</a></td>
+          <td>
+            {% for group in employee.groups.all %}
+              <span class="badge text-bg-primary">{{ group.name }}</span><br/>
+            {% endfor %}
+          </td>
+          <td>
+            {% if not employee.managers.all %}
+              Не назначен
+            {% endif %}
+            {% for manager in employee.managers.all %}
+              <span class="badge text-bg-primary">{{ manager.name }}</span><br/>
+            {% endfor %}
+          </td>
+          <td>{{ employee.registered_at|date:'d-m-Y H:i' }}</td>
+          <td class="text-center">
+            <i class="bi-check-circle-fill {{ employee.is_active|yesno:"text-success,text-danger" }}"></i>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

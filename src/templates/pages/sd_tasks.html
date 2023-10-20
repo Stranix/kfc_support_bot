@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <form action="{% url 'support_tasks' %}">
+  <div class="col-3">
+    <input type="date" class="form-control" id="shift" name="date" aria-describedby="emailHelp">
+    <div id="dateHelp" class="form-text">Выбрать дату смены</div>
+    <button type="submit" class="btn btn-primary">Применить</button>
+  </div>
+</form>
+  <div class="table-responsive">
+    <table class="table table-hover caption-top">
+      <caption>Задачи за дату {{ shift_date|date:'d-m-Y' }}</caption>
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          {% for header in tasks_tables.headers %}
+            <th scope="col">{{ header }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks_tables.tasks %}
+        <tr>
+          <th scope="row">{{ task.id }}</th>
+          <td>{{ task.number }}</td>
+          <td>{{ task.applicant }}</td>
+          <td>{{ task.performer }}</td>
+          <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ task.description }}</td>
+          <td>
+            {% if task.status == 'NEW' %}
+              <span class="badge text-bg-danger">Новая</span>
+            {% endif %}
+            {% if task.status == 'IN_WORK' %}
+              <span class="badge text-bg-primary">В работе</span>
+            {% endif %}
+            {% if task.status == 'COMPLETED' %}
+              <span class="badge text-bg-success">Завершена</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not task.rating %} Нет оценки {% else %} {{ task.rating }} {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

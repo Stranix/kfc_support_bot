@@ -85,7 +85,11 @@ async def get_task_by_shift(
     tasks = {}
     tasks_db = await sync_to_async(
         Task.objects.prefetch_related('performer').filter
-    )(start_at__lte=shift_end_at, start_at__gte=shift_start_at)
+    )(
+        number__startswith='SD-',
+        start_at__lte=shift_end_at,
+        start_at__gte=shift_start_at,
+    )
     tasks_new = await sync_to_async(list)(
         tasks_db.filter(status='NEW', finish_at__isnull=True)
     )
