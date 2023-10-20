@@ -19,7 +19,20 @@ from src.models import (
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    pass
+    search_fields = [
+        'name',
+    ]
+
+    filter_horizontal = [
+        'groups',
+        'managers',
+    ]
+
+    readonly_fields = [
+        'registered_at',
+        'tg_nickname',
+        'tg_id',
+    ]
 
 
 @admin.register(Task)
@@ -53,6 +66,7 @@ class ServerAdmin(admin.ModelAdmin):
         'is_sync',
         'franchise_owner',
     ]
+
     list_editable = [
         'is_sync',
     ]
