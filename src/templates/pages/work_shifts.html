@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <div class="table-responsive">
+    <table class="table table-hover caption-top">
+      <caption>Смена {% now 'd-m-Y' %}</caption>
+      <thead>
+      <tr>
+        {% for header in shift_table.headers %}
+          <th scope="col">{{ header }}</th>
+        {% endfor %}
+      </tr>
+      </thead>
+      <tbody>
+      {% for shift in shift_table.shifts %}
+        <tr>
+          <td>{{ shift.employee }}</td>
+          <td>{{ shift.shift_start_at|date:'d-m-Y H:i' }}</td>
+          <td>
+            {% for shift_break in shift.break_shift.all %}
+              <span class="{{ shift_break.is_active|yesno:'text-success,text' }}">
+                с {{ shift_break.start_break_at|date:'d-m-Y H:i' }} по {{ shift_break.end_break_at|date:'d-m-Y H:i' }}
+              </span><br/>
+            {% endfor %}
+          </td>
+          <td>{{ shift.shift_end_at|date:'d-m-Y H:i' }}</td>
+          <td class="text-center">
+            <i class="bi-check-circle-fill {{ shift.is_works|yesno:"text-success,text-danger" }}"></i>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
