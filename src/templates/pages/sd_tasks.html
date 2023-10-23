@@ -39,7 +39,7 @@
           <td>{{ task.performer|default_if_none:'' }}</td>
           <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
-          <td>{{ task.description }}</td>
+          <td>{{ task.description|linebreaks}}</td>
           <td>
             {% if task.status == 'NEW' %}
               <span class="badge text-bg-danger">Новая</span>

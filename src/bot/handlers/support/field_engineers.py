@@ -140,7 +140,8 @@ async def process_task_approved(
         logger.debug('Проверки добавлены')
     if not is_created:
         logger.debug('Повторный запрос по задаче. Дополняю описание')
-        task_description = f'{task.description}\n Обновление ' \
+        task_description = f'{task.description}\n\n' \
+                           f'Дополнение Описания ' \
                            f'{timezone.now()}\n {data["descriptions"]}'
         task.description = task_description
     await task.asave()
