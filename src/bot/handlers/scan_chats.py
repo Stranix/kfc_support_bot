@@ -1,6 +1,6 @@
 import re
 import logging
-
+from typing import Any
 
 from aiogram import F
 from aiogram import Router
@@ -91,7 +91,7 @@ async def get_task_by_number(task_number: str) -> tuple:
 
 async def get_local_task_by_number(
         task_number: str
-) -> tuple[Task, str] | None:
+) -> tuple[Any, Any] | tuple[None, None]:
     try:
         task = await Task.objects.select_related('performer')\
                                  .aget(number=task_number)
@@ -106,4 +106,4 @@ async def get_local_task_by_number(
         return task, message_fo_send
     except Task.DoesNotExist:
         logger.warning('Нет такой задачи (%s) в БД', task_number)
-        return
+        return None, None

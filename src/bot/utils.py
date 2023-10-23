@@ -86,7 +86,7 @@ async def check_conn_to_main_server(
 async def user_registration(message: types.Message) -> Employee:
     logger.info('Регистрация пользователя')
     employee = await Employee.objects.acreate(
-        name=message.from_user.full_name,
+        name=message.from_user.full_name.replace('@', ''),
         tg_id=message.from_user.id,
         tg_nickname='@' + message.from_user.username,
     )

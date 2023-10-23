@@ -182,9 +182,10 @@ async def sending_new_task_notify(
     )
     recipients = [work.employee.tg_id for work in work_shifts]
     logger.debug('Список tg_id сотрудников на работе: %s', recipients)
-    message_for_send = 'Инженеру требуется помощь по задаче'
-    message_for_send += '\n\nОписание: ' + html.code(task.description)
-    message_for_send += '\nТелеграм для связи: ' + employee.tg_nickname
+    message_for_send = f'Инженеру требуется помощь ' \
+                       f'по задаче {html.code(task.number)}\n\n' \
+                       f'Описание: {html.code(task.description)}\n' \
+                       f'Телеграм для связи: {employee.tg_nickname}'
     if not recipients:
         logger.warning('На смене нет инженеров')
         senior_engineers = await sync_to_async(list)(
