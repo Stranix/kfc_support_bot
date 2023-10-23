@@ -140,9 +140,10 @@ async def process_task_approved(
         logger.debug('Проверки добавлены')
     if not is_created:
         logger.debug('Повторный запрос по задаче. Дополняю описание')
+        current_time = timezone.now().strftime('%d-%m-%Y %H:%M:%S')
         task_description = f'{task.description}\n\n' \
                            f'Дополнение Описания ' \
-                           f'{timezone.now()}\n {data["descriptions"]}'
+                           f'{current_time}\n {data["descriptions"]}'
         task.description = task_description
     await task.asave()
     logger.debug('Задача зафиксирована в БД')
