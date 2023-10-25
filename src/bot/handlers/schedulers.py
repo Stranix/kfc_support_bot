@@ -187,4 +187,7 @@ async def check_end_of_shift(bot: Bot, shift_id: int):
     logger.debug('Отправка уведомления менеджерам')
     managers = await sync_to_async(list)(engineer.managers.all())
     await send_notify(bot, managers, notify)
+    notify_to_engineer = '🔴 Прошло 9 часов, а у тебя не закрыта смена.\n\n' \
+                         'Для закрытия смены используй команду /end_shift'
+    await send_notify(bot, list(engineer), notify_to_engineer)
     logger.debug('Проверка завершена')
