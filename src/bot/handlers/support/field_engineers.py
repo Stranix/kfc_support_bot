@@ -126,7 +126,7 @@ async def process_task_approved(
             'date',
             run_date=timezone.now() + timedelta(minutes=task_escalation),
             timezone='Europe/Moscow',
-            args=(query.bot, task.number, scheduler),
+            args=(task.number, scheduler),
             id=f'job_{task.number}_step1',
         )
         scheduler.add_job(
@@ -134,7 +134,7 @@ async def process_task_approved(
             'date',
             run_date=timezone.now() + timedelta(minutes=task_deadline),
             timezone='Europe/Moscow',
-            args=(query.bot, task.number),
+            args=(task.number, ),
             id=f'job_{task.number}_deadline',
         )
         logger.debug('Проверки добавлены')

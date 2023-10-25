@@ -2,6 +2,7 @@ import logging
 
 from datetime import timedelta
 
+from aiogram.enums import ParseMode
 from asgiref.sync import sync_to_async
 
 from django.utils import timezone
@@ -42,8 +43,9 @@ async def get_scheduler_jobs(
     jobs = scheduler.get_jobs()
     message_for_send = ['Активные задачи scheduler:\n']
     for job in jobs:
+        job_next_run_time = job.next_run_time + timedelta(hours=3)
         job_next_run_time = html.code(
-            job.next_run_time.strftime('%d-%m-%Y %H:%M:%S'),
+            job_next_run_time.strftime('%d-%m-%Y %H:%M:%S'),
         )
         job_info = f'<b>Job id:</b> {html.code(job.id)}\n' \
                    f'<b>Job next_run_time:</b> {job_next_run_time}\n'
@@ -72,7 +74,6 @@ async def process_close_scheduler_job(
 
 
 async def check_task_activate_step_1(
-        bot: Bot,
         task_number: str,
         scheduler: AsyncIOScheduler,
 ):
@@ -88,6 +89,7 @@ async def check_task_activate_step_1(
     if task.performer:
         logger.info('На задачу назначен инженер')
         return
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     engineers_group = await Group.objects.aget(name='Инженеры')
     engineers = await sync_to_async(list)(
         Employee.objects.filter(
@@ -123,12 +125,12 @@ async def check_task_activate_step_1(
         'date',
         run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
         timezone='Europe/Moscow',
-        args=(bot, task_number),
+        args=(task_number, ),
         id=f'job_{task_number}_step2',
     )
 
 
-async def check_task_activate_step_2(bot: Bot, task_number: str):
+async def check_task_activate_step_2(task_number: str):
     logger.debug('Проверка задачи %s через 20 минут', task_number)
     notify = f'‼Задачу {task_number} не взяли работу в течении 20 минут'
     task = await Task.objects.select_related('performer')\
@@ -136,12 +138,14 @@ async def check_task_activate_step_2(bot: Bot, task_number: str):
     if task.performer:
         logger.info('На задачу назначен инженер')
         return
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     senior_engineers = await get_senior_engineers()
     await send_notify(bot, senior_engineers, notify)
 
 
-async def check_task_deadline(bot: Bot, task_number: str):
+async def check_task_deadline(task_number: str):
     logger.debug('Проверка задачи %s через два часа', task_number)
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     notify = f'🆘Задача {html.code(task_number)} не закрыта за два часа'
     task = await Task.objects.select_related('performer')\
                              .aget(number=task_number)
@@ -165,7 +169,7 @@ async def check_task_deadline(bot: Bot, task_number: str):
     await send_notify(bot, recipients_notification, notify)
 
 
-async def check_end_of_shift(bot: Bot, shift_id: int):
+async def check_end_of_shift(shift_id: int):
     logger.debug('Проверка завершении смены сотрудником после 9 часов')
     shift = await WorkShift.objects.select_related('employee')\
                                    .aget(id=shift_id)
@@ -185,6 +189,7 @@ async def check_end_of_shift(bot: Bot, shift_id: int):
         shift.id,
     )
     logger.debug('Отправка уведомления менеджерам')
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     managers = await sync_to_async(list)(engineer.managers.all())
     await send_notify(bot, managers, notify)
     notify_to_engineer = '🔴 Прошло 9 часов, а у тебя не закрыта смена.\n\n' \

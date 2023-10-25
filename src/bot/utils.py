@@ -5,13 +5,16 @@ import logging
 from urllib.parse import urljoin
 
 import aiohttp
-from aiogram.types import InlineKeyboardMarkup, Update
 
 from aiohttp import ClientSession
 
-from aiogram import html, Bot
-from aiogram import types
 from asgiref.sync import sync_to_async
+
+from aiogram import Bot
+from aiogram import html
+from aiogram.types import Update
+from aiogram.types import InlineKeyboardMarkup
+from aiogram import types
 
 from bs4 import BeautifulSoup
 

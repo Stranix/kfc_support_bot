@@ -37,10 +37,10 @@ async def on_shift(
     logger.debug('Добавляю задачу на проверку окончания смены через 9 часов')
     scheduler.add_job(
         check_end_of_shift,
-        "date",
+        'date',
         run_date=timezone.now() + timedelta(hours=9),
         timezone='Europe/Moscow',
-        args=(message.bot, shift.id),
+        args=(shift.id, ),
         id=f'job_{shift.id}_end_shift',
     )
     logger.debug('Задача добавлена')

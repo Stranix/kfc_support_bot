@@ -9,6 +9,12 @@ services:
     env_file:
       - ./.env.db
 
+  redis:
+    image: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+
   web:
     build:
       context: ./
@@ -22,6 +28,7 @@ services:
       - ./.env
     depends_on:
       - db
+      - redis
     command: gunicorn --bind 0.0.0.0:8000 config.asgi -w 4 -k uvicorn.workers.UvicornWorker
 
   nginx:
@@ -40,3 +47,4 @@ services:
 volumes:
   static_volume:
   postgres_data:
+  redis_data:

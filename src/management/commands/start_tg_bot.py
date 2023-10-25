@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from apscheduler.jobstores.redis import RedisJobStore
+from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from django.conf import settings
@@ -61,7 +63,15 @@ async def set_commands(bot: Bot):
 
 
 async def run_bot():
-    scheduler = AsyncIOScheduler()
+    job_store = {
+        'default': MemoryJobStore()
+    }
+    if settings.REDIS_HOST == 'redis':
+        job_store['default'] = RedisJobStore(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+        )
+    scheduler = AsyncIOScheduler(jobstores=job_store)
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     dp = Dispatcher(storage=MemoryStorage(), skip_updates=True)
     dp.include_router(router)
