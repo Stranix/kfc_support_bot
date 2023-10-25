@@ -7,3 +7,9 @@ class SyncStatus:
     web_link: str
     status: str = 'ok'
     msg: str = 'In Progress'
+
+
+@dataclass
+class TelegramUser:
+    id: int
+    nickname: str

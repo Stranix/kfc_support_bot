@@ -5,7 +5,7 @@ import logging
 from urllib.parse import urljoin
 
 import aiohttp
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, Update
 
 from aiohttp import ClientSession
 
@@ -16,7 +16,7 @@ from asgiref.sync import sync_to_async
 from bs4 import BeautifulSoup
 
 from src.models import Employee, Group
-from src.bot.scheme import SyncStatus
+from src.bot.scheme import SyncStatus, TelegramUser
 from src.bot.keyboards import get_user_activate_keyboard
 
 logger = logging.getLogger('support_bot')
@@ -84,7 +84,7 @@ async def check_conn_to_main_server(
 
 
 async def user_registration(message: types.Message) -> Employee:
-    logger.info('Регистрация пользователя')
+    logger.info('Регистрация нового пользователя')
     employee = await Employee.objects.acreate(
         name=message.from_user.full_name.replace('@', ''),
         tg_id=message.from_user.id,
@@ -131,3 +131,20 @@ async def get_senior_engineers() -> list[Employee] | None:
         logger.error('В системе не назначены ведущие инженеры')
         return
     return senior_engineers
+
+
+async def get_tg_user_info_from_event(event: Update) -> TelegramUser:
+    logger.debug('Получаем информацию о пользователе из telegram update')
+    tg_id = 0
+    nickname = ''
+    if event.callback_query:
+        logger.debug('event_type: callback_query')
+        tg_id = event.callback_query.from_user.id
+        nickname = event.callback_query.from_user.username
+    if event.message:
+        logger.debug('event_type: message')
+        tg_id = event.message.from_user.id
+        nickname = event.message.from_user.username
+    telegram_user = TelegramUser(tg_id, nickname)
+    logger.debug('TelegramUser: %s', telegram_user)
+    return telegram_user
