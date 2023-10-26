@@ -78,7 +78,7 @@ async def start_synchronized_transits(transit_owner: str) -> list[SyncStatus]:
             trust_env=True,
             connector=conn,
             raise_for_status=True,
-            timeout=ClientTimeout(total=5)
+            timeout=ClientTimeout(total=settings.SYNC_TIMEOUT)
     ) as session:
         tasks = []
         for transit in transits:
