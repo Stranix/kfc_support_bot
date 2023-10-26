@@ -6,19 +6,20 @@
     <table class="table table-hover caption-top">
       <caption>Зарегистрированные пользователи</caption>
       <thead>
-        <tr>
-          <th scope="col">#</th>
-          {% for header in table_employees.headers %}
-            <th scope="col">{{ header }}</th>
-          {% endfor %}
-        </tr>
+      <tr>
+        <th scope="col">#</th>
+        {% for header in table_employees.headers %}
+          <th scope="col">{{ header }}</th>
+        {% endfor %}
+      </tr>
       </thead>
       <tbody>
-        {% for employee in table_employees.users %}
-        <tr>
-          <th scope="row">{{ employee.id }}</th>
+      {% for employee in table_employees.users %}
+        <tr style="cursor: pointer;"
+            onclick="window.open('{% url 'admin:src_employee_change' object_id=employee.id %}?next={{ request.path|urlencode }}', '_self')">
+          <th scope="row">{{ forloop.counter }}</th>
           <td>{{ employee.name }}</td>
-          <td><a href="https://t.me/{{ employee.tg_nickname|cut:'@'}}">{{ employee.tg_nickname }}</a></td>
+          <td><a href="https://t.me/{{ employee.tg_nickname|cut:'@' }}">{{ employee.tg_nickname }}</a></td>
           <td>
             {% for group in employee.groups.all %}
               <span class="badge text-bg-primary">{{ group.name }}</span><br/>
@@ -37,7 +38,7 @@
             <i class="bi-check-circle-fill {{ employee.is_active|yesno:"text-success,text-danger" }}"></i>
           </td>
         </tr>
-        {% endfor %}
+      {% endfor %}
       </tbody>
     </table>
   </div>

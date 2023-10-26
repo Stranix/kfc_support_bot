@@ -35,7 +35,10 @@ def show_employee(request):
             'Активирован?'
         ],
     }
-    employees = Employee.objects.prefetch_related('groups', 'managers').all()
+    employees = Employee.objects.prefetch_related(
+        'groups',
+        'managers',
+    ).order_by('-id')
     table_employees['users'] = employees
     return render(
         request,

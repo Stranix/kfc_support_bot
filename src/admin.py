@@ -1,4 +1,7 @@
+from django.conf import settings
 from django.contrib import admin
+from django.shortcuts import redirect
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from src.models import (
     Employee,
@@ -33,6 +36,15 @@ class EmployeeAdmin(admin.ModelAdmin):
         'tg_nickname',
         'tg_id',
     ]
+
+    def response_change(self, request, obj):
+        if 'next' not in request.GET:
+            return super().response_change(request, obj)
+        if url_has_allowed_host_and_scheme(
+                request.GET['next'],
+                settings.ALLOWED_HOSTS,
+        ):
+            return redirect(request.GET['next'])
 
 
 @admin.register(Task)
