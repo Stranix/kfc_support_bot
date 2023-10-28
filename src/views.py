@@ -1,9 +1,8 @@
-import pytz
 import logging
 
-from datetime import time
+from dataclasses import asdict
+
 from datetime import datetime
-from datetime import timedelta
 
 from django.utils import timezone
 from django.shortcuts import render
@@ -13,6 +12,8 @@ from django.contrib.auth.decorators import login_required
 from src.models import Task
 from src.models import Employee
 from src.models import WorkShift
+from src.utils import get_start_end_datetime_on_date, \
+    get_info_for_engineers_on_shift, get_tasks_on_shift
 
 logger = logging.getLogger('support_web')
 
@@ -55,12 +56,7 @@ def show_support_tasks(request):
     if not shift_date:
         shift_date = timezone.now().date()
     logger.debug('shift_date: %s', shift_date)
-
-    today = shift_date
-    tomorrow = today + timedelta(1)
-    shift_start_at = datetime.combine(today, time(), tzinfo=pytz.UTC)
-    shift_end_at = datetime.combine(tomorrow, time(), tzinfo=pytz.UTC)
-    shift_end_at -= timedelta(seconds=1)
+    shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
 
     tasks = Task.objects.prefetch_related('performer').filter(
         number__startswith='SD-',
@@ -94,12 +90,7 @@ def show_support_tasks(request):
 def show_shifts(request):
     shift_date = timezone.now().date()
     logger.debug('shift_date: %s', shift_date)
-
-    today = shift_date
-    tomorrow = today + timedelta(1)
-    shift_start_at = datetime.combine(today, time(), tzinfo=pytz.UTC)
-    shift_end_at = datetime.combine(tomorrow, time(), tzinfo=pytz.UTC)
-    shift_end_at -= timedelta(seconds=1)
+    shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
 
     works_shifts = WorkShift.objects.prefetch_related(
         'employee',
@@ -124,4 +115,50 @@ def show_shifts(request):
         context={
             'shift_table': shift_table,
         },
+    )
+
+
+@login_required
+def show_shift_report(request):
+    shift_date = request.GET.get('date')
+    if shift_date:
+        shift_date = datetime.strptime(shift_date, '%Y-%m-%d').date()
+    if not shift_date:
+        shift_date = timezone.now().date()
+    logger.debug('shift_date: %s', shift_date)
+    engineers_on_shift = get_info_for_engineers_on_shift(shift_date)
+    tasks_on_shift = get_tasks_on_shift(shift_date)
+    engineers_table = {
+        'headers': [
+            'Имя',
+            'Пришел',
+            'Ушел',
+            'Длительность Перерыва',
+            'Количество закрытых задач',
+            'Средняя оценка',
+        ],
+        'engineers_on_shift': asdict(engineers_on_shift)
+    }
+    tasks_table = {
+        'headers': [
+            'Номер',
+            'Заявитель',
+            'Исполнитель',
+            'Дата регистрации',
+            'Дата закрытия',
+            'Описание',
+            'Статус выполнения',
+            'Оценка',
+        ],
+        'tasks': asdict(tasks_on_shift),
+    }
+    context = {
+        'shift_date': shift_date,
+        'engineers_table': engineers_table,
+        'tasks_table': tasks_table,
+    }
+    return render(
+        request,
+        template_name='pages/shift_report.html',
+        context=context,
     )

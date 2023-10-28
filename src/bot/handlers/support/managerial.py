@@ -1,3 +1,4 @@
+# TODO пока не используется, перекидывать на TelegramAppWeb?
 import json
 import pytz
 import logging

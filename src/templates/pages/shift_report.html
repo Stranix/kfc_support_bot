@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <h3 class="text-center">Дата смены: {{ shift_date|date:'d-m-Y' }}</h3>
+  <form action="{% url 'shift_report' %}">
+    <div class="col-3">
+      <input type="date" class="form-control" id="shift" name="date" aria-describedby="emailHelp">
+      <div id="dateHelp" class="form-text">Выбрать дату смены</div>
+      <button type="submit" class="btn btn-primary">Применить</button>
+    </div>
+  </form><br><br>
+  <h4>Инженеры</h4>
+  Общее количество инженеров на смене:  {{ engineers_table.engineers_on_shift.count }}<br>
+  Количество Старших Инженеров: {{ engineers_table.engineers_on_shift.middle_engineers|length }}<br>
+  Количество Инженеров: {{ engineers_table.engineers_on_shift.engineers|length }}<br>
+  <div class="table-responsive">
+    <table class="table table-hover caption-top">
+      <thead>
+      <tr class="text-center">
+        {% for header in  engineers_table.headers %}
+          <th scope="col">{{ header }}</th>
+        {% endfor %}
+      </tr>
+      </thead>
+      <tbody>
+      {% for engineer in  engineers_table.engineers_on_shift.middle_engineers %}
+        <tr class="text-center">
+          <td>{{ engineer.name }}</td>
+          <td>{{ engineer.shift_start_at }}</td>
+          <td>{{ engineer.shift_end_at }}</td>
+          <td>{{ engineer.total_breaks_time }}</td>
+          <td>{{ engineer.tasks_closed }}</td>
+          <td>{{ engineer.avg_tasks_rating }}</td>
+        </tr>
+      {% endfor %}
+      {% for engineer in  engineers_table.engineers_on_shift.engineers %}
+        <tr class="text-center">
+          <td>{{ engineer.name }}</td>
+          <td>{{ engineer.shift_start_at }}</td>
+          <td>{{ engineer.shift_end_at }}</td>
+          <td>{{ engineer.total_breaks_time }}</td>
+          <td>{{ engineer.tasks_closed }}</td>
+          <td>{{ engineer.avg_tasks_rating }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <hr>
+  <h4>Задачи
+    <button type="button" class="btn btn-sm btn-success" onclick="ExportToExcel()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filetype-xls"
+           viewBox="0 0 16 16">
+        <path fill-rule="evenodd"
+              d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM6.472 15.29a1.176 1.176 0 0 1-.111-.449h.765a.578.578 0 0 0 .254.384c.07.049.154.087.25.114.095.028.202.041.319.041.164 0 .302-.023.413-.07a.559.559 0 0 0 .255-.193.507.507 0 0 0 .085-.29.387.387 0 0 0-.153-.326c-.101-.08-.255-.144-.462-.193l-.619-.143a1.72 1.72 0 0 1-.539-.214 1.001 1.001 0 0 1-.351-.367 1.068 1.068 0 0 1-.123-.524c0-.244.063-.457.19-.639.127-.181.303-.322.527-.422.225-.1.484-.149.777-.149.305 0 .564.05.78.152.216.102.383.239.5.41.12.17.186.359.2.566h-.75a.56.56 0 0 0-.12-.258.625.625 0 0 0-.247-.181.923.923 0 0 0-.369-.068c-.217 0-.388.05-.513.152a.472.472 0 0 0-.184.384c0 .121.048.22.143.3a.97.97 0 0 0 .405.175l.62.143c.217.05.406.12.566.211a1 1 0 0 1 .375.358c.09.148.135.335.135.56 0 .247-.063.466-.188.656a1.216 1.216 0 0 1-.539.439c-.234.105-.52.158-.858.158-.254 0-.476-.03-.665-.09a1.404 1.404 0 0 1-.478-.252 1.13 1.13 0 0 1-.29-.375Zm-2.945-3.358h-.893L1.81 13.37h-.036l-.832-1.438h-.93l1.227 1.983L0 15.931h.861l.853-1.415h.035l.85 1.415h.908L2.253 13.94l1.274-2.007Zm2.727 3.325H4.557v-3.325h-.79v4h2.487v-.675Z"></path>
+      </svg>
+      Excel
+    </button>
+  </h4>
+  Количество обращений (закрытых/общее): {{ tasks_table.tasks.closed }}/{{ tasks_table.tasks.count }} <br>
+  Среднее время обработки обращения:  {{ tasks_table.tasks.avg_processing_time }}<br>
+  Средняя оценка выполненных задач: {{ tasks_table.tasks.avg_rating }}<br>
+  <div class="table-responsive">
+    <table id="table_tasks" class="table table-hover caption-top">
+      <thead>
+      <tr>
+        <th scope="col">#</th>
+        {% for header in tasks_table.headers %}
+          <th scope="col">{{ header }}</th>
+        {% endfor %}
+      </tr>
+      </thead>
+      <tbody>
+      {% for task in tasks_table.tasks.tasks %}
+        <tr>
+          <th scope="row">{{ task.id }}</th>
+          <td>{{ task.number }}</td>
+          <td>{{ task.applicant }}</td>
+          <td>{{ task.performer|default_if_none:'' }}</td>
+          <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ task.description|linebreaks }}</td>
+          <td>
+            {% if task.status == 'NEW' %}
+              <span class="badge text-bg-danger">Новая</span>
+            {% endif %}
+            {% if task.status == 'IN_WORK' %}
+              <span class="badge text-bg-primary">В работе</span>
+            {% endif %}
+            {% if task.status == 'COMPLETED' %}
+              <span class="badge text-bg-success">Завершена</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not task.rating %} Нет оценки {% else %} {{ task.rating }} {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script type="text/javascript">
+      function ExportToExcel() {
+          const table = document.getElementById('table_tasks')
+          const workbook = XLSX.utils.table_to_book(table, {sheet: 'Задачи', raw: true})
+          XLSX.writeFile(workbook, 'Tasks.xls')
+      }
+  </script>
+{% endblock %}
