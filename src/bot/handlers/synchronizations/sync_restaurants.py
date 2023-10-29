@@ -118,7 +118,10 @@ async def process_sync_rest_group(
     logger.info('Синхронизация ресторанов по выбранной группе')
     user_choice = query.data.split('_')[1]
     logger.debug('user_choice: %s', user_choice)
-    await query.message.delete()
+    await query.message.edit_text(
+        f'Запустил синхронизацию по ресторанам {user_choice.upper()}',
+        reply_markup=None,
+    )
     restaurants = await sync_to_async(list)(
         Restaurant.objects.filter(
             server_ip__isnull=False,
@@ -135,7 +138,7 @@ async def process_sync_rest_group(
         sync_statuses,
         f'rest_group_{user_choice}',
     )
-    await query.message.answer(
+    await query.message.edit_text(
         message_for_send,
         reply_markup=await keyboards.get_report_keyboard(sync_report.id),
     )
@@ -148,7 +151,10 @@ async def process_sync_rest_all(
         employee: Employee,
         state: FSMContext,
 ):
-    await query.message.delete()
+    await query.message.edit_text(
+        'Запустил синхронизацию по всем ресторанам',
+        reply_markup=None,
+    )
     logger.info('Выбраны все рестораны для синхронизации')
     restaurants = await sync_to_async(list)(
         Restaurant.objects.filter(
@@ -164,7 +170,7 @@ async def process_sync_rest_all(
         sync_statuses,
         'rest_all',
     )
-    await query.message.answer(
+    await query.message.edit_text(
         message_for_send,
         reply_markup=await keyboards.get_report_keyboard(sync_report.id),
     )

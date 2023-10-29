@@ -106,6 +106,7 @@ class Group(models.Model):
         'Right',
         related_name='groups',
         verbose_name='Права',
+        blank=True,
     )
 
     class Meta:
