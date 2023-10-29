@@ -121,7 +121,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = env.str('STATIC_URL', '/static/')
-
 STATIC_ROOT = env.str('STATIC_ROOT', os.path.join(BASE_DIR, 'static'))
+
+LOGIN_REDIRECT_URL = '/work_shifts'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
