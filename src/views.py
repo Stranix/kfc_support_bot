@@ -5,15 +5,16 @@ from dataclasses import asdict
 from datetime import datetime
 
 from django.utils import timezone
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render
+from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
-from src.models import Task, SyncReport
+from src import utils
+from src.models import Task
 from src.models import Employee
 from src.models import WorkShift
-from src.utils import get_start_end_datetime_on_date, \
-    get_info_for_engineers_on_shift, get_tasks_on_shift, get_sync_statuses
+from src.models import SyncReport
 
 logger = logging.getLogger('support_web')
 
@@ -24,7 +25,7 @@ def index(request):
     return render(request, template_name='pages/index.html')
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def show_employee(request):
     table_employees = {
         'headers': [
@@ -48,7 +49,7 @@ def show_employee(request):
     )
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def show_support_tasks(request):
     shift_date = request.GET.get('date')
     if shift_date:
@@ -56,8 +57,9 @@ def show_support_tasks(request):
     if not shift_date:
         shift_date = timezone.now().date()
     logger.debug('shift_date: %s', shift_date)
-    shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
-
+    shift_start_at, shift_end_at = utils.get_start_end_datetime_on_date(
+        shift_date,
+    )
     tasks = Task.objects.prefetch_related('performer').filter(
         number__startswith='SD-',
         start_at__lte=shift_end_at,
@@ -86,12 +88,13 @@ def show_support_tasks(request):
     )
 
 
-@login_required(login_url='/accounts/login/')
+@login_required
 def show_shifts(request):
     shift_date = timezone.now().date()
     logger.debug('shift_date: %s', shift_date)
-    shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
-
+    shift_start_at, shift_end_at = utils.get_start_end_datetime_on_date(
+        shift_date,
+    )
     works_shifts = WorkShift.objects.prefetch_related(
         'employee',
         'break_shift',
@@ -126,8 +129,8 @@ def show_shift_report(request):
     if not shift_date:
         shift_date = timezone.now().date()
     logger.debug('shift_date: %s', shift_date)
-    engineers_on_shift = get_info_for_engineers_on_shift(shift_date)
-    tasks_on_shift = get_tasks_on_shift(shift_date)
+    engineers_on_shift = utils.get_info_for_engineers_on_shift(shift_date)
+    tasks_on_shift = utils.get_tasks_on_shift(shift_date)
     engineers_table = {
         'headers': [
             'Имя',
@@ -177,7 +180,7 @@ def show_sync_report_prev(request):
             'employee': sync.employee,
             'what_sync': sync.user_choice,
         }
-        sync_completed, sync_errors = get_sync_statuses(sync.report)
+        sync_completed, sync_errors = utils.get_sync_statuses(sync.report)
         sync_report['errors'] = len(sync_errors)
         sync_report['completed'] = len(sync_completed)
         sync_reports.append(sync_report)
@@ -206,7 +209,7 @@ def show_sync_report(request, pk):
             'completed': [],
         }
     }
-    sync_completed, sync_errors = get_sync_statuses(sync.report)
+    sync_completed, sync_errors = utils.get_sync_statuses(sync.report)
     sync_report['sync_status']['completed'] = sync_completed
     sync_report['sync_status']['errors'] = sync_errors
     return render(
