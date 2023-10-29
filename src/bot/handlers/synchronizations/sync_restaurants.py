@@ -133,7 +133,7 @@ async def process_sync_rest_group(
         employee,
         'Report',
         sync_statuses,
-        'rest_group',
+        f'rest_group_{user_choice}',
     )
     await query.message.answer(
         message_for_send,

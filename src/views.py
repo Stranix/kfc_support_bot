@@ -5,15 +5,15 @@ from dataclasses import asdict
 from datetime import datetime
 
 from django.utils import timezone
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
-from src.models import Task
+from src.models import Task, SyncReport
 from src.models import Employee
 from src.models import WorkShift
 from src.utils import get_start_end_datetime_on_date, \
-    get_info_for_engineers_on_shift, get_tasks_on_shift
+    get_info_for_engineers_on_shift, get_tasks_on_shift, get_sync_statuses
 
 logger = logging.getLogger('support_web')
 
@@ -161,4 +161,56 @@ def show_shift_report(request):
         request,
         template_name='pages/shift_report.html',
         context=context,
+    )
+
+
+def show_sync_report_prev(request):
+    last_4_sync_reports = SyncReport.objects.prefetch_related(
+        'employee',
+        'server_type'
+    ).all().order_by('-id')[:4]
+    sync_reports = []
+    for sync in last_4_sync_reports:
+        sync_report = {
+            'id': sync.id,
+            'sync_date': sync.start_at,
+            'employee': sync.employee,
+            'what_sync': sync.user_choice,
+        }
+        sync_completed, sync_errors = get_sync_statuses(sync.report)
+        sync_report['errors'] = len(sync_errors)
+        sync_report['completed'] = len(sync_completed)
+        sync_reports.append(sync_report)
+    return render(
+        request,
+        template_name='pages/sync_report_prev.html',
+        context={'sync_reports': sync_reports},
+    )
+
+
+def show_sync_report(request, pk):
+    sync = get_object_or_404(SyncReport, pk=pk)
+    sync_report = {
+        'table': {
+            'headers': [
+                'Имя сервера',
+                'Web_server',
+                'Ошибка',
+            ],
+        },
+        'sync_date': sync.start_at,
+        'employee': sync.employee,
+        'what_sync': sync.user_choice,
+        'sync_status': {
+            'errors': [],
+            'completed': [],
+        }
+    }
+    sync_completed, sync_errors = get_sync_statuses(sync.report)
+    sync_report['sync_status']['completed'] = sync_completed
+    sync_report['sync_status']['errors'] = sync_errors
+    return render(
+        request,
+        template_name='pages/sync_report.html',
+        context={'sync_report': sync_report},
     )

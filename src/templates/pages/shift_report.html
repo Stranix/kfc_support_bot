@@ -27,8 +27,8 @@
       {% for engineer in  engineers_table.engineers_on_shift.middle_engineers %}
         <tr class="text-center">
           <td>{{ engineer.name }}</td>
-          <td>{{ engineer.shift_start_at }}</td>
-          <td>{{ engineer.shift_end_at }}</td>
+          <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
           <td>{{ engineer.total_breaks_time }}</td>
           <td>{{ engineer.tasks_closed }}</td>
           <td>{{ engineer.avg_tasks_rating }}</td>
@@ -37,8 +37,8 @@
       {% for engineer in  engineers_table.engineers_on_shift.engineers %}
         <tr class="text-center">
           <td>{{ engineer.name }}</td>
-          <td>{{ engineer.shift_start_at }}</td>
-          <td>{{ engineer.shift_end_at }}</td>
+          <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
           <td>{{ engineer.total_breaks_time }}</td>
           <td>{{ engineer.tasks_closed }}</td>
           <td>{{ engineer.avg_tasks_rating }}</td>

@@ -146,3 +146,15 @@ def get_tasks_on_shift(shift_date: datetime) -> TasksOnShift:
         avg_rating=avg_tasks_rating,
     )
     return tasks_on_shift
+
+
+def get_sync_statuses(sync_report: dict) -> tuple[list, list]:
+    errors = []
+    completed = []
+    for report in sync_report:
+        if report['status'] == 'error':
+            errors.append(report)
+            continue
+        if report['status'] == 'ok':
+            completed.append(report)
+    return completed, errors

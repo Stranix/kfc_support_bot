@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <h2>Последние 4 синхронизации</h2><br>
+  <div class="row row-cols-1 row-cols-md-2 g-4">
+    {% for sync_report in sync_reports %}
+      <div class="col">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">{{ sync_report.sync_date|date:'d-m-Y H:i' }}</h5>
+            <p class="card-text">
+              Инициатор: {{ sync_report.employee }}<br>
+              Что синхронизировал:
+                {% if  sync_report.what_sync == 'rest_all' %}
+                  Все рестораны
+                {% elif  sync_report.what_sync == 'rest_group_yum'%}
+                  Рестораны YUM
+                {% elif  sync_report.what_sync == 'rest_group_irb'%}
+                  Рестораны IRB
+                {% elif  sync_report.what_sync == 'rest_list'%}
+                  Рестораны по списку
+                {% elif  sync_report.what_sync == 'all'%}
+                  Все транзиты
+                {% elif  sync_report.what_sync == 'yum'%}
+                  Транзиты ЯМ
+                {% elif  sync_report.what_sync == 'irb'%}
+                  Транзиты ИРБ
+                {% elif  sync_report.what_sync == 'fz'%}
+                  Транзиты FZ
+                {% endif %}
+              <br>
+              <span class="badge text-bg-success">Успешно: {{ sync_report.completed }}</span>
+              <span class="badge text-bg-danger">Ошибок: {{ sync_report.errors }}</span><br><br>
+              <a href="{% url 'sync_report' sync_report.id %}">Показать проблемы</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}
+
+

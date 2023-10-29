@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+  <h2 class="text-center"> Отчет синхронизации {{ sync_report.sync_date|date:'d-m-Y H:i' }}</h2>
+  Инициатор: {{ sync_report.employee }}<br>
+  Что синхронизировал:
+  {% if  sync_report.what_sync == 'rest_all' %}
+    Все рестораны
+  {% elif  sync_report.what_sync == 'rest_group_yum' %}
+    Рестораны YUM
+  {% elif  sync_report.what_sync == 'rest_group_irb' %}
+    Рестораны IRB
+  {% elif  sync_report.what_sync == 'rest_list' %}
+    Рестораны по списку
+  {% elif  sync_report.what_sync == 'all' %}
+    Все транзиты
+  {% elif  sync_report.what_sync == 'yum' %}
+    Транзиты ЯМ
+  {% elif  sync_report.what_sync == 'irb' %}
+    Транзиты ИРБ
+  {% elif  sync_report.what_sync == 'fz' %}
+    Транзиты FZ
+  {% endif %}
+  <br>
+  <span class="badge text-bg-success">Успешно: {{ sync_report.sync_status.completed|length }}</span>
+  <span class="badge text-bg-danger">Ошибок: {{ sync_report.sync_status.errors|length }}</span><br><br>
+
+  <div class="table-responsive">
+    <table class="table table-hover caption-top">
+      <thead>
+      <tr>
+        <th scope="col">#</th>
+        {% for header in sync_report.table.headers %}
+          <th scope="col">{{ header }}</th>
+        {% endfor %}
+      </tr>
+      </thead>
+      <tbody>
+      {% for errors in sync_report.sync_status.errors %}
+        <tr>
+          <th scope="row">{{ forloop.counter }}</th>
+          <td>{{ errors.server_name }}</td>
+          <td><a href="{{ errors.web_link }}" target="_blank">{{ errors.web_link }}</a></td>
+          <td>{{ errors.msg }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
