@@ -3,16 +3,51 @@
 
 {% block content %}
   <form action="{% url 'support_tasks' %}">
-    <div class="col-3">
-      <input type="date" class="form-control" id="shift" name="date" aria-describedby="emailHelp">
-      <div id="dateHelp" class="form-text">Выбрать дату смены</div>
-      <button type="submit" class="btn btn-primary">Применить</button>
+    <div class="row mb-2">
+      <div class="col-2">
+        <div id="dateHelp" class="form-text">Дата С</div>
+        <input
+                type="date"
+                class="form-control"
+                id="shift_start" name="start_date"
+                aria-describedby="dateHelp"
+                value="{{ start_shift_date|date:'Y-m-d' }}"
+        >
+      </div>
+      <div class="col-2">
+        <div id="dateHelp" class="form-text">Дата ПО</div>
+        <input
+                type="date"
+                class="form-control"
+                id="shift_end"
+                name="end_date"
+                aria-describedby="dateHelp"
+                value="{{ end_shift_date|date:'Y-m-d' }}"
+        >
+      </div>
     </div>
+    <button type="submit" class="btn btn-primary">Применить</button>
   </form>
+  <h2 class="text-center">
+    {% if  start_shift_date == end_shift_date %}
+      Задачи за дату {{ start_shift_date|date:'d-m-Y' }}
+    {% else %}
+      Задачи с {{ start_shift_date|date:'d-m-Y' }}
+      по
+      {% if not  end_shift_date%}
+        {% now 'd-m-Y'%}
+      {% else %}
+        {{ end_shift_date|date:'d-m-Y' }}
+      {% endif %}
+    {% endif %}
+  </h2>
   <div class="table-responsive">
     <table class="table table-hover caption-top">
       <caption>
-        Задачи за дату {{ shift_date|date:'d-m-Y' }}
+        Количество обращений (закрытых/общее): {{ tasks_table.tasks.closed }}/{{ tasks_table.tasks.count }} <br>
+        Среднее время обработки обращения:  {{ tasks_table.tasks.avg_processing_time }}<br>
+        Средняя оценка выполненных задач: {{ tasks_table.tasks.avg_rating|floatformat }}<br>
+        Выгрузить в
         <button type="button" class="btn btn-sm btn-success" onclick="ExportToExcel()">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filetype-xls"
                viewBox="0 0 16 16">
@@ -31,15 +66,15 @@
       </tr>
       </thead>
       <tbody>
-      {% for task in tasks_table.tasks %}
+      {% for task in tasks_table.tasks.tasks %}
         <tr>
-          <th scope="row">{{ task.id }}</th>
+          <th scope="row">{{ forloop.counter }}</th>
           <td>{{ task.number }}</td>
           <td>{{ task.applicant }}</td>
           <td>{{ task.performer|default_if_none:'' }}</td>
           <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
-          <td>{{ task.description|linebreaks}}</td>
+          <td>{{ task.description|linebreaks }}</td>
           <td>
             {% if task.status == 'NEW' %}
               <span class="badge text-bg-danger">Новая</span>

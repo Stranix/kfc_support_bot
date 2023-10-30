@@ -7,9 +7,12 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 
+from src.bot.scheme import TasksOnShift
+from src.bot.scheme import EngineersOnShift
+from src.bot.scheme import EngineerShiftInfo
 
-from src.bot.scheme import EngineersOnShift, EngineerShiftInfo, TasksOnShift
-from src.models import WorkShift, Task
+from src.models import Task
+from src.models import WorkShift
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +107,7 @@ def get_engineers_shift_info(
                 name=shift_engineer.employee.name,
                 shift_start_at=shift_engineer.shift_start_at,
                 shift_end_at=shift_engineer.shift_end_at,
-                total_breaks_time=total_breaks_time,
+                total_breaks_time=format_timedelta(total_breaks_time),
                 tasks_closed=tasks.count(),
                 avg_tasks_rating=avg_rating,
             )
@@ -120,6 +123,10 @@ def get_tasks_on_shift(shift_date: datetime) -> TasksOnShift:
         start_at__lte=shift_end_at,
         start_at__gte=shift_start_at,
     )
+    return get_tasks_stat(tasks)
+
+
+def get_tasks_stat(tasks: list[Task]) -> TasksOnShift:
     tasks_processing_time = []
     for task in tasks:
         if not task.status == 'COMPLETED':
@@ -139,9 +146,9 @@ def get_tasks_on_shift(shift_date: datetime) -> TasksOnShift:
         avg_tasks_rating = sum(tasks_rating) / len(tasks_rating)
 
     tasks_on_shift = TasksOnShift(
-        count=tasks.count(),
+        count=len(tasks),
         closed=len(tasks_processing_time),
-        avg_processing_time=avg_tasks_processing_time,
+        avg_processing_time=format_timedelta(avg_tasks_processing_time),
         tasks=tasks,
         avg_rating=avg_tasks_rating,
     )
@@ -158,3 +165,19 @@ def get_sync_statuses(sync_report: dict) -> tuple[list, list]:
         if report['status'] == 'ok':
             completed.append(report)
     return completed, errors
+
+
+def format_timedelta(delta: timedelta):
+    total_seconds = int(delta.total_seconds())
+    hours = total_seconds // 3600
+    minutes = round((total_seconds % 3600) / 60)
+    if minutes == 60:
+        hours += 1
+        minutes = 0
+    if hours and minutes:
+        return f'{hours} ч. : {minutes} мин.'
+    elif hours:
+        # Display only hours
+        return f'{hours} ч.'
+    # Display only minutes
+    return f'{minutes} мин.'

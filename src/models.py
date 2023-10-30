@@ -1,3 +1,6 @@
+from datetime import date, datetime, time
+
+import pytz
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MaxValueValidator
@@ -259,6 +262,34 @@ class Server(models.Model):
         return self.name
 
 
+class TaskQuerySet(models.QuerySet):
+
+    def sd_in_period_date(
+            self,
+            start_shift_date: date,
+            end_shift_date: date | None = None
+    ):
+        start_at = datetime.combine(start_shift_date, time(), tzinfo=pytz.UTC)
+        if not end_shift_date:
+            end_shift_date = timezone.now().replace(
+                hour=23,
+                minute=59,
+                second=59,
+                tzinfo=pytz.UTC,
+            )
+
+        end_at = datetime.combine(
+            end_shift_date,
+            time(hour=23, minute=59, second=59),
+            tzinfo=pytz.UTC,
+        )
+        return self.select_related('performer').filter(
+            number__startswith='SD-',
+            start_at__gte=start_at,
+            start_at__lte=end_at,
+        ).order_by('-id')
+
+
 class Task(models.Model):
     STATUS_CHOICES = (
         ('NEW', 'Новая'),
@@ -330,6 +361,8 @@ class Task(models.Model):
         null=True,
         blank=True,
     )
+
+    objects = TaskQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Задача'

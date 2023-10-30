@@ -29,9 +29,15 @@
           <td>{{ engineer.name }}</td>
           <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
-          <td>{{ engineer.total_breaks_time }}</td>
+          <td>
+            {% if  engineer.total_breaks_time == '0 мин.' %}
+              -
+            {% else %}
+              {{ engineer.total_breaks_time }}
+            {% endif %}
+          </td>
           <td>{{ engineer.tasks_closed }}</td>
-          <td>{{ engineer.avg_tasks_rating }}</td>
+          <td>{{ engineer.avg_tasks_rating|floatformat }}</td>
         </tr>
       {% endfor %}
       {% for engineer in  engineers_table.engineers_on_shift.engineers %}
@@ -39,9 +45,15 @@
           <td>{{ engineer.name }}</td>
           <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
-          <td>{{ engineer.total_breaks_time }}</td>
+          <td>
+            {% if  engineer.total_breaks_time == '0 мин.' %}
+              -
+            {% else %}
+              {{ engineer.total_breaks_time }}
+            {% endif %}
+          </td>
           <td>{{ engineer.tasks_closed }}</td>
-          <td>{{ engineer.avg_tasks_rating }}</td>
+          <td>{{ engineer.avg_tasks_rating|floatformat }}</td>
         </tr>
       {% endfor %}
       </tbody>
@@ -60,7 +72,7 @@
   </h4>
   Количество обращений (закрытых/общее): {{ tasks_table.tasks.closed }}/{{ tasks_table.tasks.count }} <br>
   Среднее время обработки обращения:  {{ tasks_table.tasks.avg_processing_time }}<br>
-  Средняя оценка выполненных задач: {{ tasks_table.tasks.avg_rating }}<br>
+  Средняя оценка выполненных задач: {{ tasks_table.tasks.avg_rating|floatformat }}<br>
   <div class="table-responsive">
     <table id="table_tasks" class="table table-hover caption-top">
       <thead>

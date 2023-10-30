@@ -1,5 +1,4 @@
 from datetime import datetime
-from datetime import timedelta
 
 from typing import Union
 
@@ -27,7 +26,7 @@ class EngineerShiftInfo:
     name: str
     shift_start_at: datetime
     shift_end_at: datetime
-    total_breaks_time: timedelta
+    total_breaks_time: str
     tasks_closed: int
     avg_tasks_rating: float = 0.0
 
@@ -43,6 +42,6 @@ class EngineersOnShift:
 class TasksOnShift:
     count: int
     closed: int
-    avg_processing_time: timedelta
+    avg_processing_time: str
     tasks: Union[list[Task], list]
     avg_rating: float = 0.0

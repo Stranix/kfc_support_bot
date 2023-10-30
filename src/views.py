@@ -51,20 +51,21 @@ def show_employee(request):
 
 @login_required
 def show_support_tasks(request):
-    shift_date = request.GET.get('date')
-    if shift_date:
-        shift_date = datetime.strptime(shift_date, '%Y-%m-%d').date()
-    if not shift_date:
-        shift_date = timezone.now().date()
-    logger.debug('shift_date: %s', shift_date)
-    shift_start_at, shift_end_at = utils.get_start_end_datetime_on_date(
-        shift_date,
-    )
-    tasks = Task.objects.prefetch_related('performer').filter(
-        number__startswith='SD-',
-        start_at__lte=shift_end_at,
-        start_at__gte=shift_start_at,
-    )
+    start_shift_date = timezone.now().date()
+    start_date = request.GET.get('start_date')
+    if start_date:
+        start_shift_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+    end_shift_date = timezone.now().date()
+    end_date = request.GET.get('end_date')
+    if end_date:
+        end_shift_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    logger.debug('start_shift_date: %s', start_shift_date)
+    logger.debug('end_shift_date: %s', end_shift_date)
+
+    tasks = Task.objects.sd_in_period_date(start_shift_date, end_shift_date)
+    tasks_stat = utils.get_tasks_stat(tasks)
     tasks_table = {
         'headers': [
             'Номер',
@@ -76,14 +77,15 @@ def show_support_tasks(request):
             'Статус выполнения',
             'Оценка',
         ],
-        'tasks': tasks,
+        'tasks': asdict(tasks_stat),
     }
     return render(
         request,
         template_name='pages/sd_tasks.html',
         context={
             'tasks_table': tasks_table,
-            'shift_date': shift_date,
+            'start_shift_date': start_shift_date,
+            'end_shift_date': end_shift_date,
         },
     )
 
