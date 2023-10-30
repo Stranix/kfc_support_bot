@@ -69,6 +69,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddlewareExcluding404',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -126,3 +127,9 @@ STATIC_ROOT = env.str('STATIC_ROOT', os.path.join(BASE_DIR, 'static'))
 LOGIN_REDIRECT_URL = '/work_shifts'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
+ROLLBAR = {
+    'access_token': ROLLBAR_ACCESS_TOKEN,
+    'environment': ROLLBAR_ENV,
+    'root': BASE_DIR,
+}
