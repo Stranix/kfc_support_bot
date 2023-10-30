@@ -89,7 +89,8 @@ def get_engineers_shift_info(
         for break_shift in shift_engineer.break_shift.all():
             break_shift_start = break_shift.start_break_at
             break_shift_end = break_shift.end_break_at
-            total_breaks_time += break_shift_end - break_shift_start
+            if break_shift_end and break_shift_start:
+                total_breaks_time += break_shift_end - break_shift_start
         logger.debug('Время на перерыве: %s', total_breaks_time)
         logger.debug('Ищу задачи за смену у инженера')
         tasks = shift_engineer.employee.tasks.filter(
