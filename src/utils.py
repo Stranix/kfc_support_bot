@@ -176,7 +176,7 @@ def format_timedelta(delta: timedelta):
         hours += 1
         minutes = 0
     if hours and minutes:
-        return f'{hours} ч. : {minutes} мин.'
+        return f'{hours} ч. {minutes} мин.'
     elif hours:
         # Display only hours
         return f'{hours} ч.'

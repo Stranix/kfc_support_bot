@@ -1,4 +1,3 @@
-import json
 import re
 import email
 import imaplib
@@ -10,7 +9,7 @@ from datetime import datetime
 import aiogram.utils.markdown as md
 
 from aiogram import Bot
-from aiogram import types
+from aiogram.enums import ParseMode
 from aiogram.types import InlineKeyboardMarkup
 
 from asgiref.sync import sync_to_async
@@ -114,7 +113,7 @@ async def send_message_to_tg_group(
         keyboard: InlineKeyboardMarkup,
 ):
     logger.info('Отправка сообщению ботом из менеджмент команды')
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=types.ParseMode.HTML)
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     await bot.send_message(group_id, message, reply_markup=keyboard)
     await bot.close()
     logger.info('Сообщение отправлено')
