@@ -57,13 +57,6 @@ async def fetch_mail():
             if not created:
                 logger.info('Задача уже существует в базе')
 
-            if created and await is_critical_task(task_db):
-                message, keyboard = await prepare_message_for_tg(task_db)
-                await send_message_to_tg_group(
-                    -1001328841443,
-                    message,
-                    keyboard,
-                )
         except (IndexError, ValueError):
             logger.warning('Ошибка при обработке сообщения')
             logger.debug('Ошибочное сообщение: %s', mail)
