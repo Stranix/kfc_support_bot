@@ -7,6 +7,7 @@ from aiogram import F
 from aiogram import Router
 from aiogram import html
 from aiogram import types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
@@ -26,6 +27,7 @@ from src.bot.keyboards import get_support_task_keyboard
 from src.bot.keyboards import get_approved_task_keyboard
 from src.bot.handlers.schedulers import check_task_deadline
 from src.bot.handlers.schedulers import check_task_activate_step_1
+from src.bot.handlers.schedulers import check_task_activate_step_2
 
 logger = logging.getLogger('support_bot')
 router = Router(name='field_engineers_handlers')
@@ -63,11 +65,12 @@ async def new_task(
 @router.message(NewTaskState.get_gsd_number)
 async def process_get_gsd_number(message: types.Message, state: FSMContext):
     logger.info('Обработка номера задачи от инженера')
-    task_number = re.match(r'(\d{7})+', message.text)
+    task_number = re.match(r'(\d{6,7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')
         await message.answer(
             'Не правильный формат номера задачи\n'
+            'Номер задачи должен быть от 6 до 7 цифр\n'
             f'Пример: {html.code("1395412")} \n\n'
             + html.italic('Если передумал - используй команду отмены /cancel')
         )
@@ -126,8 +129,16 @@ async def process_task_approved(
             'date',
             run_date=timezone.now() + timedelta(minutes=task_escalation),
             timezone='Europe/Moscow',
-            args=(task.number, scheduler),
+            args=(task.number, ),
             id=f'job_{task.number}_step1',
+        )
+        scheduler.add_job(
+            check_task_activate_step_2,
+            'date',
+            run_date=timezone.now() + timedelta(minutes=task_escalation * 2),
+            timezone='Europe/Moscow',
+            args=(task.number, ),
+            id=f'job_{task.number}_step2',
         )
         scheduler.add_job(
             check_task_deadline,
@@ -203,9 +214,13 @@ async def sending_new_task_notify(
             )
         return
     for recipient in recipients:
-        await query.bot.send_message(
-            recipient,
-            message_for_send,
-            reply_markup=await get_support_task_keyboard(task.id)
-        )
+        try:
+            await query.bot.send_message(
+                recipient,
+                message_for_send,
+                reply_markup=await get_support_task_keyboard(task.id)
+            )
+        except TelegramBadRequest as error:
+            logger.debug('Не смог отправить уведомление %s', recipient)
+            logger.exception(error)
     logger.info('Отправка завершена')

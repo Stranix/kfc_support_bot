@@ -46,7 +46,7 @@ async def send_task(query: types.CallbackQuery):
         logger.warning('Не удалось получить задачу')
 
 
-@router.message(F.text.regexp(r'SD-(\d{7})+').as_('regexp'))
+@router.message(F.text.regexp(r'SD-(\d{6,7})+').as_('regexp'))
 async def local_service(
         message: types.Message,
         employee: Employee,

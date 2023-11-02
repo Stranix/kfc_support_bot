@@ -5,7 +5,6 @@ from datetime import timedelta
 from aiogram.enums import ParseMode
 from asgiref.sync import sync_to_async
 
-from django.utils import timezone
 from django.conf import settings
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -73,10 +72,7 @@ async def process_close_scheduler_job(
     await state.clear()
 
 
-async def check_task_activate_step_1(
-        task_number: str,
-        scheduler: AsyncIOScheduler,
-):
+async def check_task_activate_step_1(task_number: str):
     logger.debug('Проверка задачи %s первые 10 минут', task_number)
     notify = f'❗Внимание задачу {task_number} не взяли в работу спустя 10 мин'
     try:
@@ -120,14 +116,6 @@ async def check_task_activate_step_1(
         return
     await send_notify(bot, middle_engineers, notify)
     await send_notify(bot, engineers, notify)
-    scheduler.add_job(
-        check_task_activate_step_2,
-        'date',
-        run_date=timezone.now() + timedelta(minutes=settings.TASK_ESCALATION),
-        timezone='Europe/Moscow',
-        args=(task_number, ),
-        id=f'job_{task_number}_step2',
-    )
 
 
 async def check_task_activate_step_2(task_number: str):
@@ -191,8 +179,10 @@ async def check_end_of_shift(shift_id: int):
     logger.debug('Отправка уведомления менеджерам')
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     managers = await sync_to_async(list)(engineer.managers.all())
+    logger.debug('managers: %s', managers)
     await send_notify(bot, managers, notify)
+    logger.debug('Отправка уведомления инженеру')
     notify_to_engineer = '🔴 Прошло 9 часов, а у тебя не закрыта смена.\n\n' \
                          'Для закрытия смены используй команду /end_shift'
-    await send_notify(bot, list(engineer), notify_to_engineer)
+    await send_notify(bot, [engineer], notify_to_engineer)
     logger.debug('Проверка завершена')

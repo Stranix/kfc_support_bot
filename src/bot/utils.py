@@ -12,14 +12,18 @@ from asgiref.sync import sync_to_async
 
 from aiogram import Bot
 from aiogram import html
+from aiogram import types
 from aiogram.types import Update
 from aiogram.types import InlineKeyboardMarkup
-from aiogram import types
+from aiogram.exceptions import TelegramBadRequest
 
 from bs4 import BeautifulSoup
 
-from src.models import Employee, Group
-from src.bot.scheme import SyncStatus, TelegramUser
+from src.models import Task
+from src.models import Group
+from src.models import Employee
+from src.bot.scheme import SyncStatus
+from src.bot.scheme import TelegramUser
 from src.bot.keyboards import get_user_activate_keyboard
 
 logger = logging.getLogger('support_bot')
@@ -117,8 +121,15 @@ async def send_notify(
         logger.warning('Пустой список для отправки уведомлений')
         return
     for employee in employees:
-        logger.debug('Уведомление для: %s', employee.name)
-        await bot.send_message(employee.tg_id, message, reply_markup=keyboard)
+        try:
+            logger.debug('Уведомление для: %s', employee.name)
+            await bot.send_message(
+                employee.tg_id,
+                message,
+                reply_markup=keyboard,
+            )
+        except TelegramBadRequest:
+            logger.warning('Не смог отправить уведомление %s', employee.name)
     logger.info('Отправка уведомлений завершена')
 
 
@@ -151,3 +162,31 @@ async def get_tg_user_info_from_event(event: Update) -> TelegramUser:
     telegram_user = TelegramUser(tg_id, nickname)
     logger.debug('TelegramUser: %s', telegram_user)
     return telegram_user
+
+
+async def send_new_tasks_notify_for_middle(
+        engineer: Employee,
+        message: types.Message
+):
+    logger.debug('Отправка уведомлений о новых задачах старшим инженерам')
+    try:
+        await engineer.groups.aget(name='Старшие инженеры')
+    except Group.DoesNotExist:
+        logger.debug('Инженер не входит в группу старшие инженеры')
+        return
+
+    logger.debug('Получаем новые задачи задачи')
+    new_tasks = await sync_to_async(list)(
+        Task.objects.filter(
+            number__startswith='SD-',
+            status='NEW',
+        )
+    )
+    if not new_tasks:
+        logger.debug('Нет новых задач')
+        return
+    tasks_number = [task.number for task in new_tasks]
+    await message.answer(
+        f'‼Внимание есть новые задачи: {html.code(", ".join(tasks_number))}\n'
+        '\nВозьмите в работу или назначьте инженеру'
+    )

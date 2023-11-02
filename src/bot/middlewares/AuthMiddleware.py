@@ -12,7 +12,7 @@ from src.models import Employee
 from src.bot.utils import user_registration
 from src.bot.utils import get_tg_user_info_from_event
 
-logger = logging.getLogger('support_bot')
+logger = logging.getLogger('middleware_support_bot')
 
 
 class AuthUpdateMiddleware(BaseMiddleware):

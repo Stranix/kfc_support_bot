@@ -2,6 +2,7 @@ import logging
 
 from datetime import timedelta
 
+from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from aiogram import Router
@@ -14,6 +15,7 @@ from django.utils import timezone
 from src.models import Employee
 from src.models import WorkShift
 from src.bot.handlers.schedulers import check_end_of_shift
+from src.bot.utils import send_new_tasks_notify_for_middle
 
 logger = logging.getLogger('support_bot')
 router = Router(name='on_shift_handlers')
@@ -35,17 +37,21 @@ async def on_shift(
         shift_start_at=timezone.now(),
     )
     logger.debug('Добавляю задачу на проверку окончания смены через 9 часов')
-    scheduler.add_job(
-        check_end_of_shift,
-        'date',
-        run_date=timezone.now() + timedelta(hours=9),
-        timezone='Europe/Moscow',
-        args=(shift.id, ),
-        id=f'job_{shift.id}_end_shift',
-    )
-    logger.debug('Задача добавлена')
+    try:
+        scheduler.add_job(
+            check_end_of_shift,
+            'date',
+            run_date=timezone.now() + timedelta(hours=9),
+            timezone='Europe/Moscow',
+            args=(shift.id, ),
+            id=f'job_{shift.id}_end_shift',
+        )
+        logger.debug('Задача добавлена')
+    except ConflictingIdError:
+        logger.debug('Не смог добавить задачу. Такая задача уже существует.')
     logger.info('Отправляю уведомление менеджеру и пользователю')
     await message.answer('Вы добавлены в очередь на получение задач')
+    await send_new_tasks_notify_for_middle(employee, message)
     for manager in employee.managers.all():
         await message.bot.send_message(
             manager.tg_id,

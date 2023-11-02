@@ -27,7 +27,6 @@ docker-compose.yml
 **/media
 poetry.lock
 pyproject.toml
-*.sqlite3
 .gitignore
 .dockerignore
 nginx

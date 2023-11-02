@@ -16,7 +16,7 @@ from src.models import Employee
 from src.models import SyncReport
 from src.bot.keyboards import get_report_keyboard
 
-logger = logging.getLogger('support_bot')
+logger = logging.getLogger('middleware_support_bot')
 
 
 class SyncMiddleware(BaseMiddleware):

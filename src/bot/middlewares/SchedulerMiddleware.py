@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
-logger = logging.getLogger('support_bot')
+logger = logging.getLogger('middleware_support_bot')
 
 
 class SchedulerMiddleware(BaseMiddleware):
