@@ -63,7 +63,7 @@ async def get_task(message: types.Message, state: FSMContext):
 
 @router.message(
     TaskState.show_info,
-    F.text.regexp(r'SD-(\d{7})+').as_('regexp'),
+    F.text.regexp(r'SD-(\d{6,7})+').as_('regexp'),
 )
 async def show_task_info(
         message: types.Message,
@@ -287,7 +287,7 @@ async def close_task(message: types.Message, state: FSMContext):
 
 @router.message(
     TaskState.close_task,
-    F.text.regexp(r'SD-(\d{7})+').as_('regexp'),
+    F.text.regexp(r'SD-(\d{6,7})+').as_('regexp'),
 )
 async def process_close_task(
         message: types.Message,
