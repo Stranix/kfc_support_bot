@@ -17,6 +17,7 @@ from src.models import (
     WorkShift,
     BotCommand,
     BreakShift,
+    BotCommandCategory,
 )
 
 
@@ -148,6 +149,20 @@ class WorkShiftAdmin(admin.ModelAdmin):
 
 @admin.register(BotCommand)
 class BotCommandAdmin(admin.ModelAdmin):
+    list_display = [
+        'name',
+        'category',
+        'description',
+        'view_priority',
+    ]
+
+    list_editable = [
+        'category',
+    ]
+
+
+@admin.register(BotCommandCategory)
+class BotCommandCategoryAdmin(admin.ModelAdmin):
     pass
 
 

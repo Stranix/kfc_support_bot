@@ -428,9 +428,32 @@ class SyncReport(models.Model):
         return f'{self.start_at}'
 
 
+class BotCommandCategory(models.Model):
+    name = models.CharField('Команда', max_length=25, unique=True)
+
+    class Meta:
+        verbose_name = 'Категория Команды Бота'
+        verbose_name_plural = 'Категории Команды Бота'
+
+    def __str__(self):
+        return self.name
+
+
 class BotCommand(models.Model):
     name = models.CharField('Команда', max_length=25, unique=True)
     description = models.TextField('Описание команды', blank=True, default='')
+    category = models.ForeignKey(
+        'BotCommandCategory',
+        on_delete=models.SET_NULL,
+        related_name='category_bot_commands',
+        verbose_name='Доступна для групп',
+        blank=True,
+        null=True,
+    )
+    view_priority = models.PositiveSmallIntegerField(
+        'Порядок вывода команды',
+        default=1,
+    )
     groups = models.ManyToManyField(
         'Group',
         related_name='bot_commands',

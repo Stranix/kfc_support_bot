@@ -3,6 +3,7 @@ import logging
 from aiogram import F
 from aiogram import types
 from aiogram import Router
+from aiogram import html
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -85,19 +86,26 @@ async def cmd_help(message: types.Message, employee: Employee):
     emp_groups = employee.groups.all()
     logger.debug('emp_groups: %s', emp_groups)
     bot_commands = await sync_to_async(list)(
-        BotCommand.objects.prefetch_related('groups').filter(
+        BotCommand.objects.prefetch_related('groups', 'category').filter(
             groups__in=emp_groups,
         )
     )
-    available_commands = []
-    for command in bot_commands:
+    available_commands = {}
+    for command in set(bot_commands):
         text = f'{command.name} - {command.description}'
-        available_commands.append(text)
+        try:
+            available_commands[command.category.name]['commands'].append(text)
+        except KeyError:
+            available_commands[command.category.name] = {'commands': [text]}
 
-    await message.answer(
-        'Список доступных команд:\n\n'
-        + '\n'.join(set(available_commands))
-    )
+    help_massage = ''
+    for command_category, commands in available_commands.items():
+        help_massage += f'{html.bold(command_category)}\n'
+        for command in commands['commands']:
+            help_massage += f'{command}\n'
+        help_massage += '\n\n'
+
+    await message.answer(help_massage)
 
 
 @router.message(Command('cancel'))
