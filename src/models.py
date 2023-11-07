@@ -8,7 +8,7 @@ from django.core.validators import MaxValueValidator
 
 class Employee(models.Model):
     name = models.CharField('Имя', max_length=50)
-    tg_id = models.PositiveIntegerField(
+    tg_id = models.PositiveBigIntegerField(
         'Telegram_id',
         db_index=True,
         unique=True,
