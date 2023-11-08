@@ -16,9 +16,7 @@ services:
       - redis_data:/data
 
   web:
-    build:
-      context: ./
-      dockerfile: Dockerfile
+    image: stranix34/kfc_support_bot:latest
     restart: unless-stopped
     volumes:
       - static_volume:/home/app/web/static
