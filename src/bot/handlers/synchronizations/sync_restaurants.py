@@ -3,8 +3,6 @@ import logging
 
 import aiohttp
 
-from aiohttp import ClientTimeout
-
 from aiogram import F
 from aiogram import Router
 from aiogram import types
@@ -182,12 +180,17 @@ async def start_synchronized_restaurants(
 ) -> list[SyncStatus]:
     logger.info('Запуск синхронизации ресторанов')
     conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
+    session_timeout = aiohttp.ClientTimeout(
+        total=None,
+        sock_connect=settings.SYNC_TIMEOUT,
+        sock_read=settings.SYNC_TIMEOUT,
+    )
 
     async with aiohttp.ClientSession(
             trust_env=True,
             connector=conn,
             raise_for_status=True,
-            timeout=ClientTimeout(total=settings.SYNC_TIMEOUT)
+            timeout=session_timeout,
     ) as session:
         tasks = []
         for restaurant in restaurants:
