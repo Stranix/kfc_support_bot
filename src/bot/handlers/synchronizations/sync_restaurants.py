@@ -180,11 +180,7 @@ async def start_synchronized_restaurants(
 ) -> list[SyncStatus]:
     logger.info('Запуск синхронизации ресторанов')
     conn = aiohttp.TCPConnector(ssl=settings.SSL_CONTEXT)
-    session_timeout = aiohttp.ClientTimeout(
-        total=None,
-        sock_connect=settings.SYNC_TIMEOUT,
-        sock_read=settings.SYNC_TIMEOUT,
-    )
+    session_timeout = aiohttp.ClientTimeout(total=settings.SYNC_TIMEOUT)
 
     async with aiohttp.ClientSession(
             trust_env=True,
