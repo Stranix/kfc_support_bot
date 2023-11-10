@@ -184,7 +184,9 @@ async def process_assigned_task_step_2(
 ):
     logger.info('Назначения задачи на инженера шаг 2')
     data = await state.get_data()
-    task = Task.objects.select_related('performer').aget(id=data['task'].id)
+    task = await Task.objects.select_related(
+        'performer'
+    ).aget(id=data['task'].id)
     if task.performer:
         await message.answer(
             f'Задачу взял другой инженер {task.performer.name}'
