@@ -26,7 +26,7 @@ RUN flake8 --ignore=E501,F401,F811,E225,W503,W504 .
 COPY ./requirements.txt .
 RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
 
-
+COPY ./config/logging_config.json ./config
 #########
 # FINAL #
 #########
@@ -43,8 +43,10 @@ RUN addgroup --system app && adduser --system --group app
 # create the appropriate directories
 ENV HOME=/home/app
 ENV APP_HOME=/home/app/web
+ENV APP_CONFIG=/home/app/web/config
 RUN mkdir $APP_HOME
 RUN mkdir $APP_HOME/static
+RUN mkdir $APP_HOME/config
 
 WORKDIR $APP_HOME
 
@@ -52,12 +54,14 @@ WORKDIR $APP_HOME
 RUN apt-get update && apt-get install -y --no-install-recommends netcat
 COPY --from=builder /usr/src/app/wheels /wheels
 COPY --from=builder /usr/src/app/requirements.txt .
+COPY --from=builder /usr/src/app/config/logging_config.json ./config
 RUN pip install --upgrade pip
 RUN pip install --no-cache /wheels/*
 
 
 # copy project
 COPY . $APP_HOME
+COPY ./config/logging_config.json $APP_CONFIG
 
 # chown all the files to the app user
 RUN chown -R app:app $APP_HOME

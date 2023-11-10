@@ -21,11 +21,13 @@ jobs:
             name: "logging_config.json"
             json: ${{ secrets.LOGGING_JSON }}
             dir: "config/"
+        - run: git config --global user.email "phantom2525@gmail.com" && git config --global user.name "Stranix" && git add . && git add --force config/logging_config.json && git status && git commit -a -m "Deploy HCommit with the logging JSON created!"
         - name: Login
           run: |
             echo ${{ secrets.PAT }} | docker login -u ${{ secrets.DOCKER_USER }} --password-stdin
         - name: Build and Publish
           run: |
+            cat config/logging_config.json
             docker build . --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 

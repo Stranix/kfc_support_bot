@@ -10,7 +10,7 @@ COMMIT=`git rev-parse --short HEAD`
 LOCAL_USERNAME=$(whoami)
 
 echo -e "Пересобираем контейнер web и запускаем..."
-docker compose up -d --no-deps --build --force-recreate web
+docker compose up -d --no-deps --force-recreate web
 
 echo -e "Собираем статику Django..."
 docker compose exec web python manage.py collectstatic --no-input --clear -v 0
