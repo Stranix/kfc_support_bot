@@ -9,6 +9,9 @@ git pull
 COMMIT=`git rev-parse --short HEAD`
 LOCAL_USERNAME=$(whoami)
 
+echo -e "Скачиваем последний образ приложения с DockerHub"
+docker pull stranix34/kfc_support_bot:latest
+
 echo -e "Пересобираем контейнер web и запускаем..."
 docker compose up -d --no-deps --force-recreate web
 
