@@ -13,11 +13,14 @@ from asgiref.sync import sync_to_async
 from aiogram import Bot
 from aiogram import html
 from aiogram import types
+from aiogram.enums import ParseMode
 from aiogram.types import Update
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.exceptions import TelegramBadRequest
 
 from bs4 import BeautifulSoup
+
+from django.conf import settings
 
 from src.models import Task
 from src.models import Group
@@ -134,10 +137,9 @@ async def send_notify(
 
 
 async def get_senior_engineers() -> list[Employee] | None:
-    senior_engineers_group = await Group.objects.aget(name='Ведущие инженеры')
     senior_engineers = await sync_to_async(list)(
-        Employee.objects.filter(
-            groups=senior_engineers_group,
+        Employee.objects.prefetch_related('groups').filter(
+            groups__name__contains='Ведущие инженеры'
         )
     )
     logger.debug('senior_engineers: %s', senior_engineers)
@@ -190,3 +192,20 @@ async def send_new_tasks_notify_for_middle(
         f'‼Внимание есть новые задачи: {html.code(", ".join(tasks_number))}\n'
         '\nВозьмите в работу или назначьте инженеру'
     )
+
+
+async def send_notify_to_seniors_engineers(message: str):
+    logger.info('Отправка уведомлений Ведущим Инженерам')
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+    senior_engineers = await get_senior_engineers()
+    logger.debug('senior_engineers: %s', senior_engineers)
+    for senior_engineer in senior_engineers:
+        try:
+            await bot.send_message(senior_engineer.tg_id, message)
+        except TelegramBadRequest:
+            logger.warning(
+                'Не смог отправить сообщение %s',
+                senior_engineer.name
+            )
+    await bot.session.close()
+    logger.info('Выполнено')

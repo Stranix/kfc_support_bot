@@ -7,7 +7,6 @@ from aiogram import F
 from aiogram import Router
 from aiogram import html
 from aiogram import types
-from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
@@ -15,15 +14,16 @@ from aiogram.fsm.context import FSMContext
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from asgiref.sync import sync_to_async
 from django.db.models import Q
 from django.conf import settings
 from django.utils import timezone
 
 from src.models import Task
 from src.models import Employee
-from src.models import WorkShift
+from src.bot.utils import send_notify
+from src.bot.utils import send_notify_to_seniors_engineers
 from src.bot.keyboards import get_support_task_keyboard
+from src.bot.keyboards import get_choice_support_group_keyboard
 from src.bot.keyboards import get_approved_task_keyboard
 from src.bot.handlers.schedulers import check_task_deadline
 from src.bot.handlers.schedulers import check_task_activate_step_1
@@ -34,13 +34,14 @@ router = Router(name='field_engineers_handlers')
 
 
 class NewTaskState(StatesGroup):
+    support_group = State()
     get_gsd_number = State()
     descriptions = State()
     approved = State()
 
 
 @router.message(Command('support_help'))
-async def new_task(
+async def start_new_support_task(
         message: types.Message,
         employee: Employee,
         state: FSMContext,
@@ -55,7 +56,23 @@ async def new_task(
         )
         await message.answer('Нет прав на использование команды')
         return
+    keyboard = await get_choice_support_group_keyboard()
     await message.answer(
+        'Чья помощь требуется',
+        reply_markup=keyboard,
+    )
+    await state.set_state(NewTaskState.support_group)
+
+
+@router.callback_query(
+    NewTaskState.support_group,
+    F.data.startswith('engineer') | F.data.startswith('dispatcher')
+)
+async def new_task_engineer(query: types.CallbackQuery, state: FSMContext):
+    logger.info('Запрос на создание новой задачи поддержки')
+    await query.message.delete()
+    await state.update_data(support_group=query.data)
+    await query.message.answer(
         'Напишите номер заявки по которой вы приехали\n'
         f'Например: {html.code("1395412")}'
     )
@@ -109,8 +126,6 @@ async def process_task_approved(
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
     data = await state.get_data()
-    task_escalation = settings.TASK_ESCALATION
-    task_deadline = settings.TASK_DEADLINE
     logger.debug('state_data: %s', data)
     task, is_created = await Task.objects.aupdate_or_create(
         number=f'SD-{data["get_gsd_number"]}',
@@ -118,37 +133,13 @@ async def process_task_approved(
         defaults={
             'service': 'Локальная поддержка инженеров',
             'title': f'Помощь по заявке SС-{data["get_gsd_number"]}',
+            'support_group': data['support_group'].upper(),
         },
     )
     if is_created:
         logger.debug('Создана новая задача')
         task.description = data['descriptions']
-        logger.debug('Добавление временных проверок по задаче')
-        scheduler.add_job(
-            check_task_activate_step_1,
-            'date',
-            run_date=timezone.now() + timedelta(minutes=task_escalation),
-            timezone='Europe/Moscow',
-            args=(task.number, ),
-            id=f'job_{task.number}_step1',
-        )
-        scheduler.add_job(
-            check_task_activate_step_2,
-            'date',
-            run_date=timezone.now() + timedelta(minutes=task_escalation * 2),
-            timezone='Europe/Moscow',
-            args=(task.number, ),
-            id=f'job_{task.number}_step2',
-        )
-        scheduler.add_job(
-            check_task_deadline,
-            'date',
-            run_date=timezone.now() + timedelta(minutes=task_deadline),
-            timezone='Europe/Moscow',
-            args=(task.number, ),
-            id=f'job_{task.number}_deadline',
-        )
-        logger.debug('Проверки добавлены')
+        await add_tasks_schedulers(task, scheduler)
     if not is_created:
         logger.debug('Повторный запрос по задаче. Дополняю описание')
         current_time = timezone.now().strftime('%d-%m-%Y %H:%M:%S')
@@ -156,6 +147,9 @@ async def process_task_approved(
                            f'Дополнение Описания ' \
                            f'{current_time}\n {data["descriptions"]}'
         task.description = task_description
+        task.status = 'NEW'
+        task.rating = None
+
     await task.asave()
     logger.debug('Задача зафиксирована в БД')
     await sending_new_task_notify(query, task, employee)
@@ -188,39 +182,68 @@ async def sending_new_task_notify(
         employee: Employee,
 ):
     logger.info('Отправка уведомления по задачам инженерам на смене')
-    work_shifts = await sync_to_async(list)(
-        WorkShift.objects.prefetch_related('employee').filter(
-            is_works=True,
-        )
-    )
-    recipients = [work.employee.tg_id for work in work_shifts]
-    logger.debug('Список tg_id сотрудников на работе: %s', recipients)
     message_for_send = f'Инженеру требуется помощь ' \
                        f'по задаче {html.code(task.number)}\n\n' \
                        f'Описание: {html.code(task.description)}\n' \
-                       f'Телеграм для связи: {employee.tg_nickname}'
-    if not recipients:
-        logger.warning('На смене нет инженеров')
-        senior_engineers = await sync_to_async(list)(
-            Employee.objects.prefetch_related('groups').filter(
-                groups__name__contains='Ведущие инженеры'
-            )
+                       f'Телеграм для связи: {employee.tg_nickname}\n\n'
+    if task.support_group == 'DISPATCHER':
+        message_for_send += html.italic(
+            '‼Не забудь запросить акт и заключение (если требуется)',
         )
-        for senior_engineer in senior_engineers:
-            await query.bot.send_message(
-                senior_engineer.tg_id,
-                'Поступил запрос на помощь, но нет инженеров на смене\n'
-                'Номер обращения: ' + html.code(task.number)
-            )
+    recipients = await get_recipients_on_shift_by_task_support_group(task)
+
+    if not recipients:
+        logger.warning('На смене нет инженеров или диспетчеров')
+        notify = f'Поступил запрос на помощь, но нет инженеров на смене\n' \
+                 f'Номер обращения: {html.code(task.number)}'
+        await send_notify_to_seniors_engineers(notify)
         return
-    for recipient in recipients:
-        try:
-            await query.bot.send_message(
-                recipient,
-                message_for_send,
-                reply_markup=await get_support_task_keyboard(task.id)
-            )
-        except TelegramBadRequest as error:
-            logger.debug('Не смог отправить уведомление %s', recipient)
-            logger.exception(error)
-    logger.info('Отправка завершена')
+
+    keyboard = await get_support_task_keyboard(task.id)
+    await send_notify(query.bot, recipients, message_for_send, keyboard)
+    logger.info('Завершено')
+
+
+async def get_recipients_on_shift_by_task_support_group(task: Task):
+    logger.info('Получение сотрудников по группе поддержки')
+    if task.support_group == 'DISPATCHER':
+        dispatchers = await Employee.objects.dispatchers_on_work()
+        logger.debug('dispatchers: %s', dispatchers)
+        return dispatchers
+
+    if task.support_group == 'ENGINEER':
+        engineers = await Employee.objects.engineers_on_work()
+        logger.debug('engineers: %s', engineers)
+        return engineers
+
+
+async def add_tasks_schedulers(task: Task, scheduler: AsyncIOScheduler):
+    logger.debug('Добавление временных проверок по задаче')
+    task_escalation = settings.TASK_ESCALATION
+    task_deadline = settings.TASK_DEADLINE
+
+    scheduler.add_job(
+        check_task_activate_step_1,
+        'date',
+        run_date=timezone.now() + timedelta(minutes=task_escalation),
+        timezone='Europe/Moscow',
+        args=(task.number,),
+        id=f'job_{task.number}_step1',
+    )
+    scheduler.add_job(
+        check_task_activate_step_2,
+        'date',
+        run_date=timezone.now() + timedelta(minutes=task_escalation * 2),
+        timezone='Europe/Moscow',
+        args=(task.number,),
+        id=f'job_{task.number}_step2',
+    )
+    scheduler.add_job(
+        check_task_deadline,
+        'date',
+        run_date=timezone.now() + timedelta(minutes=task_deadline),
+        timezone='Europe/Moscow',
+        args=(task.number,),
+        id=f'job_{task.number}_deadline',
+    )
+    logger.debug('Проверки добавлены')

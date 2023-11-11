@@ -1,9 +1,36 @@
-from datetime import date, datetime, time
+from datetime import date
+from datetime import time
+from datetime import datetime
 
 import pytz
+
+from asgiref.sync import sync_to_async
+
 from django.db import models
 from django.utils import timezone
+
 from django.core.validators import MaxValueValidator
+
+
+class EmployeeQuerySet(models.QuerySet):
+
+    async def dispatchers_on_work(self):
+        dispatchers = await sync_to_async(list)(
+            self.filter(
+                groups__name='Диспетчеры',
+                work_shifts__is_works=True,
+            ),
+        )
+        return dispatchers
+
+    async def engineers_on_work(self):
+        engineers = await sync_to_async(list)(
+            self.filter(
+                groups__name__icontains='Инженеры',
+                work_shifts__is_works=True,
+            ),
+        )
+        return engineers
 
 
 class Employee(models.Model):
@@ -34,6 +61,8 @@ class Employee(models.Model):
         default=timezone.now,
     )
     is_active = models.BooleanField('Активен?', default=False)
+
+    objects = EmployeeQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -306,6 +335,11 @@ class Task(models.Model):
         ('CRITICAL', 'Критичный'),
     )
 
+    SUPPORT_GROUP_CHOICES = (
+        ('DISPATCHER', 'Диспетчера'),
+        ('ENGINEER', 'Инженеры'),
+    )
+
     applicant = models.CharField('Заявитель', max_length=100)
     number = models.CharField(
         'Номер заявки GSD',
@@ -335,9 +369,17 @@ class Task(models.Model):
     priority = models.CharField(
         'Приоритет',
         choices=PRIORITY_CHOICES,
-        default='LOW',
-        db_index=True,
+        default='',
+        null=True,
+        blank=True,
         max_length=20,
+    )
+    support_group = models.CharField(
+        'Помощь от ',
+        choices=SUPPORT_GROUP_CHOICES,
+        default='DISPATCHER',
+        db_index=True,
+        max_length=10,
     )
     service = models.CharField('Услуга', max_length=100)
     title = models.CharField('Тема обращения', max_length=150)

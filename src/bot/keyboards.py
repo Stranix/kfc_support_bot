@@ -181,3 +181,22 @@ async def get_task_feedback_keyboard(task_id: int):
         )
     inline_keyboard = [buttons]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_choice_support_group_keyboard():
+    logger.debug('Создаю клавиатуру выбора группы поддержки')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='🦹‍♂Диспетчера. Команда HelpD',
+                callback_data='dispatcher',
+            ),
+        ],
+        [
+            InlineKeyboardButton(text='🥷Инженера', callback_data='engineer'),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
