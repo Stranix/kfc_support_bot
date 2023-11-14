@@ -23,6 +23,39 @@ logger = logging.getLogger('support_bot')
 router = Router(name='managerial_handlers')
 
 
+@router.message(Command('unclosed_tasks'))
+async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
+    logger.info('Запрос на показ всех не закрытых задач')
+    report = {}
+    unclosed_tasks = await sync_to_async(list)(
+        Task.objects.prefetch_related('performer').filter(
+            number__startswith='SD-',
+            finish_at__isnull=True,
+        )
+    )
+    report['count'] = len(unclosed_tasks)
+    report['unclosed_tasks'] = []
+    use_timezone = pytz.timezone('Europe/Moscow')
+    time_format = '%d-%m-%Y %H:%M:%S'
+    for task in unclosed_tasks:
+        task_start_at = timezone.localtime(task.start_at, use_timezone)
+        report['unclosed_tasks'].append({
+            'number': task.number,
+            'support_group': task.support_group,
+            'applicant': task.applicant,
+            'performer': task.performer.name if task.performer else '',
+            'start_at': task_start_at.strftime(time_format),
+            'title': task.title,
+            'description': task.description,
+        })
+    report_as_doc = await prepare_report_as_file(report, 'unclosed_tasks.json')
+    await message.answer_document(
+        report_as_doc,
+        caption='Все незакрытые задачи',
+    )
+    logger.info('Отчет отправлен %s', employee.name)
+
+
 @router.message(Command('report'))
 async def cmd_report(message: types.Message, employee: Employee):
     logger.info('Обработчик команды report')
@@ -42,7 +75,7 @@ async def cmd_report(message: types.Message, employee: Employee):
     shift_end_at = datetime.combine(tomorrow, time(), tzinfo=pytz.UTC)
     shift_end_at -= timedelta(seconds=1)
     shift_report = await get_current_shift_report(shift_start_at, shift_end_at)
-    shift_report_as_doc = await prepare_shift_report_as_file(shift_report)
+    shift_report_as_doc = await prepare_report_as_file(shift_report)
     await message.answer_document(
         shift_report_as_doc,
         caption=f'Отчет по смене {shift_report["shift_date"]}',
@@ -50,14 +83,15 @@ async def cmd_report(message: types.Message, employee: Employee):
     logger.info('Отчет отправлен %s', employee.name)
 
 
-async def prepare_shift_report_as_file(
+async def prepare_report_as_file(
         shift_report: dict,
+        file_name: str = 'shift_report.json',
 ) -> types.BufferedInputFile:
     logger.info('Подготовка отчета по сменам для отправки')
     dumps = json.dumps(shift_report, ensure_ascii=False, indent=4)
     file = dumps.encode('utf-8')
     logger.info('Подготовка завершена')
-    return types.BufferedInputFile(file, filename='shift_report.json')
+    return types.BufferedInputFile(file, filename=file_name)
 
 
 async def get_current_shift_report(
@@ -124,12 +158,15 @@ async def get_task_by_shift(
             task_finish_at = task_finish_at.strftime(time_format)
         tasks_info.append({
             'number': task.number,
+            'support_group': task.support_group,
             'applicant': task.applicant,
             'performer': task.performer.name if task.performer else '',
             'start_at': task_start_at.strftime(time_format),
             'closed_at': task_finish_at,
             'title': task.title,
             'description': task.description,
+            'closing_comment': task.closing_comment,
+            'sub_task_number': task.sub_task_number,
             'rating': task.rating if task.rating else 'Нет Оценки',
         })
     tasks['tasks_info'] = tasks_info
@@ -145,6 +182,7 @@ async def get_info_for_engineers_on_shift(
     logger.info('Ищу инженеров на смене')
     engineers = []
     middle_engineers = []
+    dispatchers = []
     works_shifts: list[WorkShift] = await sync_to_async(list)(
         WorkShift.objects.prefetch_related('employee').filter(
             shift_start_at__lte=shift_end_at,
@@ -157,7 +195,7 @@ async def get_info_for_engineers_on_shift(
             'Нет информации по инженерам за смену %s',
             shift_start_at.date(),
         )
-
+    # TODO не правильная логика, переписать
     for work_shift in works_shifts:
         is_engineer = await work_shift.employee.groups.filter(
             name='Инженеры'
@@ -165,11 +203,16 @@ async def get_info_for_engineers_on_shift(
         is_middle_engineer = await work_shift.employee.groups.filter(
             name='Старшие инженеры'
         ).afirst()
+        is_dispatchers = await work_shift.employee.groups.filter(
+            name='Диспетчеры'
+        ).afirst()
         if is_engineer:
             engineers.append(work_shift.employee)
             continue
         if is_middle_engineer:
             middle_engineers.append(work_shift.employee)
+        if is_dispatchers:
+            dispatchers.append(work_shift.employee)
     engineers_on_shift = {
         'count': len(works_shifts),
         'engineers': {
@@ -179,6 +222,10 @@ async def get_info_for_engineers_on_shift(
         'middle_engineers': {
             'count': len(middle_engineers),
             'names': [engineer.name for engineer in middle_engineers],
+        },
+        'dispatchers': {
+            'count': len(dispatchers),
+            'names': [dispatcher.name for dispatcher in dispatchers],
         },
     }
     logger.debug('engineers_on_shift: %s', engineers_on_shift)
