@@ -397,6 +397,21 @@ class Task(models.Model):
         null=True,
         max_length=50,
     )
+    closing_comment = models.TextField(
+        'Комментарий закрытия',
+        blank=True,
+        null=True,
+    )
+    sub_task_number = models.TextField(
+        'Список дочерних задач',
+        blank=True,
+        null=True,
+    )
+    doc_path = models.TextField(
+        'Пути сохраненных файлов',
+        blank=True,
+        null=True,
+    )
     rating = models.PositiveSmallIntegerField(
         'Оценка',
         validators=[MaxValueValidator(5)],

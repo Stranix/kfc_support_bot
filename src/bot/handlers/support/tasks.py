@@ -1,7 +1,9 @@
 import logging
+import os
 import re
+from typing import Union
 
-from aiogram import F
+from aiogram import F, Bot
 from aiogram import Router
 from aiogram import html
 from aiogram import types
@@ -12,24 +14,35 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 
 from asgiref.sync import sync_to_async
+
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateformat import format
+from django.conf import settings
 
+from src.bot.middlewares import AlbumMiddleware
 from src.models import Task
 from src.models import Group
 from src.models import Employee
-from src.bot.keyboards import create_tg_keyboard_markup
+from src.bot.keyboards import create_tg_keyboard_markup, \
+    get_choice_task_doc_approved_keyboard, \
+    get_choice_task_closed_approved_keyboard
 from src.bot.keyboards import get_support_task_keyboard
 from src.bot.keyboards import get_task_feedback_keyboard
 
 logger = logging.getLogger('support_bot')
 router = Router(name='support_task_handlers')
+router.message.outer_middleware(AlbumMiddleware())
 
 
 class TaskState(StatesGroup):
     show_info = State()
     close_task = State()
+    get_doc = State()
+    doc_approved = State()
+    approved_sub_tasks = State()
+    task_comment = State()
+    approved_close_tasks = State()
 
 
 class AssignedTaskState(StatesGroup):
@@ -301,7 +314,6 @@ async def process_close_task(
     task_number = regexp.group()
     task = await Task.objects.select_related('performer') \
         .aget(number=task_number)
-    task_applicant = await Employee.objects.aget(name=task.applicant)
     if task.performer.name != employee.name:
         logger.warning('Исполнитель и закрывающий отличаются')
         await message.answer(
@@ -310,6 +322,215 @@ async def process_close_task(
         )
         await state.clear()
         return
+    if task.support_group == 'DISPATCHER':
+        await dispatcher_close_task(message, task, state)
+        return
+    if task.support_group == 'ENGINEER':
+        await engineer_close_task(message, task, state)
+
+
+async def dispatcher_close_task(
+        message: types.Message,
+        task: Task,
+        state: FSMContext,
+):
+    logger.info('Старт процесса закрытия задачи диспетчером')
+    # 1. Запросить акт и заключение. Запрашивать медиа группу.
+    await message.answer(
+        'Загрузите документы (акты, тех заключение)\n\n'
+        '<i>Загружать надо сразу, группой файлов\n'
+        'Сканы (фото), должны передаваться без Сжатия фото</i>',
+        reply_markup=await create_tg_keyboard_markup(['без документов']),
+    )
+    await state.update_data(close_task=task)
+    await state.set_state(TaskState.get_doc)
+    logger.info('Завершено')
+
+
+@router.message(TaskState.get_doc)
+async def dispatcher_close_task_get_doc(
+        message: types.Message,
+        state: FSMContext,
+        album: Union[dict, None] = None,
+):
+    if album is None:
+        album = {}
+    logger.info('Получение документов')
+    keyboard = await get_choice_task_doc_approved_keyboard()
+
+    if message.text and message.text.lower() == 'без документов':
+        await message.answer(
+            'Нет актов и заключений. Все верно?',
+            reply_markup=keyboard,
+        )
+        await state.update_data(get_doc={})
+        await state.set_state(TaskState.doc_approved)
+        return
+    if not message.document and not album:
+        await message.answer(
+            'Все еще жду документы.\n'
+            'Пересылку пока не понимаю',
+        )
+        return
+
+    if message.document and not album:
+        await message.answer(
+            'Получен один документ. Все верно?',
+            reply_markup=keyboard,
+        )
+        await state.update_data(
+            get_doc={
+                message.document.file_name: message.document.file_id
+            }
+        )
+        await state.set_state(TaskState.doc_approved)
+        return
+
+    documents = {}
+    for doc in album:
+        documents[doc.document.file_name] = doc.document.file_id
+
+    await message.answer(
+        f'Получил {len(documents)} документ(ов)\n'
+        f'Имена файлов: {html.code(", ".join(documents.keys()))}\n\n'
+        f'Все верно?',
+        reply_markup=keyboard,
+    )
+    await state.update_data(get_doc=documents)
+    await state.set_state(TaskState.doc_approved)
+
+
+@router.callback_query(TaskState.doc_approved, F.data == 'doc_apr_yes')
+async def dispatcher_close_task_approved_doc_yes(
+        query: types.CallbackQuery,
+        state: FSMContext,
+):
+    await query.message.delete()
+    await query.message.answer(
+        f'Принял.\n\n'
+        f'Введите {html.underline("номера с буквами")} дочерних задач\n'
+        f'Если дочерних задач не создавалось напиши {html.bold("нет")}',
+        reply_markup=await create_tg_keyboard_markup(['нет']),
+    )
+    await state.set_state(TaskState.approved_sub_tasks)
+
+
+@router.message(TaskState.approved_sub_tasks)
+async def dispatcher_close_task_approved_sub_tasks(
+        message: types.Message,
+        state: FSMContext,
+):
+    logger.debug('Получение и проверка дочерних обращений')
+    sub_tasks = []
+    if message.text.lower() != 'нет':
+        sub_tasks = re.findall(r'(S[C,D]-\d{6,7})+', message.text)
+        if not sub_tasks:
+            await message.answer(
+                f'Не вижу номер задач. Попробуйте снова\n'
+                f'Пример: {html.code("SC-1422495SD-139518")}',
+            )
+            return
+    await state.update_data(approved_sub_tasks=sub_tasks)
+    await message.answer(
+        'Введите комментарий для закрытия',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    await state.set_state(TaskState.task_comment)
+
+
+@router.message(TaskState.task_comment)
+async def dispatcher_close_task_comment(
+        message: types.Message,
+        state: FSMContext,
+):
+    data = await state.get_data()
+    docs_names = ', '.join(data['get_doc'].keys())
+    task_info = 'Закрываем задачу: {number}\n' \
+                'Приложенные документы: {docs}\n' \
+                'Дочерние задачи: {sub_tasks}\n' \
+                'Комментарий при закрытии: {task_comment}'.format(
+                    number=data['close_task'].number,
+                    docs=docs_names,
+                    sub_tasks=data['approved_sub_tasks'],
+                    task_comment=message.text)
+    await state.update_data(task_comment=message.text)
+    keyboard = await get_choice_task_closed_approved_keyboard()
+    await message.answer(
+        f'Подводим итог перед закрытием\n\n{html.code(task_info)}',
+        reply_markup=keyboard,
+    )
+    await state.set_state(TaskState.approved_close_tasks)
+
+
+@router.callback_query(
+    TaskState.approved_close_tasks,
+    F.data == 'apr_close_task',
+)
+async def dispatcher_close_task_approved(
+        query: types.CallbackQuery,
+        state: FSMContext,
+):
+    logger.info('Старт закрытия задачи диспетчером')
+    await query.message.delete()
+    data = await state.get_data()
+    task: Task = data['close_task']
+    approved_sub_tasks = data['approved_sub_tasks']
+    task_applicant = await Employee.objects.aget(name=task.applicant)
+    logger.debug('task: %s', task)
+    files_save_info = await save_doc_from_tg_to_disk(
+        query.bot,
+        task.number,
+        data['get_doc'],
+    )
+    logger.debug('Сохраненный файлы: %s', files_save_info)
+
+    if files_save_info:
+        files_save_info = str(files_save_info).strip('[]')
+
+    if approved_sub_tasks:
+        approved_sub_tasks = ','.join(approved_sub_tasks)
+
+    task.status = 'COMPLETED'
+    task.closing_comment = data['task_comment']
+    task.sub_task_number = approved_sub_tasks
+    task.doc_path = files_save_info
+    task.finish_at = timezone.now()
+    await task.asave()
+
+    await query.bot.send_message(
+        task_applicant.tg_id,
+        'Ваше обращение закрыто.\n'
+        'Оцените пожалуйста работу от 1 до 5',
+        reply_markup=await get_task_feedback_keyboard(task.id)
+    )
+    await query.message.answer(
+        'Задача завершена.\n'
+        'Посмотреть список открытых задач: /get_task',
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    await state.clear()
+    logger.info('Задача %s закрыта', task.number)
+    await state.clear()
+    logger.info('Задача закрыта')
+
+
+@router.callback_query(TaskState.doc_approved, F.data == 'doc_apr_no')
+async def dispatcher_close_task_approved_doc_no(
+        query: types.CallbackQuery,
+        state: FSMContext,
+):
+    await query.answer()
+    await query.message.answer('Ок. Давай попробуем еще раз. Жду документы')
+    await state.update_data(get_doc=State())
+    await state.set_state(TaskState.get_doc)
+
+
+async def engineer_close_task(
+        message: types.Message,
+        task: Task,
+        state: FSMContext,
+):
+    task_applicant = await Employee.objects.aget(name=task.applicant)
     task.status = 'COMPLETED'
     task.finish_at = timezone.now()
     await task.asave()
@@ -424,3 +645,30 @@ async def get_task_in_work_by_employee(employee_id: id) -> list[Task] | None:
         return
     logger.info('Задачи получены')
     return tasks
+
+
+async def save_doc_from_tg_to_disk(
+        bot: Bot,
+        task_number: str,
+        documents: dict
+) -> list[tuple] | None:
+    logger.info('Сохраняю документы')
+    logger.debug('documents: %s', documents)
+    if not documents:
+        logger.debug('Нет информации о документах')
+        return
+    save_to = os.path.join(settings.BASE_DIR, 'media/docs/', task_number)
+    if not os.path.exists(save_to):
+        os.makedirs(save_to)
+
+    save_report = []
+    for doc_name, doc_id in documents.items():
+        tg_file = await bot.get_file(doc_id)
+        save_path = os.path.join(save_to, doc_name)
+        try:
+            await bot.download_file(tg_file.file_path, save_path)
+            save_report.append((doc_name, save_path))
+        except FileNotFoundError:
+            logger.error('Проблемы при сохранении %s', save_path)
+    logger.info('Документы сохранены')
+    return save_report

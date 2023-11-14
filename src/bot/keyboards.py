@@ -200,3 +200,34 @@ async def get_choice_support_group_keyboard():
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_choice_task_doc_approved_keyboard():
+    logger.debug('Создаю клавиатуру для подтверждения набора документов')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text='Да', callback_data='doc_apr_yes'),
+            InlineKeyboardButton(text='Нет', callback_data='doc_apr_no'),
+        ],
+
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_choice_task_closed_approved_keyboard():
+    logger.debug('Создаю клавиатуру для закрытия задачи диспетчером')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='Все верно',
+                callback_data='apr_close_task',
+            ),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
