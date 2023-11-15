@@ -51,14 +51,31 @@ class AssignedTaskState(StatesGroup):
 
 
 @router.message(Command('get_task'))
-async def get_task(message: types.Message, state: FSMContext):
+async def get_task(
+        message: types.Message,
+        employee: Employee,
+        state: FSMContext
+):
     logger.info('Получаем список доступных задач')
-    tasks = await sync_to_async(list)(
-        Task.objects.filter(
-            status='NEW',
-            number__istartswith='sd',
-        ).order_by('-id')
-    )
+    tasks = []
+    if await employee.groups.filter(name__icontains='инженер').aexists():
+        logger.debug('Задачи инженеров')
+        tasks = await sync_to_async(list)(
+            Task.objects.filter(
+                status='NEW',
+                number__istartswith='sd',
+                support_group='ENGINEER',
+            ).order_by('-id')
+        )
+    if await employee.groups.filter(name__icontains='диспетчер').aexists():
+        logger.debug('Задачи диспетчеров')
+        tasks = await sync_to_async(list)(
+            Task.objects.filter(
+                status='NEW',
+                number__istartswith='sd',
+                support_group='DISPATCHER',
+            ).order_by('-id')
+        )
     if not tasks:
         logger.warning('Нет новых задач')
         await message.answer('Нет новых задач 🥹')
