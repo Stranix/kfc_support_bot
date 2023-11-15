@@ -46,6 +46,7 @@ ENV APP_HOME=/home/app/web
 ENV APP_CONFIG=/home/app/web/config
 RUN mkdir $APP_HOME
 RUN mkdir $APP_HOME/static
+RUN mkdir $APP_HOME/media
 RUN mkdir $APP_HOME/config
 
 WORKDIR $APP_HOME

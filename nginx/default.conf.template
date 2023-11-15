@@ -19,4 +19,8 @@ server {
     location /static/ {
         alias /home/app/web/static/;
     }
+
+    location /media/ {
+        alias /home/app/web/media/;
+    }
 }
