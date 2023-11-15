@@ -51,6 +51,7 @@ def show_employee(request):
 
 @login_required
 def show_support_tasks(request):
+    support_group = request.GET.get('support_group')
     start_shift_date = timezone.now().date()
     start_date = request.GET.get('start_date')
     if start_date:
@@ -65,6 +66,10 @@ def show_support_tasks(request):
     logger.debug('end_shift_date: %s', end_shift_date)
 
     tasks = Task.objects.sd_in_period_date(start_shift_date, end_shift_date)
+    if support_group == 'dispatchers':
+        tasks = tasks.exclude(support_group='ENGINEER')
+    if support_group == 'engineers':
+        tasks = tasks.exclude(support_group='DISPATCHER')
     tasks_stat = utils.get_tasks_stat(tasks)
     tasks_table = {
         'headers': [
@@ -73,8 +78,12 @@ def show_support_tasks(request):
             'Исполнитель',
             'Дата регистрации',
             'Дата закрытия',
+            'Время выполнения',
             'Описание',
-            'Статус выполнения',
+            'Комментарий закрытия',
+            'Дочерние заявки',
+            'Документы',
+            'Статус',
             'Оценка',
         ],
         'tasks': asdict(tasks_stat),
@@ -136,6 +145,7 @@ def show_shift_report(request):
     engineers_table = {
         'headers': [
             'Имя',
+            'Группа',
             'Пришел',
             'Ушел',
             'Длительность Перерыва',

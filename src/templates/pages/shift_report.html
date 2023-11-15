@@ -13,7 +13,9 @@
   <h4>Инженеры</h4>
   Общее количество инженеров на смене:  {{ engineers_table.engineers_on_shift.count }}<br>
   Количество Старших Инженеров: {{ engineers_table.engineers_on_shift.middle_engineers|length }}<br>
-  Количество Инженеров: {{ engineers_table.engineers_on_shift.engineers|length }}<br>
+  Количество Инженеров: {{ engineers_table.engineers_on_shift.engineers|length }}<br><br>
+  <h4>Диспетчеры</h4>
+  Диспетчеров на смене: {{ engineers_table.engineers_on_shift.dispatchers_count }}<br>
   <div class="table-responsive">
     <table class="table table-hover caption-top">
       <thead>
@@ -27,6 +29,7 @@
       {% for engineer in  engineers_table.engineers_on_shift.middle_engineers %}
         <tr class="text-center">
           <td>{{ engineer.name }}</td>
+          <td>{{ engineer.group }}</td>
           <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
           <td>
@@ -43,6 +46,24 @@
       {% for engineer in  engineers_table.engineers_on_shift.engineers %}
         <tr class="text-center">
           <td>{{ engineer.name }}</td>
+          <td>{{ engineer.group }}</td>
+          <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
+          <td>
+            {% if  engineer.total_breaks_time == '0 мин.' %}
+              -
+            {% else %}
+              {{ engineer.total_breaks_time }}
+            {% endif %}
+          </td>
+          <td>{{ engineer.tasks_closed }}</td>
+          <td>{{ engineer.avg_tasks_rating|floatformat }}</td>
+        </tr>
+      {% endfor %}
+      {% for engineer in  engineers_table.engineers_on_shift.dispatchers %}
+        <tr class="text-center">
+          <td>{{ engineer.name }}</td>
+          <td>{{ engineer.group }}</td>
           <td>{{ engineer.shift_start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ engineer.shift_end_at|date:'d-m-Y H:i' }}</td>
           <td>

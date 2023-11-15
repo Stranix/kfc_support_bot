@@ -26,6 +26,22 @@
         >
       </div>
     </div>
+    <div class="row mb-2">
+      <div class="col-2">
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="support_group" id="inlineRadio1" value="all">
+          <label class="form-check-label" for="inlineRadio1">Все</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="support_group" id="inlineRadio2" value="dispatchers">
+          <label class="form-check-label" for="inlineRadio2">Диспетчеры</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="radio" name="support_group" id="inlineRadio3" value="engineers">
+          <label class="form-check-label" for="inlineRadio3">Инженеры</label>
+        </div>
+      </div>
+    </div>
     <button type="submit" class="btn btn-primary">Применить</button>
   </form>
   <h2 class="text-center">
@@ -34,8 +50,8 @@
     {% else %}
       Задачи с {{ start_shift_date|date:'d-m-Y' }}
       по
-      {% if not  end_shift_date%}
-        {% now 'd-m-Y'%}
+      {% if not  end_shift_date %}
+        {% now 'd-m-Y' %}
       {% else %}
         {{ end_shift_date|date:'d-m-Y' }}
       {% endif %}
@@ -45,7 +61,7 @@
     <table class="table table-hover caption-top">
       <caption>
         Количество обращений (закрытых/общее): {{ tasks_table.tasks.closed }}/{{ tasks_table.tasks.count }} <br>
-        Среднее время обработки обращения:  {{ tasks_table.tasks.avg_processing_time }}<br>
+        Среднее время обработки обращения: {{ tasks_table.tasks.avg_processing_time }}<br>
         Средняя оценка выполненных задач: {{ tasks_table.tasks.avg_rating|floatformat }}<br>
         Выгрузить в
         <button type="button" class="btn btn-sm btn-success" onclick="ExportToExcel()">
@@ -74,7 +90,19 @@
           <td>{{ task.performer|default_if_none:'' }}</td>
           <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ task.processing_time }}</td>
           <td>{{ task.description|linebreaks }}</td>
+          <td>{{ task.closing_comment|default_if_none:''|linebreaks }}</td>
+          <td>
+            {% for  sub_task in task.sub_tasks_number %}
+              {{ sub_task }}<br>
+            {% endfor %}
+          </td>
+          <td>
+            {% for doc in  task.doc_path %}
+              <a href="/{{ doc.1 }}" target="_blank"> {{ doc.0 }} </a><br>
+            {% endfor %}
+          </td>
           <td>
             {% if task.status == 'NEW' %}
               <span class="badge text-bg-danger">Новая</span>

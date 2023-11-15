@@ -18,7 +18,6 @@ from asgiref.sync import sync_to_async
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateformat import format
-from django.conf import settings
 
 from src.bot.middlewares import AlbumMiddleware
 from src.models import Task
@@ -657,7 +656,7 @@ async def save_doc_from_tg_to_disk(
     if not documents:
         logger.debug('Нет информации о документах')
         return
-    save_to = os.path.join(settings.BASE_DIR, 'media/docs/', task_number)
+    save_to = os.path.join('media/docs/', task_number)
     if not os.path.exists(save_to):
         os.makedirs(save_to)
 

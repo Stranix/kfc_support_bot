@@ -2,6 +2,8 @@ import pytz
 import json
 import logging
 
+from ast import literal_eval as make_tuple
+
 from datetime import time
 from datetime import date
 from datetime import datetime
@@ -13,6 +15,7 @@ from src.bot.scheme import EngineerShiftInfo
 
 from src.models import Task
 from src.models import WorkShift
+from src.models import Group
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +60,13 @@ def get_info_for_engineers_on_shift(
     middle_engineers_works_shifts = works_shifts.filter(
         employee__groups__name='Старшие инженеры'
     )
+    logger.debug('Выбираю диспетчеров из списка смен')
+    dispatchers_works_shifts = works_shifts.filter(
+        employee__groups__name='Диспетчеры'
+    )
     logger.debug('Инженеры: %s', engineers_works_shifts)
     logger.debug('Старшие инженеры: %s', middle_engineers_works_shifts)
+    logger.debug('Диспетчеры: %s', dispatchers_works_shifts)
     engineers_shift_info = get_engineers_shift_info(
         shift_date,
         engineers_works_shifts,
@@ -67,12 +75,18 @@ def get_info_for_engineers_on_shift(
         shift_date,
         middle_engineers_works_shifts,
     )
+    dispatchers_shift_info = get_engineers_shift_info(
+        shift_date,
+        dispatchers_works_shifts,
+    )
     total_engineers = engineers_works_shifts.count()
     total_engineers += middle_engineers_works_shifts.count()
     return EngineersOnShift(
         count=total_engineers,
         engineers=engineers_shift_info,
         middle_engineers=middle_engineers_shift_info,
+        dispatchers=dispatchers_shift_info,
+        dispatchers_count=dispatchers_works_shifts.count(),
     )
 
 
@@ -103,9 +117,18 @@ def get_engineers_shift_info(
             tasks_rating = [task.rating for task in tasks if task.rating]
             avg_rating = sum(tasks_rating) / tasks.count()
 
+        engineer_group = ''
+        try:
+            engineer_group = shift_engineer.employee.groups.exclude(
+                name='Задачи',
+            ).first().name
+        except Group.DoesNotExist:
+            pass
+
         engineers.append(
             EngineerShiftInfo(
                 name=shift_engineer.employee.name,
+                group=engineer_group,
                 shift_start_at=shift_engineer.shift_start_at,
                 shift_end_at=shift_engineer.shift_end_at,
                 total_breaks_time=format_timedelta(total_breaks_time),
@@ -119,27 +142,12 @@ def get_engineers_shift_info(
 
 def get_tasks_on_shift(shift_date: datetime) -> TasksOnShift:
     shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
-    tasks = Task.objects.prefetch_related('performer').filter(
-        number__startswith='SD-',
-        start_at__lte=shift_end_at,
-        start_at__gte=shift_start_at,
-    )
+    tasks = Task.objects.sd_in_period_date(shift_start_at, shift_end_at)
     return get_tasks_stat(tasks)
 
 
 def get_tasks_stat(tasks: list[Task]) -> TasksOnShift:
-    tasks_processing_time = []
-    for task in tasks:
-        if not task.status == 'COMPLETED':
-            continue
-        tasks_processing_time.append(task.finish_at - task.start_at)
-
-    avg_tasks_processing_time = timedelta()
-    if tasks_processing_time:
-        avg_tasks_processing_time = sum(
-            tasks_processing_time,
-            timedelta(0)
-        ) / len(tasks_processing_time)
+    tasks_info, task_closed, avg_processing_time = prepare_tasks_info(tasks)
 
     avg_tasks_rating = 0.0
     tasks_rating = [task.rating for task in tasks if task.rating]
@@ -148,12 +156,52 @@ def get_tasks_stat(tasks: list[Task]) -> TasksOnShift:
 
     tasks_on_shift = TasksOnShift(
         count=len(tasks),
-        closed=len(tasks_processing_time),
-        avg_processing_time=format_timedelta(avg_tasks_processing_time),
-        tasks=tasks,
+        closed=task_closed,
+        avg_processing_time=format_timedelta(avg_processing_time),
+        tasks=tasks_info,
         avg_rating=avg_tasks_rating,
     )
     return tasks_on_shift
+
+
+def prepare_tasks_info(tasks: list[Task]) -> tuple:
+    tasks_info = []
+    tasks_processing_time = []
+    for task in tasks:
+        task_fields = {
+            'number': task.number,
+            'applicant': task.applicant,
+            'performer': task.performer,
+            'start_at': task.start_at,
+            'finish_at': task.finish_at,
+            'avg_processing_time': '-',
+            'description': task.description,
+            'status': task.status,
+            'closing_comment': task.closing_comment,
+            'support_group': task.support_group,
+            'sub_tasks_number': '',
+            'doc_path': '',
+            'rating': task.rating,
+        }
+        if task.status == 'COMPLETED':
+            processing_time = task.finish_at - task.start_at
+            task_fields['processing_time'] = format_timedelta(processing_time)
+            tasks_processing_time.append(processing_time)
+
+        if task.sub_task_number:
+            task_fields['sub_tasks_number'] = task.sub_task_number.split(',')
+        tasks_info.append(task_fields)
+
+        if task.doc_path:
+            task_fields['doc_path'] = make_tuple(task.doc_path)
+
+    avg_tasks_processing_time = timedelta()
+    if tasks_processing_time:
+        avg_tasks_processing_time = sum(
+            tasks_processing_time,
+            timedelta(0)
+        ) / len(tasks_processing_time)
+    return tasks_info, len(tasks_processing_time), avg_tasks_processing_time
 
 
 def get_sync_statuses(sync_report: dict) -> tuple[list, list]:
@@ -176,7 +224,7 @@ def format_timedelta(delta: timedelta):
         hours += 1
         minutes = 0
     if hours and minutes:
-        return f'{hours} ч. {minutes} мин.'
+        return f'{hours} ч : {minutes} мин.'
     elif hours:
         # Display only hours
         return f'{hours} ч.'

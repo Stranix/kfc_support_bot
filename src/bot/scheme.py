@@ -24,6 +24,7 @@ class TelegramUser:
 @dataclass
 class EngineerShiftInfo:
     name: str
+    group: str
     shift_start_at: datetime
     shift_end_at: datetime
     total_breaks_time: str
@@ -36,6 +37,8 @@ class EngineersOnShift:
     count: int
     engineers: list[EngineerShiftInfo]
     middle_engineers: list[EngineerShiftInfo]
+    dispatchers: list[EngineerShiftInfo]
+    dispatchers_count: int
 
 
 @dataclass
