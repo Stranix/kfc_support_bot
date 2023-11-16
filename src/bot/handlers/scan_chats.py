@@ -63,8 +63,11 @@ async def local_service(
             name__in=('Старшие инженеры', 'Ведущие инженеры', 'Администраторы')
     ).afirst() and not task.performer:
         keyboard = await assign_task_keyboard(task.id)
-    if task.performer:
+    if task.performer and not task.finish_at:
         message_fo_send += f'\n\nЗадача в работе у сотрудника: ' \
+                           f'{html.code(task.performer)}'
+    if task.finish_at:
+        message_fo_send += f'\n\nЗадача закрыта сотрудником: ' \
                            f'{html.code(task.performer)}'
     await message.reply(message_fo_send, reply_markup=keyboard)
 
@@ -95,14 +98,21 @@ async def get_local_task_by_number(
     try:
         task = await Task.objects.select_related('performer')\
                                  .aget(number=task_number)
+        support_group = 'Инженеры'
+        if task.support_group == 'DISPATCHER':
+            support_group = 'Диспетчеры'
+
         time_formatted_mask = 'd-m-Y H:i:s'
         start_at = format(task.start_at, time_formatted_mask)
         message_fo_send = html.code(task.number) + \
             '\n\nУслуга: ' + html.code(task.service) + \
+            '\nГруппа: ' + html.code(support_group) + \
             '\nЗаявитель: ' + html.code(task.applicant) + \
             '\nТип обращения: ' + html.code(task.title) + \
             '\nДата регистрации: ' + html.code(start_at) + \
-            '\nТекста обращения: ' + html.code(task.description)
+            '\nТекста обращения: ' + html.code(task.description) + \
+            '\nДочерние обращения: ' + html.code(task.sub_task_number) + \
+            '\nКомментарий закрытия: ' + html.code(task.comments)
         return task, message_fo_send
     except Task.DoesNotExist:
         logger.warning('Нет такой задачи (%s) в БД', task_number)

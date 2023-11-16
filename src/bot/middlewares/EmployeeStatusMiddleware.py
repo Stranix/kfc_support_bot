@@ -10,7 +10,7 @@ from aiogram.types import Message
 
 from src.models import Employee
 
-logger = logging.getLogger('support_bot')
+logger = logging.getLogger('middleware_support_bot')
 
 
 class EmployeeStatusMiddleware(BaseMiddleware):

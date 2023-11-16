@@ -142,7 +142,9 @@ async def process_task_approved(
         await add_tasks_schedulers(task, scheduler)
     if not is_created:
         logger.debug('Повторный запрос по задаче. Дополняю описание')
-        current_time = timezone.now().strftime('%d-%m-%Y %H:%M:%S')
+        current_time = timezone.localtime(
+            timezone.now().strftime('%d-%m-%Y %H:%M:%S'),
+        )
         task_description = f'{task.description}\n\n' \
                            f'Дополнение Описания ' \
                            f'{current_time}\n {data["descriptions"]}'

@@ -10,7 +10,7 @@ from aiogram import BaseMiddleware
 from aiogram.types import Message
 
 
-logger = logging.getLogger('support_bot')
+logger = logging.getLogger('middleware_support_bot')
 
 
 class AlbumMiddleware(BaseMiddleware):
