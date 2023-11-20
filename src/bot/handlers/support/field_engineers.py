@@ -149,7 +149,7 @@ async def process_task_approved(
                            f'Дополнение Описания ' \
                            f'{current_time}\n {data["descriptions"]}'
         task.description = task_description
-        task.status = 'NEW'
+        task.status = 'IN_WORK' if task.performer else 'NEW'
         task.rating = None
 
     await task.asave()

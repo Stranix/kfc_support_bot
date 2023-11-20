@@ -234,6 +234,7 @@ async def process_assigned_task_step_2(
     logger.debug('engineers_on_shift: %s', engineers_on_shift)
     logger.debug('selected_engineer: %s', selected_engineer)
     task.performer = selected_engineer
+    task.status = 'IN_WORK'
     await task.asave()
     logger.info(
         'Инженер %s назначен на задачу %s',
