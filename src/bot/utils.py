@@ -106,7 +106,6 @@ async def user_registration(message: types.Message) -> Employee:
              f'Телеграм id: {html.code(message.from_user.id)}\n' \
              f'Телеграм username: @{message.from_user.username}\n' \
              f'Имя: {html.code(message.from_user.full_name)}\n'
-    logger.debug(message)
     logger.debug('notify: %s', notify)
     notify_keyboard = await get_user_activate_keyboard(employee.id)
     await send_notify(message.bot, senior_engineers, notify, notify_keyboard)

@@ -65,7 +65,12 @@ async def activate_user_step_2(message: types.Message, state: FSMContext):
     logger.info('Активация пользователя шаг 2')
     data = await state.get_data()
     group_name = message.text
-    group = await Group.objects.aget(name=group_name)
+    try:
+        group = await Group.objects.aget(name=group_name)
+    except Group.DoesNotExist:
+        logger.warning('Не найдена группа %s', group_name)
+        await state.clear()
+        return
     new_employee: Employee = data['employee']
     await sync_to_async(new_employee.groups.add)(group)
     await new_employee.asave()
