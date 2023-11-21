@@ -18,7 +18,7 @@ from django.db.models import Q
 from django.conf import settings
 from django.utils import timezone
 
-from src.models import Task
+from src.models import SDTask
 from src.models import Employee
 from src.bot.utils import send_notify
 from src.bot.utils import send_notify_to_seniors_engineers
@@ -125,39 +125,24 @@ async def process_task_approved(
         state: FSMContext,
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
+    await query.message.edit_text('Формирую задачу. Ожидайте...')
     data = await state.get_data()
     logger.debug('state_data: %s', data)
-    task, is_created = await Task.objects.aupdate_or_create(
-        number=f'SD-{data["get_gsd_number"]}',
+    task = await SDTask.objects.acreate(
         applicant=employee.name,
-        defaults={
-            'service': 'Локальная поддержка инженеров',
-            'title': f'Помощь по заявке SС-{data["get_gsd_number"]}',
-            'support_group': data['support_group'].upper(),
-        },
+        title=f'Помощь по заявке SС-{data["get_gsd_number"]}',
+        support_group=data['support_group'].upper(),
+        description=data['descriptions'],
     )
-    if is_created:
-        logger.debug('Создана новая задача')
-        task.description = data['descriptions']
-        await add_tasks_schedulers(task, scheduler)
-    if not is_created:
-        logger.debug('Повторный запрос по задаче. Дополняю описание')
-        current_time = timezone.localtime(
-            timezone.now(),
-        ).strftime('%d-%m-%Y %H:%M:%S')
-        task_description = f'{task.description}\n\n' \
-                           f'Дополнение Описания ' \
-                           f'{current_time}\n {data["descriptions"]}'
-        task.description = task_description
-        task.status = 'IN_WORK' if task.performer else 'NEW'
-        task.rating = None
-
+    task.number = f'SD-{task.id}'
     await task.asave()
-    logger.debug('Задача зафиксирована в БД')
+    logger.debug('Задача зафиксирована в БД. Номер: %s', task.number)
+    await add_tasks_schedulers(task, scheduler)
     await sending_new_task_notify(query, task, employee)
     await query.message.answer(
-        'Заявка принята. \n'
-        'Инженерам отправлено уведомление\n\n'
+        f'Заявка принята. \n'
+        f'Внутренний номер: {html.code(task.number)}\n'
+        f'Инженерам отправлено уведомление\n\n'
         + html.italic('Регламентное время связи 10 минут')
     )
     await query.message.delete()
@@ -170,7 +155,7 @@ async def task_feedback(query: types.CallbackQuery):
     logger.info('Оценка задачи')
     rating = query.data.split('_')[1]
     task_id = query.data.split('_')[2]
-    task = await Task.objects.aget(id=task_id)
+    task = await SDTask.objects.aget(id=task_id)
     task.rating = int(rating)
     await task.asave()
     await query.message.delete()
@@ -180,7 +165,7 @@ async def task_feedback(query: types.CallbackQuery):
 
 async def sending_new_task_notify(
         query: types.CallbackQuery,
-        task: Task,
+        task: SDTask,
         employee: Employee,
 ):
     logger.info('Отправка уведомления по задачам инженерам на смене')
@@ -206,7 +191,7 @@ async def sending_new_task_notify(
     logger.info('Завершено')
 
 
-async def get_recipients_on_shift_by_task_support_group(task: Task):
+async def get_recipients_on_shift_by_task_support_group(task: SDTask):
     logger.info('Получение сотрудников по группе поддержки')
     if task.support_group == 'DISPATCHER':
         dispatchers = await Employee.objects.dispatchers_on_work()
@@ -219,7 +204,7 @@ async def get_recipients_on_shift_by_task_support_group(task: Task):
         return engineers
 
 
-async def add_tasks_schedulers(task: Task, scheduler: AsyncIOScheduler):
+async def add_tasks_schedulers(task: SDTask, scheduler: AsyncIOScheduler):
     logger.debug('Добавление временных проверок по задаче')
     task_escalation = settings.TASK_ESCALATION
     task_deadline = settings.TASK_DEADLINE

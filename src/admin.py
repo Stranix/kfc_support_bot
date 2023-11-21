@@ -5,12 +5,12 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 from src.models import (
     Employee,
-    Task,
+    SDTask,
+    GSDTask,
     Group,
     Right,
     Server,
     ServerType,
-    TaskComment,
     Restaurant,
     FranchiseOwner,
     SyncReport,
@@ -48,9 +48,39 @@ class EmployeeAdmin(admin.ModelAdmin):
             return redirect(request.GET['next'])
 
 
-@admin.register(Task)
-class TaskAdmin(admin.ModelAdmin):
-    pass
+@admin.register(SDTask)
+class SDTaskAdmin(admin.ModelAdmin):
+    list_display = [
+        'applicant',
+        'number',
+        'performer',
+        'start_at',
+        'finish_at',
+        'support_group',
+        'title',
+        'status',
+        'rating',
+    ]
+    search_fields = [
+        'number',
+    ]
+
+
+@admin.register(GSDTask)
+class GSDTaskAdmin(admin.ModelAdmin):
+    list_display = [
+        'applicant',
+        'number',
+        'restaurant',
+        'start_at',
+        'expired_at',
+        'service',
+        'gsd_group',
+        'title',
+    ]
+    search_fields = [
+        'number',
+    ]
 
 
 @admin.register(Group)
@@ -87,11 +117,6 @@ class ServerAdmin(admin.ModelAdmin):
 
 @admin.register(ServerType)
 class ServerTypeAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(TaskComment)
-class TaskCommentAdmin(admin.ModelAdmin):
     pass
 
 

@@ -1,8 +1,8 @@
+import pytz
+
 from datetime import date
 from datetime import time
 from datetime import datetime
-
-import pytz
 
 from asgiref.sync import sync_to_async
 
@@ -50,6 +50,7 @@ class Employee(models.Model):
         'Group',
         related_name='employees',
         verbose_name='Группа доступа',
+        blank=True,
     )
     managers = models.ManyToManyField(
         'Employee',
@@ -291,9 +292,9 @@ class Server(models.Model):
         return self.name
 
 
-class TaskQuerySet(models.QuerySet):
+class SDTaskQuerySet(models.QuerySet):
 
-    def sd_in_period_date(
+    def in_period_date(
             self,
             start_shift_date: date,
             end_shift_date: date | None = None
@@ -313,26 +314,53 @@ class TaskQuerySet(models.QuerySet):
             tzinfo=pytz.UTC,
         )
         return self.select_related('performer').filter(
-            number__startswith='SD-',
             start_at__gte=start_at,
             start_at__lte=end_at,
         ).order_by('-id')
 
 
-class Task(models.Model):
+class GSDTask(models.Model):
+    applicant = models.CharField('Заявитель', max_length=100)
+    number = models.CharField(
+        'Номер заявки GSD',
+        unique=True,
+        db_index=True,
+        max_length=25,
+    )
+    restaurant = models.ForeignKey(
+        'Restaurant',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='gsd_tasks',
+        verbose_name='Ресторан',
+    )
+    start_at = models.DateTimeField('Дата регистрации', default=timezone.now)
+    expired_at = models.DateTimeField('Срок обработки', null=True, blank=True)
+    service = models.CharField('Услуга', max_length=100)
+    gsd_group = models.CharField(
+        'Группа GSD',
+        blank=True,
+        null=True,
+        max_length=50,
+    )
+    title = models.CharField('Тема обращения', max_length=150)
+    description = models.TextField('Полное описание')
+
+    class Meta:
+        verbose_name = 'Задача GSD'
+        verbose_name_plural = 'Задачи GSD'
+
+    def __str__(self):
+        return f'{self.applicant} - {self.number}'
+
+
+class SDTask(models.Model):
     STATUS_CHOICES = (
         ('NEW', 'Новая'),
         ('ASSIGNED', 'Назначена'),
         ('IN_WORK', 'В работе'),
-        ('SUSPENDED', 'Приостановлена'),
         ('COMPLETED', 'Завершена'),
-    )
-
-    PRIORITY_CHOICES = (
-        ('LOW', 'Низкий'),
-        ('MID', 'Средний'),
-        ('HIGH', 'Высокий'),
-        ('CRITICAL', 'Критичный'),
     )
 
     SUPPORT_GROUP_CHOICES = (
@@ -342,16 +370,15 @@ class Task(models.Model):
 
     applicant = models.CharField('Заявитель', max_length=100)
     number = models.CharField(
-        'Номер заявки GSD',
-        unique=True,
+        'Номер заявки SD',
         db_index=True,
-        max_length=25,
+        max_length=10,
     )
     performer = models.ForeignKey(
         'Employee',
         on_delete=models.PROTECT,
         verbose_name='Исполнитель',
-        related_name='tasks',
+        related_name='sd_tasks',
         null=True,
         blank=True,
     )
@@ -360,20 +387,11 @@ class Task(models.Model):
         on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='tasks',
+        related_name='sd_tasks',
         verbose_name='Ресторан',
     )
     start_at = models.DateTimeField('Дата регистрации', default=timezone.now)
-    expired_at = models.DateTimeField('Срок обработки', null=True, blank=True)
     finish_at = models.DateTimeField('Дата закрытия', null=True, blank=True)
-    priority = models.CharField(
-        'Приоритет',
-        choices=PRIORITY_CHOICES,
-        default='',
-        null=True,
-        blank=True,
-        max_length=20,
-    )
     support_group = models.CharField(
         'Помощь от ',
         choices=SUPPORT_GROUP_CHOICES,
@@ -381,7 +399,6 @@ class Task(models.Model):
         db_index=True,
         max_length=10,
     )
-    service = models.CharField('Услуга', max_length=100)
     title = models.CharField('Тема обращения', max_length=150)
     description = models.TextField('Полное описание')
     status = models.CharField(
@@ -390,12 +407,6 @@ class Task(models.Model):
         default='NEW',
         db_index=True,
         max_length=20,
-    )
-    gsd_group = models.CharField(
-        'Группа GSD',
-        blank=True,
-        null=True,
-        max_length=50,
     )
     closing_comment = models.TextField(
         'Комментарий закрытия',
@@ -419,42 +430,14 @@ class Task(models.Model):
         blank=True,
     )
 
-    objects = TaskQuerySet.as_manager()
+    objects = SDTaskQuerySet.as_manager()
 
     class Meta:
-        verbose_name = 'Задача'
-        verbose_name_plural = 'Задачи'
+        verbose_name = 'Задача Поддержки'
+        verbose_name_plural = 'Задачи Поддержки'
 
     def __str__(self):
         return f'{self.applicant} - {self.number}'
-
-
-class TaskComment(models.Model):
-    task = models.ForeignKey(
-        'Task',
-        on_delete=models.PROTECT,
-        related_name='comments',
-        verbose_name='Задача номер',
-    )
-    comment = models.TextField('Комментарий')
-    author = models.CharField('Автор комментария', max_length=150)
-    group_gsd = models.CharField(
-        'Группа GSD',
-        blank=True,
-        null=True,
-        max_length=100,
-    )
-    time_comment = models.DateTimeField(
-        'Дата комментария',
-        default=timezone.now,
-    )
-
-    class Meta:
-        verbose_name = 'Комментарий'
-        verbose_name_plural = 'Комментарии'
-
-    def __str__(self):
-        return f'{self.task} - {self.comment}'
 
 
 class SyncReport(models.Model):

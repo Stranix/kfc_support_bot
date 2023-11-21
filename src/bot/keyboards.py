@@ -65,13 +65,13 @@ async def get_report_keyboard(report_id: int):
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
-async def get_task_keyboard(task_id: int):
-    logger.debug('Создаю кнопку для показа задач')
+async def get_gsd_task_keyboard(task_id: int):
+    logger.debug('Создаю Кнопку запроса доп информации по задаче GSD')
     inline_keyboard = [
         [
             InlineKeyboardButton(
                 text='📄 Показать всё письмо',
-                callback_data=f'task_{task_id}',
+                callback_data=f'gsd_task_{task_id}',
             ),
         ]
     ]

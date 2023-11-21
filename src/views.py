@@ -11,7 +11,8 @@ from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
 from src import utils
-from src.models import Task
+
+from src.models import SDTask
 from src.models import Employee
 from src.models import WorkShift
 from src.models import SyncReport
@@ -65,7 +66,7 @@ def show_support_tasks(request):
     logger.debug('start_shift_date: %s', start_shift_date)
     logger.debug('end_shift_date: %s', end_shift_date)
 
-    tasks = Task.objects.sd_in_period_date(start_shift_date, end_shift_date)
+    tasks = SDTask.objects.in_period_date(start_shift_date, end_shift_date)
     if support_group == 'dispatchers':
         tasks = tasks.exclude(support_group='ENGINEER')
     if support_group == 'engineers':

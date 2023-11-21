@@ -1,6 +1,7 @@
 import re
 import asyncio
 import logging
+from typing import Union
 
 from urllib.parse import urljoin
 
@@ -14,7 +15,7 @@ from aiogram import Bot
 from aiogram import html
 from aiogram import types
 from aiogram.enums import ParseMode
-from aiogram.types import Update
+from aiogram.types import Update, ReplyKeyboardMarkup
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.exceptions import TelegramBadRequest
 
@@ -22,8 +23,8 @@ from bs4 import BeautifulSoup
 
 from django.conf import settings
 
-from src.models import Task
 from src.models import Group
+from src.models import SDTask
 from src.models import Employee
 from src.bot.scheme import SyncStatus
 from src.bot.scheme import TelegramUser
@@ -113,6 +114,17 @@ async def user_registration(message: types.Message) -> Employee:
     return employee
 
 
+async def send_message(
+        chat_id: int,
+        message: str,
+        keyboard: Union[ReplyKeyboardMarkup, InlineKeyboardMarkup] = None,
+):
+    logger.info('Отправляю сообщение в чат %s', chat_id)
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+    await bot.send_message(chat_id, message, reply_markup=keyboard)
+    await bot.session.close()
+
+
 async def send_notify(
         bot: Bot,
         employees: list[Employee],
@@ -179,10 +191,7 @@ async def send_new_tasks_notify_for_middle(
 
     logger.debug('Получаем новые задачи задачи')
     new_tasks = await sync_to_async(list)(
-        Task.objects.filter(
-            number__startswith='SD-',
-            status='NEW',
-        )
+        SDTask.objects.filter(status='NEW')
     )
     if not new_tasks:
         logger.debug('Нет новых задач')

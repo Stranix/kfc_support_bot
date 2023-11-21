@@ -22,7 +22,7 @@ from aiogram.fsm.state import StatesGroup
 from src.models import WorkShift
 from src.models import Employee
 from src.models import Group
-from src.models import Task
+from src.models import SDTask
 from src.bot.utils import send_notify
 from src.bot.utils import get_senior_engineers
 
@@ -76,9 +76,9 @@ async def check_task_activate_step_1(task_number: str):
     logger.debug('Проверка задачи %s первые 10 минут', task_number)
     notify = f'❗Внимание задачу {task_number} не взяли в работу спустя 10 мин'
     try:
-        task = await Task.objects.select_related('performer')\
+        task = await SDTask.objects.select_related('performer')\
                                  .aget(number=task_number)
-    except Task.DoesNotExist:
+    except SDTask.DoesNotExist:
         logger.warning('Задачи %s не существует в БД', task_number)
         return
 
@@ -112,31 +112,30 @@ async def check_task_activate_step_1(task_number: str):
         logger.warning('На смене нет старших инженеров!')
         notify_for_senior = '‼Первая эскалация,на смене нет старших инженеров!'
         await send_notify(bot, senior_engineers, notify_for_senior)
-        await send_notify(bot, engineers, notify)
-        return
-    await send_notify(bot, middle_engineers, notify)
-    await send_notify(bot, engineers, notify)
+    await send_notify(bot, [*engineers, *middle_engineers], notify)
+    await bot.session.close()
 
 
 async def check_task_activate_step_2(task_number: str):
     logger.debug('Проверка задачи %s через 20 минут', task_number)
     notify = f'‼Задачу {task_number} не взяли работу в течении 20 минут'
-    task = await Task.objects.select_related('performer')\
-                             .aget(number=task_number)
+    task = await SDTask.objects.select_related('performer')\
+                               .aget(number=task_number)
     if task.performer:
         logger.info('На задачу назначен инженер')
         return
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     senior_engineers = await get_senior_engineers()
     await send_notify(bot, senior_engineers, notify)
+    await bot.session.close()
 
 
 async def check_task_deadline(task_number: str):
     logger.debug('Проверка задачи %s через два часа', task_number)
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     notify = f'🆘Задача {html.code(task_number)} не закрыта за два часа'
-    task = await Task.objects.select_related('performer')\
-                             .aget(number=task_number)
+    task = await SDTask.objects.select_related('performer')\
+                               .aget(number=task_number)
     senior_engineers = await get_senior_engineers()
     if not task.performer:
         logger.warning(
@@ -155,6 +154,7 @@ async def check_task_deadline(task_number: str):
     recipients_notification = list(set(recipients_notification))
     logger.debug('recipients_notification: %s', recipients_notification)
     await send_notify(bot, recipients_notification, notify)
+    await bot.session.close()
 
 
 async def check_end_of_shift(shift_id: int):

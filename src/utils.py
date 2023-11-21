@@ -13,9 +13,10 @@ from src.bot.scheme import TasksOnShift
 from src.bot.scheme import EngineersOnShift
 from src.bot.scheme import EngineerShiftInfo
 
-from src.models import Task
-from src.models import WorkShift
 from src.models import Group
+from src.models import SDTask
+from src.models import WorkShift
+
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ def get_engineers_shift_info(
                 total_breaks_time += break_shift_end - break_shift_start
         logger.debug('Время на перерыве: %s', total_breaks_time)
         logger.debug('Ищу задачи за смену у инженера')
-        tasks = shift_engineer.employee.tasks.filter(
+        tasks = shift_engineer.employee.sd_tasks.filter(
             start_at__lte=shift_end_at,
             start_at__gte=shift_start_at,
             status='COMPLETED',
@@ -142,11 +143,11 @@ def get_engineers_shift_info(
 
 def get_tasks_on_shift(shift_date: datetime) -> TasksOnShift:
     shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
-    tasks = Task.objects.sd_in_period_date(shift_start_at, shift_end_at)
+    tasks = SDTask.objects.in_period_date(shift_start_at, shift_end_at)
     return get_tasks_stat(tasks)
 
 
-def get_tasks_stat(tasks: list[Task]) -> TasksOnShift:
+def get_tasks_stat(tasks: list) -> TasksOnShift:
     tasks_info, task_closed, avg_processing_time = prepare_tasks_info(tasks)
 
     avg_tasks_rating = 0.0
@@ -164,7 +165,7 @@ def get_tasks_stat(tasks: list[Task]) -> TasksOnShift:
     return tasks_on_shift
 
 
-def prepare_tasks_info(tasks: list[Task]) -> tuple:
+def prepare_tasks_info(tasks: list) -> tuple:
     tasks_info = []
     tasks_processing_time = []
     for task in tasks:
@@ -190,10 +191,13 @@ def prepare_tasks_info(tasks: list[Task]) -> tuple:
 
         if task.sub_task_number:
             task_fields['sub_tasks_number'] = task.sub_task_number.split(',')
-        tasks_info.append(task_fields)
 
         if task.doc_path:
             task_fields['doc_path'] = make_tuple(task.doc_path)
+            print(task_fields['doc_path'])
+            logger.debug('tuple_doc_path: %s', task_fields['doc_path'])
+
+        tasks_info.append(task_fields)
 
     avg_tasks_processing_time = timedelta()
     if tasks_processing_time:

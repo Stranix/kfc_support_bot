@@ -19,9 +19,9 @@ from django.utils import timezone
 from django.core.management.base import BaseCommand
 from django.utils.dateformat import format
 
-from src.models import Task
+from src.models import GSDTask
 from src.models import Restaurant
-from src.bot.keyboards import get_task_keyboard
+from src.bot.keyboards import get_gsd_task_keyboard
 from src.utils import configure_logging
 
 logger = logging.getLogger('mail_service')
@@ -50,7 +50,7 @@ async def fetch_mail():
             )
             if restaurant:
                 task['restaurant'] = restaurant
-            task_db, created = await Task.objects.aupdate_or_create(
+            task_db, created = await GSDTask.objects.aupdate_or_create(
                 number=task.get('number'),
                 defaults=task,
             )
@@ -62,7 +62,7 @@ async def fetch_mail():
             logger.debug('Ошибочное сообщение: %s', mail)
 
 
-async def is_critical_task(task: Task) -> bool:
+async def is_critical_task(task: GSDTask) -> bool:
     logger.info('Проверяю задачу на критичность')
     critical_service = ('Digital Kiosk', 'Касса Digital')
     critical_title = ('Киоск ошибка', 'Проблемы в работе')
@@ -79,7 +79,7 @@ async def is_critical_task(task: Task) -> bool:
 
 
 async def prepare_message_for_tg(
-        task: Task
+        task: GSDTask
 ) -> tuple[str, InlineKeyboardMarkup]:
     logger.info('Подготовка сообщения для tg')
     time_formatted_mask = 'd-m-Y H:i:s'
@@ -95,7 +95,7 @@ async def prepare_message_for_tg(
         '\nДата регистрации: ' + md.hcode(start_at),
         '\nСрок обработки: ' + md.hcode(expired_at),
     )
-    keyboard = await get_task_keyboard(task.id)
+    keyboard = await get_gsd_task_keyboard(task.id)
     logger.info('Успех')
     return message, keyboard
 
@@ -108,7 +108,7 @@ async def send_message_to_tg_group(
     logger.info('Отправка сообщению ботом из менеджмент команды')
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     await bot.send_message(group_id, message, reply_markup=keyboard)
-    await bot.close()
+    await bot.session.close()
     logger.info('Сообщение отправлено')
 
 
@@ -148,7 +148,6 @@ def parse_gsd_mail(mail_text: str) -> dict:
         'number': re.search(r'SC-(\d{7})+', main_info[0]).group(),
         'start_at': tz_start_at,
         'expired_at': tz_expired_at,
-        'priority': main_info[9].split(': ')[1],
         'service': main_info[11].split(': ')[1],
         'title': main_info[12].split(': ')[1],
         'description': mail_text,

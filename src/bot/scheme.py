@@ -1,10 +1,8 @@
 from datetime import datetime
 
-from typing import Union
-
 from dataclasses import dataclass
 
-from src.models import Task
+from src.models import GSDTask
 
 
 @dataclass
@@ -46,5 +44,5 @@ class TasksOnShift:
     count: int
     closed: int
     avg_processing_time: str
-    tasks: Union[list[Task], list]
+    tasks: list[GSDTask]
     avg_rating: float = 0.0
