@@ -76,8 +76,9 @@ async def check_task_activate_step_1(task_number: str):
     logger.debug('Проверка задачи %s первые 10 минут', task_number)
     notify = f'❗Внимание задачу {task_number} не взяли в работу спустя 10 мин'
     try:
-        task = await SDTask.objects.select_related('performer')\
-                                 .aget(number=task_number)
+        task = await SDTask.objects.select_related(
+            'performer',
+        ).aget(number=task_number)
     except SDTask.DoesNotExist:
         logger.warning('Задачи %s не существует в БД', task_number)
         return
