@@ -64,7 +64,7 @@ async def get_task(
                 support_group='ENGINEER',
             ).order_by('-id')
         )
-    if await employee.groups.filter(name__in='Диспетчеры').aexists():
+    if await employee.groups.filter(name__in=['Диспетчеры']).aexists():
         logger.debug('Задачи диспетчеров')
         tasks = await sync_to_async(list)(
             SDTask.objects.filter(
