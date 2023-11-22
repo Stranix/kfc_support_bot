@@ -86,6 +86,7 @@
         <tr>
           <th scope="row">{{ forloop.counter }}</th>
           <td>{{ task.number }}</td>
+          <td>{{ task.title }}</td>
           <td>{{ task.applicant }}</td>
           <td>{{ task.performer|default_if_none:'' }}</td>
           <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>

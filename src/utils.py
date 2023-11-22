@@ -171,6 +171,7 @@ def prepare_tasks_info(tasks: list) -> tuple:
     for task in tasks:
         task_fields = {
             'number': task.number,
+            'title': task.title,
             'applicant': task.applicant,
             'performer': task.performer,
             'start_at': task.start_at,

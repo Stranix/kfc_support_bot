@@ -75,6 +75,7 @@ def show_support_tasks(request):
     tasks_table = {
         'headers': [
             'Номер',
+            'Тема обращения',
             'Заявитель',
             'Исполнитель',
             'Дата регистрации',
