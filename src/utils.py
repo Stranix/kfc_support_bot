@@ -194,7 +194,6 @@ def prepare_tasks_info(tasks: list) -> tuple:
 
         if task.doc_path:
             task_fields['doc_path'] = make_tuple(task.doc_path)
-            print(task_fields['doc_path'])
             logger.debug('tuple_doc_path: %s', task_fields['doc_path'])
 
         tasks_info.append(task_fields)
