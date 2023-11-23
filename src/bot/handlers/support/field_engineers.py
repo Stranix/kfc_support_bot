@@ -102,6 +102,12 @@ async def process_get_gsd_number(message: types.Message, state: FSMContext):
 async def process_task_descriptions(message: types.Message, state: FSMContext):
     logger.info('Получение описание по задаче')
     task_description = message.text
+    if not task_description:
+        await message.answer(
+            f'Нет описания по задаче. Чем помочь?\n\n'
+            f'{html.italic("описание только в виде текста")}'
+        )
+        return
     data = await state.get_data()
     task_number = data['get_gsd_number']
     await state.update_data(descriptions=task_description)
