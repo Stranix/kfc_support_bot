@@ -144,6 +144,8 @@ async def process_start_task(query: types.CallbackQuery, employee: Employee):
         f'💼Вы взяли задачу {html.bold(task.number)} в работу\n'
         f'Контакт для обратной связи: {task_applicant.name} '
         f'({task_applicant.tg_nickname})\n\n'
+        f'{task.title}\n'
+        f'Что требуется: {html.code(task.description)}\n\n'
         'Для закрытия задачи, используйте команду /close_task',
         reply_markup=ReplyKeyboardRemove()
     )
