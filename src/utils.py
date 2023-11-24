@@ -116,7 +116,7 @@ def get_engineers_shift_info(
         avg_rating = 0.0
         if tasks.count():
             tasks_rating = [task.rating for task in tasks if task.rating]
-            avg_rating = sum(tasks_rating) / tasks.count()
+            avg_rating = sum(tasks_rating) / len(tasks_rating)
 
         engineer_group = ''
         try:
