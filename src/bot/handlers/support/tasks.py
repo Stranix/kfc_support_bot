@@ -69,7 +69,6 @@ async def get_task(
         tasks = await sync_to_async(list)(
             SDTask.objects.filter(
                 status='NEW',
-                number__istartswith='sd',
                 support_group='DISPATCHER',
             ).order_by('-id')
         )
@@ -98,7 +97,7 @@ async def show_task_info(
 ):
     logger.info(f'Запрос показа информации по задаче: {regexp.group()}')
     task_number = regexp.group()
-    task = await SDTask.objects.select_related('performer') \
+    task = await SDTask.objects.select_related('applicant', 'performer') \
         .aget(number=task_number)
     if task.performer:
         logger.warning('Заявку уже назначена на сотрудника')
@@ -112,7 +111,7 @@ async def show_task_info(
 
     await message.answer(
         f'Информация по задаче {html.code(task_number)}\n\n'
-        f'Заявитель: {task.applicant}\n'
+        f'Заявитель: {task.applicant.name}\n'
         f'Тема обращения: {task.title}\n'
         f'Описание: {task.description}\n',
         reply_markup=await keyboards.get_support_task_keyboard(task.id),
@@ -126,7 +125,11 @@ async def show_task_info(
 async def process_start_task(query: types.CallbackQuery, employee: Employee):
     logger.info('Берем задачу в работу')
     task_id = query.data.split('_')[1]
-    task = await SDTask.objects.select_related('performer').aget(id=task_id)
+    task = await SDTask.objects.select_related(
+        'applicant',
+        'performer',
+    ).aget(id=task_id)
+
     if task.performer:
         logger.warning('Заявку уже назначена на сотрудника')
         await query.answer()
@@ -135,22 +138,21 @@ async def process_start_task(query: types.CallbackQuery, employee: Employee):
             'Поможет команда: /get_task'
         )
         return
-    task_applicant = await Employee.objects.aget(name=task.applicant)
     task.performer = employee
     task.status = 'IN_WORK'
     await task.asave()
     await query.message.delete()
     await query.message.answer(
         f'💼Вы взяли задачу {html.bold(task.number)} в работу\n'
-        f'Контакт для обратной связи: {task_applicant.name} '
-        f'({task_applicant.tg_nickname})\n\n'
+        f'Контакт для обратной связи: {task.applicant.name} '
+        f'({task.applicant.tg_nickname})\n\n'
         f'{task.title}\n'
         f'Что требуется: {html.code(task.description)}\n\n'
         'Для закрытия задачи, используйте команду /close_task',
         reply_markup=ReplyKeyboardRemove()
     )
     await query.bot.send_message(
-        task_applicant.tg_id,
+        task.applicant.tg_id,
         f'Вашу задачу взял в работу инженер: {employee.name}\n'
         f'Телеграм для связи: {employee.tg_nickname}'
     )
@@ -165,7 +167,10 @@ async def process_assigned_task(
 ):
     logger.info('Назначить задачу на сотрудника')
     task_id = query.data.split('_')[1]
-    task = await SDTask.objects.select_related('performer').aget(id=task_id)
+    task = await SDTask.objects.select_related(
+        'applicant',
+        'performer',
+    ).aget(id=task_id)
 
     if task.performer:
         logger.warning('Заявку уже назначена на сотрудника')
@@ -190,11 +195,10 @@ async def process_assigned_task(
         return
     engineers_names = [engineer.name for engineer in engineers_on_shift]
     keyboard = await keyboards.create_tg_keyboard_markup(engineers_names)
-    task_applicant = await Employee.objects.aget(name=task.applicant)
     await state.update_data(
         task=task,
         engineers_on_shift=engineers_on_shift,
-        task_applicant=task_applicant
+        task_applicant=task.applicant
     )
     await query.message.answer(
         'Выберите инженера на смене для назначения',
@@ -213,6 +217,7 @@ async def process_assigned_task_step_2(
     logger.info('Назначения задачи на инженера шаг 2')
     data = await state.get_data()
     task = await SDTask.objects.select_related(
+        'applicant',
         'performer',
     ).aget(id=data['task'].id)
     if task.performer:
@@ -328,7 +333,7 @@ async def process_close_task(
 ):
     logger.info(f'Закрываем задачу: {regexp.group()}')
     task_number = regexp.group()
-    task = await SDTask.objects.select_related('performer') \
+    task = await SDTask.objects.select_related('applicant', 'performer') \
         .aget(number=task_number)
     if task.performer.name != employee.name:
         logger.warning('Исполнитель и закрывающий отличаются')
@@ -492,7 +497,6 @@ async def dispatcher_close_task_approved(
     data = await state.get_data()
     task: SDTask = data['close_task']
     approved_sub_tasks = data['approved_sub_tasks']
-    task_applicant = await Employee.objects.aget(name=task.applicant)
     logger.debug('task: %s', task)
     files_save_info = await save_doc_from_tg_to_disk(
         query.bot,
@@ -515,7 +519,7 @@ async def dispatcher_close_task_approved(
     await task.asave()
 
     await query.bot.send_message(
-        task_applicant.tg_id,
+        task.applicant.tg_id,
         'Ваше обращение закрыто.\n'
         'Оцените пожалуйста работу от 1 до 5',
         reply_markup=await keyboards.get_task_feedback_keyboard(task.id)
@@ -547,12 +551,11 @@ async def engineer_close_task(
         task: SDTask,
         state: FSMContext,
 ):
-    task_applicant = await Employee.objects.aget(name=task.applicant)
     task.status = 'COMPLETED'
     task.finish_at = timezone.now()
     await task.asave()
     await message.bot.send_message(
-        task_applicant.tg_id,
+        task.applicant.tg_id,
         'Ваше обращение закрыто.\n'
         'Оцените пожалуйста работу от 1 до 5',
         reply_markup=await keyboards.get_task_feedback_keyboard(task.id)
@@ -631,7 +634,7 @@ async def prepare_new_tasks_as_file(
     for task in tasks:
         start_at = format(task.start_at, time_formatted_mask)
         text = f'{task.number}\n\n' \
-               f'Заявитель: {task.applicant}\n' \
+               f'Заявитель: {task.applicant.name}\n' \
                f'Тип обращения: {task.title}\n' \
                f'Дата регистрации: {start_at}\n' \
                f'Текст обращения: {task.description}'

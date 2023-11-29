@@ -28,7 +28,7 @@ async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
     logger.info('Запрос на показ всех не закрытых задач')
     report = {}
     unclosed_tasks = await sync_to_async(list)(
-        SDTask.objects.prefetch_related('performer').filter(
+        SDTask.objects.prefetch_related('applicant', 'performer').filter(
             number__startswith='SD-',
             finish_at__isnull=True,
         )
@@ -42,7 +42,7 @@ async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
         report['unclosed_tasks'].append({
             'number': task.number,
             'support_group': task.support_group,
-            'applicant': task.applicant,
+            'applicant': task.applicant.name,
             'performer': task.performer.name if task.performer else '',
             'start_at': task_start_at.strftime(time_format),
             'title': task.title,
@@ -119,7 +119,7 @@ async def get_task_by_shift(
     logger.info('Получаем информацию по задачам смены')
     tasks = {}
     tasks_db = await sync_to_async(
-        SDTask.objects.prefetch_related('performer').filter
+        SDTask.objects.prefetch_related('applicant', 'performer').filter
     )(
         start_at__lte=shift_end_at,
         start_at__gte=shift_start_at,
@@ -158,7 +158,7 @@ async def get_task_by_shift(
         tasks_info.append({
             'number': task.number,
             'support_group': task.support_group,
-            'applicant': task.applicant,
+            'applicant': task.applicant.name,
             'performer': task.performer.name if task.performer else '',
             'start_at': task_start_at.strftime(time_format),
             'closed_at': task_finish_at,

@@ -109,7 +109,7 @@ async def user_registration(message: types.Message) -> Employee:
              f'Имя: {html.code(message.from_user.full_name)}\n'
     logger.debug('notify: %s', notify)
     notify_keyboard = await get_user_activate_keyboard(employee.id)
-    await send_notify(message.bot, senior_engineers, notify, notify_keyboard)
+    await send_notify(senior_engineers, notify, notify_keyboard)
     await message.answer('Заявка на регистрацию отправлена.')
     return employee
 
@@ -126,7 +126,6 @@ async def send_message(
 
 
 async def send_notify(
-        bot: Bot,
         employees: list[Employee],
         message: str,
         keyboard: InlineKeyboardMarkup = None,
@@ -135,6 +134,8 @@ async def send_notify(
     if not employees:
         logger.warning('Пустой список для отправки уведомлений')
         return
+
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     for employee in employees:
         try:
             logger.debug('Уведомление для: %s', employee.name)
@@ -145,6 +146,7 @@ async def send_notify(
             )
         except TelegramBadRequest:
             logger.warning('Не смог отправить уведомление %s', employee.name)
+    await bot.session.close()
     logger.info('Отправка уведомлений завершена')
 
 

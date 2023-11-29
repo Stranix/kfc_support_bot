@@ -15,13 +15,7 @@ from django.core.validators import MaxValueValidator
 class EmployeeQuerySet(models.QuerySet):
 
     async def dispatchers_on_work(self):
-        dispatchers = await sync_to_async(list)(
-            self.filter(
-                groups__name='Диспетчеры',
-                work_shifts__is_works=True,
-            ),
-        )
-        return dispatchers
+        return await self.employees_on_work_by_group_name('Диспетчеры')
 
     async def engineers_on_work(self):
         engineers = await sync_to_async(list)(
@@ -31,6 +25,15 @@ class EmployeeQuerySet(models.QuerySet):
             ),
         )
         return engineers
+
+    async def employees_on_work_by_group_name(self, group_name: str):
+        employees = await sync_to_async(list)(
+            self.filter(
+                groups__name=group_name,
+                work_shifts__is_works=True,
+            )
+        )
+        return employees
 
 
 class Employee(models.Model):
@@ -368,7 +371,13 @@ class SDTask(models.Model):
         ('ENGINEER', 'Инженеры'),
     )
 
-    applicant = models.CharField('Заявитель', max_length=100)
+    applicant = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        verbose_name='Заявитель',
+        related_name='applicant_sd_tasks',
+        null=True,
+    )
     number = models.CharField(
         'Номер заявки SD',
         db_index=True,

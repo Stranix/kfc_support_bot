@@ -135,7 +135,7 @@ async def process_task_approved(
     data = await state.get_data()
     logger.debug('state_data: %s', data)
     task = await SDTask.objects.acreate(
-        applicant=employee.name,
+        applicant=employee,
         title=f'Помощь по заявке SС-{data["get_gsd_number"]}',
         support_group=data['support_group'].upper(),
         description=data['descriptions'],
@@ -144,7 +144,7 @@ async def process_task_approved(
     await task.asave()
     logger.debug('Задача зафиксирована в БД. Номер: %s', task.number)
     await add_tasks_schedulers(task, scheduler)
-    await sending_new_task_notify(query, task, employee)
+    await sending_new_task_notify(task, employee)
     await query.message.answer(
         f'Заявка принята. \n'
         f'Внутренний номер: {html.code(task.number)}\n'
@@ -170,7 +170,6 @@ async def task_feedback(query: types.CallbackQuery):
 
 
 async def sending_new_task_notify(
-        query: types.CallbackQuery,
         task: SDTask,
         employee: Employee,
 ):
@@ -193,7 +192,7 @@ async def sending_new_task_notify(
         return
 
     keyboard = await get_support_task_keyboard(task.id)
-    await send_notify(query.bot, recipients, message_for_send, keyboard)
+    await send_notify(recipients, message_for_send, keyboard)
     logger.info('Завершено')
 
 

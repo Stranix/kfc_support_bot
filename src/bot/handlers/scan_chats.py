@@ -92,7 +92,8 @@ async def get_local_task_by_number(
 ) -> tuple[Any, Any] | tuple[None, None]:
     logger.info('Получение информации по локальной задачи')
     task = await SDTask.objects.select_related(
-        'performer'
+        'performer',
+        'applicant',
     ).aget(number=task_number)
 
     support_group = 'Инженеры'
