@@ -1,9 +1,11 @@
-import logging
 import os
 import re
+import logging
+
 from typing import Union
 
-from aiogram import F, Bot
+from aiogram import F
+from aiogram import Bot
 from aiogram import Router
 from aiogram import html
 from aiogram import types
@@ -117,7 +119,6 @@ async def show_task_info(
         reply_markup=await keyboards.get_support_task_keyboard(task.id),
     )
     logger.info('Информация по задаче отправлена')
-    ReplyKeyboardRemove()
     await state.clear()
 
 
