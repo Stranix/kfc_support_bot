@@ -3,11 +3,12 @@ import logging
 from aiogram import F
 from aiogram import Router
 from aiogram import html
-from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message
 from aiogram.types import ErrorEvent
 from aiogram.types import CallbackQuery
 from aiogram.filters import ExceptionTypeFilter
+from aiogram.exceptions import TelegramAPIError
+from aiogram.exceptions import TelegramForbiddenError
 
 from django.conf import settings
 
@@ -15,6 +16,12 @@ from src.models import Employee
 
 logger = logging.getLogger('support_bot')
 router = Router(name='errors_handlers')
+
+
+@router.error(ExceptionTypeFilter(TelegramForbiddenError))
+async def telegram_api_errors_forbidden_handler(event: ErrorEvent):
+    logger.debug('Кто то заблокировал бота')
+    logger.error(event.exception, exc_info=True)
 
 
 @router.error(ExceptionTypeFilter(Exception), F.update.message.as_('message'))
