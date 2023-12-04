@@ -12,6 +12,7 @@ from django.utils import timezone
 from src.models import WorkShift
 from src.models import BreakShift
 from src.models import Employee
+from src.bot.utils import send_notify
 
 logger = logging.getLogger('support_bot')
 router = Router(name='break_shift_handlers')
@@ -45,14 +46,12 @@ async def start_break_shift(message: types.Message, employee: Employee):
     await work_shift.break_shift.acreate(employee=employee)
     work_shift.is_works = False
     await work_shift.asave()
-    await message.answer('Ваш перерыв начат')
-
     logger.info('Отправляю уведомление менеджеру и пользователю')
-    for manager in employee.managers.all():
-        await message.bot.send_message(
-            manager.tg_id,
-            f'Сотрудник: {html.code(employee.name)}\nУшел на перерыв',
-        )
+    await message.answer('Ваш перерыв начат')
+    await send_notify(
+        employee.managers.all(),
+        f'Сотрудник: {html.code(employee.name)}\nУшел на перерыв',
+    )
 
 
 @router.message(Command('break_stop'))
@@ -85,11 +84,9 @@ async def stop_break_shift(message: types.Message, employee: Employee):
     await active_break.asave()
     await work_shift.asave()
 
-    await message.answer('Ваш перерыв завершен')
-
     logger.info('Отправляю уведомление менеджеру и пользователю')
-    for manager in employee.managers.all():
-        await message.bot.send_message(
-            manager.tg_id,
-            f'Сотрудник: {html.code(employee.name)}\nЗавершил перерыв',
-        )
+    await message.answer('Ваш перерыв завершен')
+    await send_notify(
+        employee.managers.all(),
+        f'Сотрудник: {html.code(employee.name)}\nЗавершил перерыв',
+    )

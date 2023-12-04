@@ -17,7 +17,7 @@ from aiogram import types
 from aiogram.enums import ParseMode
 from aiogram.types import Update, ReplyKeyboardMarkup
 from aiogram.types import InlineKeyboardMarkup
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 from bs4 import BeautifulSoup
 
@@ -146,6 +146,8 @@ async def send_notify(
             )
         except TelegramBadRequest:
             logger.warning('Не смог отправить уведомление %s', employee.name)
+        except TelegramForbiddenError:
+            logger.warning('Заблокировал бота %s', employee.name)
     await bot.session.close()
     logger.info('Отправка уведомлений завершена')
 

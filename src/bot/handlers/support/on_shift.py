@@ -15,6 +15,7 @@ from django.utils import timezone
 from src.models import Employee
 from src.models import WorkShift
 from src.bot.handlers.schedulers import check_end_of_shift
+from src.bot.utils import send_notify
 from src.bot.utils import send_new_tasks_notify_for_middle
 
 logger = logging.getLogger('support_bot')
@@ -52,11 +53,10 @@ async def on_shift(
     logger.info('Отправляю уведомление менеджеру и пользователю')
     await message.answer('Вы добавлены в очередь на получение задач')
     await send_new_tasks_notify_for_middle(employee, message)
-    for manager in employee.managers.all():
-        await message.bot.send_message(
-            manager.tg_id,
-            f'Сотрудник: {html.code(employee.name)}\nЗаступил на смену',
-        )
+    await send_notify(
+        employee.managers.all(),
+        f'Сотрудник: {html.code(employee.name)}\nЗаступил на смену',
+    )
 
 
 async def is_active_shift(employee: Employee) -> bool:

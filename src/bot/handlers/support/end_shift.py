@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from src.models import Employee
 from src.models import WorkShift
+from src.bot.utils import send_notify
 from src.bot.utils import send_new_tasks_notify_for_middle
 
 logger = logging.getLogger('support_bot')
@@ -53,8 +54,7 @@ async def end_shift(
         logger.debug('Не нашел подходящей джобы')
     await message.answer('Смена окончена. Пока 👋')
     logger.info('Отправляю уведомление менеджеру')
-    for manager in employee.managers.all():
-        await message.bot.send_message(
-            manager.tg_id,
-            f'Сотрудник: {html.code(employee.name)}\nЗавершил смену',
-        )
+    await send_notify(
+        employee.managers.all(),
+        f'Сотрудник: {html.code(employee.name)}\nЗавершил смену',
+    )
