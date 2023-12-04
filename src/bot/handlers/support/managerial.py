@@ -29,7 +29,6 @@ async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
     report = {}
     unclosed_tasks = await sync_to_async(list)(
         SDTask.objects.prefetch_related('applicant', 'performer').filter(
-            number__startswith='SD-',
             finish_at__isnull=True,
         )
     )
@@ -42,7 +41,7 @@ async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
         report['unclosed_tasks'].append({
             'number': task.number,
             'support_group': task.support_group,
-            'applicant': task.applicant.name,
+            'applicant': task.applicant.name if task.applicant else '',
             'performer': task.performer.name if task.performer else '',
             'start_at': task_start_at.strftime(time_format),
             'title': task.title,
