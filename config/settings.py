@@ -20,6 +20,11 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 TG_BOT_TOKEN = env.str('TG_BOT_TOKEN', '')
 TG_BOT_ADMIN = env.int('TG_BOT_ADMIN')
 
+TG_API_ID = env.int('TG_API_ID')
+TG_API_HASH = env.str('TG_API_HASH', '')
+TG_SESSION_NAME = env.str('TG_API_HASH', '')
+TG_GET_MESSAGE_FROM = env.int('TG_GET_MESSAGE_FROM')
+
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     ['http://localhost:1337']
