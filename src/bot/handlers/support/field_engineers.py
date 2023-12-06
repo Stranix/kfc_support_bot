@@ -11,6 +11,7 @@ from aiogram.filters import Command
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.context import FSMContext
+from aiogram.exceptions import TelegramBadRequest
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -164,8 +165,11 @@ async def task_feedback(query: types.CallbackQuery):
     task = await SDTask.objects.aget(id=task_id)
     task.rating = int(rating)
     await task.asave()
-    await query.message.delete()
-    await query.message.answer(f'Спасибо за оценку задачи {task.number}')
+    try:
+        await query.message.delete()
+        await query.message.answer(f'Спасибо за оценку задачи {task.number}')
+    except TelegramBadRequest:
+        logger.debug('Сообщение уже удалено')
     logger.info('Оценка проставлена')
 
 
