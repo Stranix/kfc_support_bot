@@ -49,6 +49,12 @@ class Employee(models.Model):
         blank=True,
         default='',
     )
+    dispatcher_name = models.CharField(
+        'Имя в диспетчере',
+        max_length=50,
+        blank=True,
+        null=True,
+    )
     groups = models.ManyToManyField(
         'Group',
         related_name='employees',
@@ -516,3 +522,52 @@ class BotCommand(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Dispatcher(models.Model):
+    dispatcher_number = models.PositiveSmallIntegerField(
+        'Номер в диспетчере',
+        max_length=6,
+    ),
+    company = models.CharField(
+        'Компания',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    restaurant = models.CharField(
+        'Ресторан',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    itsm_number = models.CharField(
+        'Номер ITSM',
+        max_length=15,
+        blank=True,
+        default='',
+    ),
+    performer = models.ForeignKey(
+        'Employee',
+        on_delete=models.PROTECT,
+        related_name='dispatcher_tasks',
+        verbose_name='Исполнитель',
+    )
+    gsd_numbers = models.CharField(
+        'Связанные заявки GSD',
+        max_length=100,
+        blank=True,
+        default='',
+    )
+    closing_comment = models.TextField(
+        'Комментарий закрытия',
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = 'Задача из Диспетчера'
+        verbose_name_plural = 'Задачи из Диспетчера'
+
+    def __str__(self):
+        return f'{self.dispatcher_number} - {self.performer}'

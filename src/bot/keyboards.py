@@ -231,3 +231,19 @@ async def get_choice_task_closed_approved_keyboard():
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_choice_dispatcher_task_closed_keyboard(task_id: int):
+    logger.debug('Создаю клавиатуру для закрытия задачи из диспетчера')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='Да',
+                callback_data=f'disp_task_{task_id}',
+            ),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
