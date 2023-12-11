@@ -526,7 +526,7 @@ class BotCommand(models.Model):
 
 
 class Dispatcher(models.Model):
-    dispatcher_number = models.PositiveSmallIntegerField(
+    dispatcher_number = models.PositiveIntegerField(
         'Номер в диспетчере',
     )
     company = models.CharField(
