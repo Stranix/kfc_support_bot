@@ -1,11 +1,9 @@
-import os
 import re
 import logging
 
 from typing import Union
 
 from aiogram import F
-from aiogram import Bot
 from aiogram import Router
 from aiogram import html
 from aiogram import types
@@ -25,12 +23,11 @@ from src.bot import keyboards
 from src.models import SDTask
 from src.models import Group
 from src.models import Employee
-from src.bot.middlewares import AlbumMiddleware
-
+from src.bot.utils import save_doc_from_tg_to_disk
+from src.bot.utils import send_documents_out_task
 
 logger = logging.getLogger('support_bot')
 router = Router(name='support_task_handlers')
-router.message.outer_middleware(AlbumMiddleware())
 
 
 class TaskState(StatesGroup):
@@ -152,6 +149,8 @@ async def process_start_task(query: types.CallbackQuery, employee: Employee):
         'Для закрытия задачи, используйте команду /close_task',
         reply_markup=ReplyKeyboardRemove()
     )
+    if task.is_automatic:
+        await send_documents_out_task(task)
     await query.bot.send_message(
         task.applicant.tg_id,
         f'Вашу задачу взял в работу инженер: {employee.name}\n'
@@ -500,7 +499,6 @@ async def dispatcher_close_task_approved(
     approved_sub_tasks = data['approved_sub_tasks']
     logger.debug('task: %s', task)
     files_save_info = await save_doc_from_tg_to_disk(
-        query.bot,
         task.number,
         data['get_doc'],
     )
@@ -650,7 +648,7 @@ async def prepare_new_tasks_as_file(
 async def get_task_in_work_by_employee(employee_id: id) -> list[SDTask] | None:
     logger.info('Получение задач в работе по сотруднику с id: %s', employee_id)
     tasks = await sync_to_async(list)(
-        SDTask.objects.prefetch_related('performer').filter(
+        SDTask.objects.prefetch_related('performer', 'applicant').filter(
             performer__tg_id=employee_id,
             status='IN_WORK',
         )
@@ -663,30 +661,3 @@ async def get_task_in_work_by_employee(employee_id: id) -> list[SDTask] | None:
         return
     logger.info('Задачи получены')
     return tasks
-
-
-async def save_doc_from_tg_to_disk(
-        bot: Bot,
-        task_number: str,
-        documents: dict
-) -> list[tuple] | None:
-    logger.info('Сохраняю документы')
-    logger.debug('documents: %s', documents)
-    if not documents:
-        logger.debug('Нет информации о документах')
-        return
-    save_to = os.path.join('media/docs/', task_number)
-    if not os.path.exists(save_to):
-        os.makedirs(save_to)
-
-    save_report = []
-    for doc_name, doc_id in documents.items():
-        tg_file = await bot.get_file(doc_id)
-        save_path = os.path.join(save_to, doc_name)
-        try:
-            await bot.download_file(tg_file.file_path, save_path)
-            save_report.append((doc_name, save_path))
-        except FileNotFoundError:
-            logger.error('Проблемы при сохранении %s', save_path)
-    logger.info('Документы сохранены')
-    return save_report

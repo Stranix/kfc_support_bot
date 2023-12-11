@@ -1,3 +1,4 @@
+import os
 import re
 import asyncio
 import logging
@@ -15,15 +16,15 @@ from aiogram import Bot
 from aiogram import html
 from aiogram import types
 from aiogram.enums import ParseMode
-from aiogram.types import Update, ReplyKeyboardMarkup
-from aiogram.types import InlineKeyboardMarkup
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramForbiddenError
+from aiogram.utils.media_group import MediaGroupBuilder
 
 from bs4 import BeautifulSoup
 
 from django.conf import settings
 
-from src.models import Group
+from src.models import Group, Dispatcher
 from src.models import SDTask
 from src.models import Employee
 from src.bot.scheme import SyncStatus
@@ -117,7 +118,10 @@ async def user_registration(message: types.Message) -> Employee:
 async def send_message(
         chat_id: int,
         message: str,
-        keyboard: Union[ReplyKeyboardMarkup, InlineKeyboardMarkup] = None,
+        keyboard: Union[
+            types.ReplyKeyboardMarkup,
+            types.InlineKeyboardMarkup
+        ] = None,
 ):
     logger.info('Отправляю сообщение в чат %s', chat_id)
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
@@ -128,7 +132,7 @@ async def send_message(
 async def send_notify(
         employees: list[Employee],
         message: str,
-        keyboard: InlineKeyboardMarkup = None,
+        keyboard: types.InlineKeyboardMarkup = None,
 ):
     logger.info('Отправка уведомления')
     if not employees:
@@ -165,7 +169,7 @@ async def get_senior_engineers() -> list[Employee] | None:
     return senior_engineers
 
 
-async def get_tg_user_info_from_event(event: Update) -> TelegramUser:
+async def get_tg_user_info_from_event(event: types.Update) -> TelegramUser:
     logger.debug('Получаем информацию о пользователе из telegram update')
     tg_id = 0
     nickname = ''
@@ -222,3 +226,66 @@ async def send_notify_to_seniors_engineers(message: str):
             )
     await bot.session.close()
     logger.info('Выполнено')
+
+
+async def save_doc_from_tg_to_disk(
+        task_number: str,
+        documents: dict
+) -> list[tuple] | None:
+    logger.info('Сохраняю документы')
+    logger.debug('documents: %s', documents)
+    if not documents:
+        logger.debug('Нет информации о документах')
+        return
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+    save_to = os.path.join('media/docs/', task_number)
+    if not os.path.exists(save_to):
+        os.makedirs(save_to)
+
+    save_report = []
+    for doc_name, doc_id in documents.items():
+        tg_file = await bot.get_file(doc_id)
+        save_path = os.path.join(save_to, doc_name)
+        try:
+            await bot.download_file(tg_file.file_path, save_path)
+            save_report.append((doc_name, save_path))
+        except FileNotFoundError:
+            logger.error('Проблемы при сохранении %s', save_path)
+    logger.info('Документы сохранены')
+    await bot.session.close()
+    return save_report
+
+
+async def send_documents_out_task(sd_task: SDTask):
+    logger.info('Отправляю документы из задачи')
+    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+    dispatcher_number = re.search(r'\d{6}', sd_task.title).group()
+    try:
+        disp_task = await Dispatcher.objects.aget(
+            dispatcher_number=dispatcher_number,
+        )
+    except Dispatcher.DoesNotExist:
+        logger.warning('Нет задачи в бд. Отправка документов не возможна')
+        await bot.session.close()
+        return
+    tg_documents = eval(disp_task.tg_documents)
+    if not tg_documents:
+        await bot.send_message(
+            sd_task.performer.tg_id,
+            'Инженер не прожил документы к задаче',
+        )
+        await bot.session.close()
+        return
+
+    media_group = MediaGroupBuilder(caption="Приложенные файлы от инженера")
+    for doc_name, doc_id in tg_documents.items():
+        tg_file = await bot.get_file(doc_id)
+        io_file = await bot.download_file(tg_file.file_path)
+        text_file = types.BufferedInputFile(io_file.read(), filename=doc_name)
+        media_group.add_document(text_file)
+    await bot.send_media_group(
+        chat_id=sd_task.performer.tg_id,
+        media=media_group.build()
+    )
+    await bot.session.close()
+    logger.info('Документы отправлены')

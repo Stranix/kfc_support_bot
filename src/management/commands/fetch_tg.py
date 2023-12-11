@@ -1,5 +1,5 @@
-import logging
 import re
+import logging
 
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -45,9 +45,10 @@ async def get_message_from_tg_chanel(event):
         'Рестораны быстрого питания',
         'ИНТЕРНЭШНЛ РЕСТОРАНТ БРЭНДС',
     ]
-    message_for_send = 'Закрыта заявка в диспетчере с номером {number}\n' \
+    message_for_send = 'Закрыта заявка в диспетчере с номером {number}\n\n' \
                        'Связана с задачами GSD: {gsd_numbers}\n' \
-                       'Комментарий закрытия: {task_commit}\n\n' \
+                       'Комментарий закрытия:\n ' \
+                       '<code>{task_commit}</code>\n\n' \
                        'Подтвердить и создать задачу на закрытия в GSD?'
 
     dispatcher_task = await parce_tg_notify(event.text)
@@ -65,7 +66,7 @@ async def get_message_from_tg_chanel(event):
         keyboard = await get_choice_dispatcher_task_closed_keyboard(
             task.id,
         )
-        message_for_send.format(
+        message_for_send = message_for_send.format(
             number=dispatcher_task.dispatcher_number,
             gsd_numbers=dispatcher_task.gsd_numbers,
             task_commit=dispatcher_task.closing_comment,
@@ -87,13 +88,18 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
     clear_message = message.replace('**', '')
     message_lines = clear_message.split('\n')
     dispatcher_number = re.search(r'\d{6}', message_lines[0])
-    itsm_number = re.search(r'\d{5}', message_lines[4])
+    itsm_number = re.search(r'ITSM_\d{5}', message_lines[4])
     closing_comment = clear_message.split('Решение:')[1].replace('\n', '')
     performer = message_lines[5].split(':')[1].strip()
     try:
-        performer = await Employee.objects.aget(
-            dispatcher_name=performer,
-        )
+        if settings.DEBUG:
+            performer = await Employee.objects.aget(
+                dispatcher_name='Смуров К.А.',
+            )
+        else:
+            performer = await Employee.objects.aget(
+                dispatcher_name=performer,
+            )
     except Employee.DoesNotExist:
         logger.warning('Не найден сотрудник из диспетчера')
         performer = None
@@ -101,7 +107,7 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
     if dispatcher_number:
         dispatcher_number = int(dispatcher_number.group())
     if itsm_number:
-        itsm_number = int(itsm_number.group())
+        itsm_number = itsm_number.group()
 
     dispatcher_task_notify = DispatcherTaskNotify(
         dispatcher_number=dispatcher_number,

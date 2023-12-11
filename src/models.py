@@ -444,6 +444,7 @@ class SDTask(models.Model):
         null=True,
         blank=True,
     )
+    is_automatic = models.BooleanField('Автоматическая?', default=False)
 
     objects = SDTaskQuerySet.as_manager()
 
@@ -527,8 +528,7 @@ class BotCommand(models.Model):
 class Dispatcher(models.Model):
     dispatcher_number = models.PositiveSmallIntegerField(
         'Номер в диспетчере',
-        max_length=6,
-    ),
+    )
     company = models.CharField(
         'Компания',
         max_length=100,
@@ -546,7 +546,7 @@ class Dispatcher(models.Model):
         max_length=15,
         blank=True,
         default='',
-    ),
+    )
     performer = models.ForeignKey(
         'Employee',
         on_delete=models.PROTECT,
@@ -561,6 +561,11 @@ class Dispatcher(models.Model):
     )
     closing_comment = models.TextField(
         'Комментарий закрытия',
+        blank=True,
+        null=True,
+    )
+    tg_documents = models.TextField(
+        'Документы',
         blank=True,
         null=True,
     )

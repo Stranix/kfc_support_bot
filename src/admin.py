@@ -15,6 +15,7 @@ from src.models import (
     FranchiseOwner,
     SyncReport,
     WorkShift,
+    Dispatcher,
     BotCommand,
     BreakShift,
     BotCommandCategory,
@@ -202,4 +203,20 @@ class BreakShiftAdmin(admin.ModelAdmin):
         'start_break_at',
         'end_break_at',
         'is_active',
+    ]
+
+
+@admin.register(Dispatcher)
+class DispatcherAdmin(admin.ModelAdmin):
+    list_display = [
+        'dispatcher_number',
+        'company',
+        'restaurant',
+        'itsm_number',
+        'performer',
+        'gsd_numbers',
+    ]
+    search_fields = [
+        'dispatcher_number',
+        'gsd_numbers',
     ]

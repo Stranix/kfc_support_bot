@@ -19,6 +19,7 @@
             onclick="window.open('{% url 'admin:src_employee_change' object_id=employee.id %}?next={{ request.path|urlencode }}', '_self')">
           <th scope="row">{{ forloop.counter }}</th>
           <td>{{ employee.name }}</td>
+          <td>{{ employee.dispatcher_name|default_if_none:'' }}</td>
           <td><a href="https://t.me/{{ employee.tg_nickname|cut:'@' }}">{{ employee.tg_nickname }}</a></td>
           <td>
             {% for group in employee.groups.all %}

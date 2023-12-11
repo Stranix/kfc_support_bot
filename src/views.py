@@ -31,6 +31,7 @@ def show_employee(request):
     table_employees = {
         'headers': [
             'Имя',
+            'Имя в диспетчере',
             'Телеграм',
             'Группы доступа',
             'Менеджеры',

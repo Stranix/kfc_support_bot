@@ -3,6 +3,8 @@ import logging
 
 from datetime import timedelta
 
+from typing import Union
+
 from aiogram import F
 from aiogram import Router
 from aiogram import html
@@ -19,13 +21,14 @@ from django.db.models import Q
 from django.conf import settings
 from django.utils import timezone
 
+
 from src.models import SDTask
+from src.models import Dispatcher
 from src.models import Employee
+from src.bot import keyboards
 from src.bot.utils import send_notify
 from src.bot.utils import send_notify_to_seniors_engineers
-from src.bot.keyboards import get_support_task_keyboard
-from src.bot.keyboards import get_choice_support_group_keyboard
-from src.bot.keyboards import get_approved_task_keyboard
+
 from src.bot.handlers.schedulers import check_task_deadline
 from src.bot.handlers.schedulers import check_task_activate_step_1
 from src.bot.handlers.schedulers import check_task_activate_step_2
@@ -39,6 +42,11 @@ class NewTaskState(StatesGroup):
     get_gsd_number = State()
     descriptions = State()
     approved = State()
+
+
+class DispatcherTask(StatesGroup):
+    task = State()
+    get_doc = State()
 
 
 @router.message(Command('support_help'))
@@ -57,7 +65,7 @@ async def start_new_support_task(
         )
         await message.answer('Нет прав на использование команды')
         return
-    keyboard = await get_choice_support_group_keyboard()
+    keyboard = await keyboards.get_choice_support_group_keyboard()
     await message.answer(
         'Чья помощь требуется',
         reply_markup=keyboard,
@@ -117,7 +125,7 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
         f'Требуется помощь по задаче: SC-{task_number}\n'
         f'Детали: {task_description}\n\n'
         'Все верно?',
-        reply_markup=await get_approved_task_keyboard(task_number)
+        reply_markup=await keyboards.get_approved_task_keyboard(task_number)
     )
     await state.set_state(NewTaskState.approved)
     logger.info('Описание получено')
@@ -195,7 +203,7 @@ async def sending_new_task_notify(
         await send_notify_to_seniors_engineers(notify)
         return
 
-    keyboard = await get_support_task_keyboard(task.id)
+    keyboard = await keyboards.get_support_task_keyboard(task.id)
     await send_notify(recipients, message_for_send, keyboard)
     logger.info('Завершено')
 
@@ -243,3 +251,101 @@ async def add_tasks_schedulers(task: SDTask, scheduler: AsyncIOScheduler):
         id=f'job_{task.number}_deadline',
     )
     logger.debug('Проверки добавлены')
+
+
+@router.callback_query(F.data.startswith('disp_task_'))
+async def process_dispatchers_task(
+        query: types.CallbackQuery,
+        employee: Employee,
+        state: FSMContext,
+):
+    logger.info(
+        'Создание заявки на закрытие в GSD от выездного %s',
+        employee.name,
+    )
+    task_id = query.data.split('_')[2]
+    logger.debug('Получение информации о задаче из базы')
+    try:
+        task = await Dispatcher.objects.aget(id=task_id)
+    except Dispatcher.DoesNotExist:
+        logger.warning('Не нашел задачу с id %s в базе', task_id)
+        await query.message.answer('Не нашел информацию по задаче')
+        await query.message.delete()
+        return
+    await query.message.answer(
+        'Приложите акты и заключения (если есть) <b>БЕЗ СЖАТИЯ</b>\n'
+        f'Если документов нет напишите: {html.italic("без документов")}',
+        reply_markup=await keyboards.create_tg_keyboard_markup(
+            ['без документов'],
+        ),
+    )
+    await query.message.delete()
+    await state.set_state(DispatcherTask.get_doc)
+    await state.update_data(task=task)
+
+
+@router.message(DispatcherTask.get_doc)
+async def process_dispatchers_task_get_doc(
+        message: types.Message,
+        employee: Employee,
+        scheduler: AsyncIOScheduler,
+        state: FSMContext,
+        album: Union[dict, None] = None,
+):
+    logger.info('Получение документов от выездного')
+    data = await state.get_data()
+    task: Dispatcher = data['task']
+    if album is None:
+        album = {}
+
+    if message.text and message.text != 'без документов':
+        await message.answer(
+            'Все еще жду документы.\n'
+            'Пересылку пока не понимаю',
+        )
+        return
+
+    documents = {}
+
+    if message.document and not album:
+        logger.info('Получен один документ')
+        documents[message.document.file_name] = message.document.file_id
+
+    if album:
+        logger.info('Получена группа документов')
+        for doc in album:
+            documents[doc.document.file_name] = doc.document.file_id
+
+    task.tg_documents = documents
+    await task.asave()
+    logger.info('Процесс подтверждения и создания новой заявки')
+    await message.answer('Формирую задачу. Ожидайте...')
+
+    description = '\nЗакрыть заявку в GSD\n' \
+                  'Связана с задачами GSD: {gsd_numbers}\n' \
+                  'Комментарий закрытия от инженера: {task_commit}'
+    description = description.format(
+        number=task.dispatcher_number,
+        gsd_numbers=task.gsd_numbers,
+        task_commit=task.closing_comment,
+    )
+    sd_task = await SDTask.objects.acreate(
+        applicant=employee,
+        title=f'Закрыть заявку GSD из диспетчера {task.dispatcher_number}',
+        support_group='DISPATCHER',
+        description=description,
+        is_automatic=True,
+    )
+    sd_task.number = f'SD-{sd_task.id}'
+    await sd_task.asave()
+    logger.debug('Задача зафиксирована в БД. Номер: %s', sd_task.number)
+    await add_tasks_schedulers(sd_task, scheduler)
+    await sending_new_task_notify(sd_task, employee)
+    await message.answer(
+        f'Заявка принята. \n'
+        f'Внутренний номер: {html.code(sd_task.number)}\n'
+        f'Инженерам отправлено уведомление\n\n'
+        + html.italic('Регламентное время связи 10 минут')
+    )
+    await state.clear()
+    logger.info('Процесс завершен')
