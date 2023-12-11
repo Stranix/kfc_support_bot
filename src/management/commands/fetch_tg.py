@@ -5,6 +5,7 @@ from dataclasses import asdict
 from dataclasses import dataclass
 
 from telethon import events
+from telethon.sessions import StringSession
 from telethon.sync import TelegramClient
 
 from django.conf import settings
@@ -19,7 +20,7 @@ from src.bot.keyboards import get_choice_dispatcher_task_closed_keyboard
 
 logger = logging.getLogger('dispatchers_bot')
 client = TelegramClient(
-    settings.TG_SESSION_NAME,
+    StringSession(settings.TG_SESSION),
     settings.TG_API_ID,
     settings.TG_API_HASH,
     system_version="4.16.30-vxCUSTOM",
