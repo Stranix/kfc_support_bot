@@ -77,11 +77,12 @@ async def get_message_from_tg_chanel(event):
             message_for_send,
             keyboard,
         )
-    except IntegrityError:
+    except IntegrityError as err:
         logger.warning(
             'Не смог сохранить задачу %s',
             dispatcher_task.dispatcher_number,
         )
+        logger.exception(err)
 
 
 async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
