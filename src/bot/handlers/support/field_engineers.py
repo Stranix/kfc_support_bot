@@ -273,7 +273,8 @@ async def process_dispatchers_task(
         await query.message.delete()
         return
     await query.message.answer(
-        'Приложите акты и заключения (если есть) <b>БЕЗ СЖАТИЯ</b>\n'
+        'Приложите акты и заключения (если есть) '
+        '<b>БЕЗ СЖАТИЯ(Документом)</b>\n'
         f'Если документов нет напишите: {html.italic("без документов")}',
         reply_markup=await keyboards.create_tg_keyboard_markup(
             ['без документов'],
