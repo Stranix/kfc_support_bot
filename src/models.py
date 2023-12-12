@@ -545,7 +545,7 @@ class Dispatcher(models.Model):
         'Номер ITSM',
         max_length=15,
         blank=True,
-        default='',
+        null=True,
     )
     performer = models.ForeignKey(
         'Employee',
