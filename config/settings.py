@@ -25,6 +25,8 @@ TG_API_HASH = env.str('TG_API_HASH', '')
 TG_SESSION = env.str('TG_SESSION', '')
 TG_GET_MESSAGE_FROM = env.int('TG_GET_MESSAGE_FROM')
 
+TG_ADDITIONAL_CHAT_ID = env.int('TG_ADDITIONAL_CHAT_ID')
+
 CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     ['http://localhost:1337']

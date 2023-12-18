@@ -209,7 +209,12 @@ async def get_choice_task_doc_approved_keyboard():
             InlineKeyboardButton(text='Да', callback_data='doc_apr_yes'),
             InlineKeyboardButton(text='Нет', callback_data='doc_apr_no'),
         ],
-
+        [
+            InlineKeyboardButton(
+                text='🛠Доп/Ремонты',
+                callback_data='additional',
+            )
+        ],
         [
             InlineKeyboardButton(text='Отмена', callback_data='cancel')
         ],

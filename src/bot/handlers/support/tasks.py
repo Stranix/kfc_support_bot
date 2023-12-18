@@ -235,6 +235,15 @@ async def process_assigned_task_step_2(
         if engineer.name == selected_engineer_name:
             selected_engineer = engineer
             break
+
+    if not selected_engineer:
+        logger.debug('Нет такого инженера на смене')
+        await message.answer(
+            'Нет такого инженера на смене. Попробуй еще раз с начала',
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        await state.clear()
+        return
     logger.debug('engineers_on_shift: %s', engineers_on_shift)
     logger.debug('selected_engineer: %s', selected_engineer)
     task.performer = selected_engineer
