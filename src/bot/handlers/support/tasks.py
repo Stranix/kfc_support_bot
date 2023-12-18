@@ -610,7 +610,7 @@ async def get_new_tasks(
     file_to_send = await prepare_new_tasks_as_file(tasks)
     await message.answer_document(
         file_to_send,
-        caption='Задачи в работе',
+        caption='Не назначенные задачи',
     )
 
 
