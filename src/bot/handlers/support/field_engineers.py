@@ -299,6 +299,10 @@ async def process_dispatchers_task_get_doc(
     if album is None:
         album = {}
 
+    if message.photo:
+        await message.answer('Присланы фото, жду документы!')
+        return
+
     if message.text and message.text != 'без документов':
         await message.answer(
             'Все еще жду документы.\n'
