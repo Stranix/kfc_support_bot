@@ -29,8 +29,12 @@ async def process_additional_work(
     gsd_number = re.search(r'\d{7}', task.title)
     if not gsd_number:
         logger.warning('Не смог найти номер в имени %s', task.title)
-        await query.message.answer('Не смог найти номер обращения')
-        return
+        logger.info('Поиск номера задачи в описании')
+        gsd_number = re.search(r'\d{7}', task.description)
+        if not gsd_number:
+            logger.warning('не смог найти номер заявки GSD в теме и описании')
+            await query.message.answer('Не смог найти номер обращения')
+            return
     await query.message.delete()
     gsd_number = gsd_number[0]
     logger.info('Отправляю сообщение в чат доп работ')
