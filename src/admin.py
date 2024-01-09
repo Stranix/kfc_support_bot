@@ -28,9 +28,21 @@ class EmployeeAdmin(admin.ModelAdmin):
         'name',
     ]
 
+    list_display = [
+        'name',
+        'tg_id',
+        'dispatcher_name',
+        'registered_at',
+        'is_active',
+    ]
+
     filter_horizontal = [
         'groups',
         'managers',
+    ]
+
+    list_filter = [
+        'groups',
     ]
 
     readonly_fields = [
