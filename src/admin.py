@@ -1,11 +1,14 @@
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import GroupAdmin
+from django.contrib.auth.models import Group as DjangoGroup
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from src.models import (
     CustomUser,
+    CustomGroup,
     Employee,
     SDTask,
     GSDTask,
@@ -22,6 +25,28 @@ from src.models import (
     BreakShift,
     BotCommandCategory,
 )
+
+admin.site.unregister(DjangoGroup)
+
+
+@admin.register(CustomGroup)
+class CustomGroupAdmin(GroupAdmin):
+    fieldsets = [
+        (
+            None,
+            {
+                'fields': [
+                    'name',
+                    'managers',
+                    'permissions',
+                ]
+            }
+        ),
+    ]
+    filter_horizontal = [
+        'permissions',
+        'managers',
+    ]
 
 
 @admin.register(CustomUser)

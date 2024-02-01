@@ -9,7 +9,7 @@ from asgiref.sync import sync_to_async
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
-from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import PermissionsMixin, Group
 from django.core.validators import MaxValueValidator
 
 
@@ -83,6 +83,22 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return str(self.name)
+
+
+class CustomGroup(Group):
+    managers = models.ManyToManyField(
+        'CustomUser',
+        verbose_name='Менеджеры',
+        related_name='managers',
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Группа'
+        verbose_name_plural = 'Группы'
+
+    def __str__(self):
+        return self.name
 
 
 class EmployeeQuerySet(models.QuerySet):
