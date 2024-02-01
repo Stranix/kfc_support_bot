@@ -473,6 +473,13 @@ class SDTask(models.Model):
         related_name='applicant_sd_tasks',
         null=True,
     )
+    new_applicant = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        verbose_name='Заявитель(Новый)',
+        related_name='new_applicant_sd_tasks',
+        null=True,
+    )
     number = models.CharField(
         'Номер заявки SD',
         db_index=True,
@@ -483,6 +490,14 @@ class SDTask(models.Model):
         on_delete=models.PROTECT,
         verbose_name='Исполнитель',
         related_name='sd_tasks',
+        null=True,
+        blank=True,
+    )
+    new_performer = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        verbose_name='Исполнитель(Новый)',
+        related_name='new_sd_tasks',
         null=True,
         blank=True,
     )

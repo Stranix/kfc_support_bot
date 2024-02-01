@@ -150,8 +150,10 @@ class EmployeeAdmin(admin.ModelAdmin):
 class SDTaskAdmin(admin.ModelAdmin):
     list_display = [
         'applicant',
+        'new_applicant',
         'number',
         'performer',
+        'new_performer',
         'start_at',
         'finish_at',
         'support_group',
