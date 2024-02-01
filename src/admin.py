@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from src.models import (
+    CustomUser,
     Employee,
     SDTask,
     GSDTask,
@@ -20,6 +22,64 @@ from src.models import (
     BreakShift,
     BotCommandCategory,
 )
+
+
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    model = CustomUser
+    list_display = [
+        'login',
+        'name',
+        'tg_id',
+        'tg_nickname',
+        'email',
+        'is_staff',
+        'is_active',
+        'date_joined',
+    ]
+    list_filter = ['is_staff', 'is_active', ]
+    fieldsets = [
+        (
+            None,
+            {
+                'fields': ['login', 'name', 'email', 'password', ]
+            }
+        ),
+        (
+            'Permissions',
+            {
+                'fields': [
+                    'groups',
+                    'user_permissions',
+                    'is_staff',
+                    'is_active',
+                    'date_joined',
+                ]
+            }
+        ),
+    ]
+    add_fieldsets = (
+        (
+            None,
+            {
+                'classes': ['wide', ],
+                'fields': [
+                    'login',
+                    'name',
+                    'tg_id',
+                    'password1',
+                    'password2',
+                    'groups',
+                    'user_permissions',
+                    'is_staff',
+                    'is_active',
+                ]
+            }
+         ),
+    )
+    readonly_fields = ['date_joined']
+    search_fields = ['login', 'tg_nickname']
+    ordering = ['date_joined', ]
 
 
 @admin.register(Employee)
