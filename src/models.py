@@ -657,6 +657,14 @@ class Dispatcher(models.Model):
         related_name='dispatcher_tasks',
         verbose_name='Исполнитель',
     )
+    new_performer = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='new_dispatcher_tasks',
+        verbose_name='Исполнитель(Новый)',
+    )
     gsd_numbers = models.CharField(
         'Связанные заявки GSD',
         max_length=100,

@@ -309,6 +309,8 @@ class BreakShiftAdmin(admin.ModelAdmin):
 class DispatcherAdmin(admin.ModelAdmin):
     list_display = [
         'dispatcher_number',
+        'performer',
+        'new_performer',
         'company',
         'restaurant',
         'itsm_number',
