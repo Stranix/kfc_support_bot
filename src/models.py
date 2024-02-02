@@ -207,6 +207,14 @@ class BreakShift(models.Model):
         verbose_name='Сотрудник',
         related_name='break_shifts',
     )
+    new_employee = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name='Сотрудник(Новый)',
+        related_name='new_break_shifts',
+    )
     start_break_at = models.DateTimeField(
         'Старт перерыва',
         auto_now_add=True,

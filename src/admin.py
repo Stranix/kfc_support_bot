@@ -299,6 +299,7 @@ class BreakShiftAdmin(admin.ModelAdmin):
     ]
     list_display = [
         'employee',
+        'new_employee',
         'start_break_at',
         'end_break_at',
         'is_active',
