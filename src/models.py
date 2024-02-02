@@ -644,6 +644,12 @@ class BotCommand(models.Model):
         verbose_name='Доступна для групп',
         blank=True,
     )
+    new_groups = models.ManyToManyField(
+        'CustomGroup',
+        related_name='new_bot_commands',
+        verbose_name='Доступна для групп(Новая)',
+        blank=True,
+    )
 
     class Meta:
         verbose_name = 'Команда Бота'

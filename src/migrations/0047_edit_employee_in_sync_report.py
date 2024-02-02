@@ -5,7 +5,7 @@ from django.db import migrations
 
 def edit_employee_in_sync_report(apps, _):
     """
-    Меняем привязку пользователей в информации о сменах
+    Меняем привязку пользователей в отчете синхронизации
     Employee -> CustomUser
     """
     CustomUser = apps.get_model('src', 'CustomUser')

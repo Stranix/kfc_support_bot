@@ -281,9 +281,12 @@ class BotCommandAdmin(admin.ModelAdmin):
         'description',
         'view_priority',
     ]
-
     list_editable = [
         'category',
+    ]
+    filter_horizontal = [
+        'groups',
+        'new_groups'
     ]
 
 
