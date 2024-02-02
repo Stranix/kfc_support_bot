@@ -587,6 +587,14 @@ class SyncReport(models.Model):
         related_name='sync_reports',
         verbose_name='Инициатор',
     )
+    new_employee = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='new_sync_reports',
+        verbose_name='Инициатор(Новый)',
+    )
     server_type = models.ForeignKey(
         'ServerType',
         on_delete=models.PROTECT,

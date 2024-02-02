@@ -255,10 +255,10 @@ class SyncReportAdmin(admin.ModelAdmin):
 
     list_display = [
         'id',
-        'start_at',
         'employee',
+        'new_employee',
         'server_type',
-        'report',
+        'start_at',
     ]
 
 
