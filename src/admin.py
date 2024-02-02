@@ -266,6 +266,7 @@ class SyncReportAdmin(admin.ModelAdmin):
 class WorkShiftAdmin(admin.ModelAdmin):
     list_display = [
         'employee',
+        'new_employee',
         'shift_start_at',
         'shift_end_at',
         'is_works',

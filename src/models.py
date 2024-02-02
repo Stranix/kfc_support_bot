@@ -178,6 +178,14 @@ class WorkShift(models.Model):
         verbose_name='Сотрудник',
         related_name='work_shifts',
     )
+    new_employee = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name='Сотрудник',
+        related_name='new_work_shifts',
+    )
     shift_start_at = models.DateTimeField('Старт смены')
     shift_end_at = models.DateTimeField(
         'Завершение смены',
