@@ -8,9 +8,11 @@ from asgiref.sync import sync_to_async
 
 from django.db import models
 from django.utils import timezone
-from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
-from django.contrib.auth.models import PermissionsMixin, Group
 from django.core.validators import MaxValueValidator
+from django.contrib.auth.models import Group
+from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.base_user import BaseUserManager
+from django.contrib.auth.base_user import AbstractBaseUser
 
 
 class CustomUserManager(BaseUserManager):
@@ -35,6 +37,27 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('Superuser must have is_superuser=True')
 
         return self.create_user(login, password, **extra_fields)
+
+    async def dispatchers_on_work(self):
+        return await self.employees_on_work_by_group_name('Диспетчеры')
+
+    async def engineers_on_work(self):
+        engineers = await sync_to_async(list)(
+            self.filter(
+                groups__name__icontains='Инженеры',
+                new_work_shifts__is_works=True,
+            ),
+        )
+        return engineers
+
+    async def employees_on_work_by_group_name(self, group_name: str):
+        employees = await sync_to_async(list)(
+            self.filter(
+                groups__name=group_name,
+                new_work_shifts__is_works=True,
+            )
+        )
+        return employees
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -64,7 +87,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         blank=True,
         verbose_name='Адрес эл. почты'
     )
-
+    groups = models.ManyToManyField(
+        'CustomGroup',
+        verbose_name='Менеджеры',
+        related_name='employees',
+        blank=True,
+    )
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     date_joined = models.DateTimeField(
