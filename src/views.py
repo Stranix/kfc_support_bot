@@ -13,7 +13,7 @@ from django.contrib.auth.decorators import login_required
 from src import utils
 
 from src.models import SDTask
-from src.models import Employee
+from src.models import CustomUser
 from src.models import WorkShift
 from src.models import SyncReport
 
@@ -39,10 +39,7 @@ def show_employee(request):
             'Активирован?'
         ],
     }
-    employees = Employee.objects.prefetch_related(
-        'groups',
-        'managers',
-    ).order_by('-id')
+    employees = CustomUser.objects.prefetch_related('groups').order_by('-id')
     table_employees['users'] = employees
     return render(
         request,
@@ -110,7 +107,7 @@ def show_shifts(request):
         shift_date,
     )
     works_shifts = WorkShift.objects.prefetch_related(
-        'employee',
+        'new_employee',
         'break_shift',
     ).filter(
         Q(shift_start_at__gte=shift_start_at),
@@ -184,7 +181,7 @@ def show_shift_report(request):
 
 def show_sync_report_prev(request):
     last_4_sync_reports = SyncReport.objects.prefetch_related(
-        'employee',
+        'new_employee',
         'server_type'
     ).all().order_by('-id')[:4]
     sync_reports = []

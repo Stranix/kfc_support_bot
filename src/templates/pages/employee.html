@@ -27,14 +27,13 @@
             {% endfor %}
           </td>
           <td>
-            {% if not employee.managers.all %}
-              Не назначен
-            {% endif %}
-            {% for manager in employee.managers.all %}
-              <span class="badge text-bg-primary">{{ manager.name }}</span><br/>
+            {% for group in employee.groups.all %}
+              {% for manager in group.managers.all %}
+                <span class="badge text-bg-primary">{{ manager.name }}</span><br/>
+              {% endfor %}
             {% endfor %}
           </td>
-          <td>{{ employee.registered_at|date:'d-m-Y H:i' }}</td>
+          <td>{{ employee.date_joined|date:'d-m-Y H:i' }}</td>
           <td class="text-center">
             <i class="bi-check-circle-fill {{ employee.is_active|yesno:"text-success,text-danger" }}"></i>
           </td>

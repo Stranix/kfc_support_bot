@@ -13,7 +13,7 @@ from src.bot.scheme import TasksOnShift
 from src.bot.scheme import EngineersOnShift
 from src.bot.scheme import EngineerShiftInfo
 
-from src.models import Group
+from src.models import CustomGroup
 from src.models import SDTask
 from src.models import WorkShift
 
@@ -49,21 +49,21 @@ def get_info_for_engineers_on_shift(
 ) -> EngineersOnShift:
     shift_start_at, shift_end_at = get_start_end_datetime_on_date(shift_date)
     logger.debug('Получаю информацию по сменам за выбранную дату')
-    works_shifts = WorkShift.objects.prefetch_related('employee').filter(
+    works_shifts = WorkShift.objects.prefetch_related('new_employee').filter(
         shift_start_at__lte=shift_end_at,
         shift_start_at__gte=shift_start_at,
     )
     logger.debug('Выбираю обычных инженеров из списка смен')
     engineers_works_shifts = works_shifts.filter(
-        employee__groups__name='Инженеры'
+        new_employee__groups__name='Инженеры'
     )
     logger.debug('Выбираю старших инженеров из списка смен')
     middle_engineers_works_shifts = works_shifts.filter(
-        employee__groups__name='Старшие инженеры'
+        new_employee__groups__name='Старшие инженеры'
     )
     logger.debug('Выбираю диспетчеров из списка смен')
     dispatchers_works_shifts = works_shifts.filter(
-        employee__groups__name='Диспетчеры'
+        new_employee__groups__name='Диспетчеры'
     )
     logger.debug('Инженеры: %s', engineers_works_shifts)
     logger.debug('Старшие инженеры: %s', middle_engineers_works_shifts)
@@ -108,7 +108,7 @@ def get_engineers_shift_info(
                 total_breaks_time += break_shift_end - break_shift_start
         logger.debug('Время на перерыве: %s', total_breaks_time)
         logger.debug('Ищу задачи за смену у инженера')
-        tasks = shift_engineer.employee.sd_tasks.filter(
+        tasks = shift_engineer.new_employee.new_sd_tasks.filter(
             start_at__lte=shift_end_at,
             start_at__gte=shift_start_at,
             status='COMPLETED',
@@ -121,15 +121,15 @@ def get_engineers_shift_info(
 
         engineer_group = ''
         try:
-            engineer_group = shift_engineer.employee.groups.exclude(
+            engineer_group = shift_engineer.new_employee.groups.exclude(
                 name='Задачи',
             ).first().name
-        except Group.DoesNotExist:
+        except CustomGroup.DoesNotExist:
             pass
 
         engineers.append(
             EngineerShiftInfo(
-                name=shift_engineer.employee.name,
+                name=shift_engineer.new_employee.name,
                 group=engineer_group,
                 shift_start_at=shift_engineer.shift_start_at,
                 shift_end_at=shift_engineer.shift_end_at,
@@ -173,8 +173,8 @@ def prepare_tasks_info(tasks: list) -> tuple:
         task_fields = {
             'number': task.number,
             'title': task.title,
-            'applicant': task.applicant,
-            'performer': task.performer,
+            'applicant': task.new_applicant,
+            'performer': task.new_performer,
             'start_at': task.start_at,
             'finish_at': task.finish_at,
             'avg_processing_time': '-',
