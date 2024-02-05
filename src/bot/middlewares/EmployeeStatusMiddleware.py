@@ -8,7 +8,7 @@ from typing import Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Message
 
-from src.models import Employee
+from src.models import CustomUser
 
 logger = logging.getLogger('middleware_support_bot')
 
@@ -26,7 +26,7 @@ class EmployeeStatusMiddleware(BaseMiddleware):
         )
         if event.text == '/start':
             return await handler(event, data)
-        employee: Employee = data['employee']
+        employee: CustomUser = data['employee']
         logger.debug('employee: %s', employee.name)
         if not employee.is_active:
             await event.reply(
