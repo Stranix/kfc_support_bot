@@ -8,7 +8,7 @@ from typing import Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
-from src.models import Employee
+from src.models import CustomUser
 from src.bot.utils import user_registration
 from src.bot.utils import get_tg_user_info_from_event
 
@@ -35,7 +35,7 @@ class AuthUpdateMiddleware(BaseMiddleware):
 
         try:
             employee_in_db = await self.get_employee_from_db()
-        except Employee.DoesNotExist:
+        except CustomUser.DoesNotExist:
             employee_in_db = await user_registration(event.message)
 
         if employee_in_db and employee_in_db.is_active:
@@ -45,12 +45,11 @@ class AuthUpdateMiddleware(BaseMiddleware):
         data['employee'] = employee_in_db
         return await handler(event, data)
 
-    async def get_employee_from_db(self) -> Employee | None:
+    async def get_employee_from_db(self) -> CustomUser | None:
         logger.debug('Попытка получить пользователя из БД')
-        employee = await Employee.objects.prefetch_related(
+        employee = await CustomUser.objects.prefetch_related(
             'groups',
-            'managers',
-            'work_shifts',
+            'new_work_shifts',
         ).aget(tg_id=self.telegram_user.id)
         verified_employee = await self.check_employee_nickname_for_changes(
             employee,
@@ -58,7 +57,7 @@ class AuthUpdateMiddleware(BaseMiddleware):
         logger.debug('Информация о пользователе получена')
         return verified_employee
 
-    async def get_employee_from_cache(self) -> Employee | None:
+    async def get_employee_from_cache(self) -> CustomUser | None:
         logger.debug('Попытка получить пользователя из кеша')
         employee = self.active_users.get(self.telegram_user.id)
 
@@ -74,10 +73,10 @@ class AuthUpdateMiddleware(BaseMiddleware):
 
     async def check_employee_nickname_for_changes(
             self,
-            employee: Employee,
-    ) -> Employee:
+            employee: CustomUser,
+    ) -> CustomUser:
         logger.debug('Проверка пользователя на изменение ника')
-        employee_db_nickname = employee.tg_nickname.replace('@', '')
+        employee_db_nickname = employee.tg_nickname
         employee_new_nickname = self.telegram_user.nickname
 
         if employee_new_nickname == employee_db_nickname:
@@ -90,7 +89,7 @@ class AuthUpdateMiddleware(BaseMiddleware):
             employee_new_nickname,
         )
         logger.debug('Фиксирую изменения в БД и кеше')
-        employee.tg_nickname = f'@{employee_new_nickname}'
+        employee.tg_nickname = employee_new_nickname
         await employee.asave()
         self.active_users[employee.tg_id] = employee
         logger.debug('Готово')
