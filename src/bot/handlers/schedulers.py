@@ -83,10 +83,10 @@ async def check_task_activate_step_1(task_number: str):
         return
 
     if task.support_group == 'DISPATCHER':
-        dispatcher_group = CustomGroup.objects.aget(name='Диспетчеры')
+        dispatcher_group = await CustomGroup.objects.aget(name='Диспетчеры')
         managers = dispatcher_group.managers.all()
     if task.support_group == 'ENGINEER':
-        engineer_group = CustomGroup.objects.aget(name='Инженеры')
+        engineer_group = await CustomGroup.objects.aget(name='Инженеры')
         managers = engineer_group.managers.all()
     await send_notify(managers, notify)
     await send_notify(
