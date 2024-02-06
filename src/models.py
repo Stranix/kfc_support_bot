@@ -658,7 +658,7 @@ class BotCommand(models.Model):
         'BotCommandCategory',
         on_delete=models.SET_NULL,
         related_name='category_bot_commands',
-        verbose_name='Доступна для групп',
+        verbose_name='Категория команды',
         blank=True,
         null=True,
     )
