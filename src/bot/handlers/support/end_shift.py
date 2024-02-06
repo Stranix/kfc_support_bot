@@ -10,9 +10,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from django.utils import timezone
 
-from src.models import Employee
+from src.models import CustomUser
 from src.models import WorkShift
 from src.bot.utils import send_notify
+from src.bot.utils import get_employee_managers
 from src.bot.utils import send_new_tasks_notify_for_middle
 
 logger = logging.getLogger('support_bot')
@@ -22,12 +23,12 @@ router = Router(name='end_shift_handlers')
 @router.message(Command('end_shift'))
 async def end_shift(
         message: types.Message,
-        employee: Employee,
+        employee: CustomUser,
         scheduler: AsyncIOScheduler,
 ):
     logger.info('Старт процесса завершения смены')
     try:
-        work_shift = await employee.work_shifts.aget(
+        work_shift = await employee.new_work_shifts.aget(
             shift_start_at__isnull=False,
             shift_end_at__isnull=True,
         )
@@ -38,9 +39,6 @@ async def end_shift(
             'Сначала смену надо начать. Используй команду: /on_shift'
         )
         return
-    logger.debug('employee: %s', employee)
-    logger.debug('work_shift: %s', work_shift)
-
     logger.debug('Фиксируем завершение смены в БД')
     work_shift.shift_end_at = timezone.now()
     work_shift.is_works = False
@@ -54,7 +52,8 @@ async def end_shift(
         logger.debug('Не нашел подходящей джобы')
     await message.answer('Смена окончена. Пока 👋')
     logger.info('Отправляю уведомление менеджеру')
+    managers = await get_employee_managers(employee)
     await send_notify(
-        employee.managers.all(),
+        managers,
         f'Сотрудник: {html.code(employee.name)}\nЗавершил смену',
     )
