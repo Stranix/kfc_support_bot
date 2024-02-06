@@ -2,8 +2,6 @@ import logging
 
 from datetime import timedelta
 
-from asgiref.sync import sync_to_async
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from aiogram import F
@@ -16,9 +14,9 @@ from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
 
 from src.models import WorkShift
-from src.models import Employee
+from src.models import CustomGroup
 from src.models import SDTask
-from src.bot.utils import send_notify
+from src.bot.utils import send_notify, send_notify_to_seniors_engineers
 from src.bot.utils import get_senior_engineers
 
 logger = logging.getLogger('support_bot')
@@ -70,35 +68,29 @@ async def process_close_scheduler_job(
 async def check_task_activate_step_1(task_number: str):
     logger.debug('Проверка задачи %s первые 10 минут', task_number)
     notify = f'❗Внимание задачу {task_number} не взяли в работу спустя 10 мин'
+    managers = []
     try:
         task = await SDTask.objects.select_related(
-            'performer',
-            'applicant',
+            'new_performer',
+            'new_applicant',
         ).aget(number=task_number)
     except SDTask.DoesNotExist:
         logger.warning('Задачи %s не существует в БД', task_number)
         return
 
-    if task.performer:
+    if task.new_performer:
         logger.info('На задачу назначен инженер')
         return
-    engineers = await Employee.objects.employees_on_work_by_group_name(
-        group_name='Инженеры',
-    )
-    middle_engineers = await Employee.objects.employees_on_work_by_group_name(
-        group_name='Старшие инженеры',
-    )
-    senior_engineers = await Employee.objects.employees_on_work_by_group_name(
-        group_name='Ведущие инженеры',
-    )
-    logger.debug('middle_engineers: %s', middle_engineers)
-    if not middle_engineers:
-        logger.warning('На смене нет старших инженеров!')
-        notify_for_senior = '‼Первая эскалация,на смене нет старших инженеров!'
-        await send_notify(senior_engineers, notify_for_senior)
-    await send_notify([*engineers, *middle_engineers], notify)
+
+    if task.support_group == 'DISPATCHER':
+        dispatcher_group = CustomGroup.objects.aget(name='Диспетчеры')
+        managers = dispatcher_group.managers.all()
+    if task.support_group == 'ENGINEER':
+        engineer_group = CustomGroup.objects.aget(name='Инженеры')
+        managers = engineer_group.managers.all()
+    await send_notify(managers, notify)
     await send_notify(
-        [task.applicant],
+        [task.new_applicant],
         f'Не взяли в работу задачу {task.number} за 10 минут.\nСообщил старшим'
     )
 
@@ -106,13 +98,14 @@ async def check_task_activate_step_1(task_number: str):
 async def check_task_activate_step_2(task_number: str):
     logger.debug('Проверка задачи %s через 20 минут', task_number)
     notify = f'‼Задачу {task_number} не взяли работу в течении 20 минут'
-    task = await SDTask.objects.select_related('applicant', 'performer')\
-                               .aget(number=task_number)
-    if task.performer:
+    task = await SDTask.objects.select_related(
+        'new_applicant',
+        'new_performer',
+    ).aget(number=task_number)
+    if task.new_performer:
         logger.info('На задачу назначен инженер')
         return
-    senior_engineers = await get_senior_engineers()
-    await send_notify(senior_engineers, notify)
+    await send_notify_to_seniors_engineers(notify)
     await send_notify(
         [task.applicant],
         f'Не взяли в работу задачу {task.number} за 20 минут.\n'
@@ -124,23 +117,29 @@ async def check_task_activate_step_2(task_number: str):
 async def check_task_deadline(task_number: str):
     logger.debug('Проверка задачи %s через два часа', task_number)
     notify = f'🆘Задача {html.code(task_number)} не закрыта за два часа'
-    task = await SDTask.objects.select_related('performer')\
-                               .aget(number=task_number)
-    senior_engineers = await get_senior_engineers()
+    task = await SDTask.objects.select_related(
+        'new_performer',
+    ).aget(number=task_number)
+
+    if task.finish_at:
+        logger.debug('Задача завершена')
+        return
+
     if not task.performer:
-        logger.warning(
+        logger.info(
             'Прошло два часа, а на задаче %s нет инженера',
             task_number,
         )
         notify = f'🧨Прошло два часа, а на задаче {task_number} нет инженера!'
-        await send_notify(senior_engineers, notify)
+        await send_notify_to_seniors_engineers(notify)
         return
-    if task.finish_at:
-        logger.debug('Задача завершена')
-        return
-    engineer = task.performer
-    managers = await sync_to_async(list)(engineer.managers.all())
-    recipients_notification = [*managers, *senior_engineers]
+
+    engineer = task.new_performer
+    managers = []
+    for group in engineer.groups.all():
+        managers.extend(group.managers.all())
+
+    recipients_notification = [*managers, *await get_senior_engineers()]
     recipients_notification = list(set(recipients_notification))
     logger.debug('recipients_notification: %s', recipients_notification)
     await send_notify(recipients_notification, notify)
@@ -148,9 +147,10 @@ async def check_task_deadline(task_number: str):
 
 async def check_end_of_shift(shift_id: int):
     logger.debug('Проверка завершении смены сотрудником после 9 часов')
-    shift = await WorkShift.objects.select_related('employee')\
-                                   .aget(id=shift_id)
-    engineer = shift.employee
+    shift = await WorkShift.objects.select_related(
+        'new_employee',
+    ).aget(id=shift_id)
+    engineer = shift.new_employee
     notify = f'🔴 У сотрудника {engineer.name} не закрыта смена спустя 9 часов'
     if shift.shift_end_at:
         logger.debug(
@@ -160,13 +160,15 @@ async def check_end_of_shift(shift_id: int):
             shift.shift_end_at.strftime('%d-%m-%Y %H:%M:%S'),
         )
         return
-    logger.warning(
+    logger.debug(
         'У сотрудника %s не закрыта смена %s',
         engineer.name,
         shift.id,
     )
     logger.debug('Отправка уведомления менеджерам')
-    managers = await sync_to_async(list)(engineer.managers.all())
+    managers = []
+    for group in engineer.groups.all():
+        managers.extend(group.managers.all())
     logger.debug('managers: %s', managers)
     await send_notify(managers, notify)
     logger.debug('Отправка уведомления инженеру')

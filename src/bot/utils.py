@@ -33,7 +33,6 @@ from src.models import (
     Dispatcher,
     CustomUser,
     SDTask,
-    Employee,
 )
 
 logger = logging.getLogger('support_bot')
@@ -102,7 +101,7 @@ async def check_conn_to_main_server(
 
 async def user_registration(message: types.Message) -> CustomUser:
     logger.info('Регистрация нового пользователя')
-    employee = await Employee.objects.acreate(
+    employee = await CustomUser.objects.acreate(
         login=message.from_user.username,
         name=message.from_user.full_name.replace('@', ''),
         tg_id=message.from_user.id,
@@ -164,7 +163,7 @@ async def send_notify(
 
 async def get_senior_engineers() -> list[CustomUser] | None:
     senior_engineers = await sync_to_async(list)(
-        Employee.objects.prefetch_related('groups').filter(
+        CustomUser.objects.prefetch_related('groups').filter(
             groups__name__contains='Ведущие инженеры'
         )
     )
