@@ -30,7 +30,6 @@ from src.bot.scheme import SyncStatus
 from src.bot.scheme import TelegramUser
 from src.bot.keyboards import get_user_activate_keyboard
 from src.models import (
-    Group,
     Dispatcher,
     CustomUser,
     SDTask,
@@ -101,12 +100,13 @@ async def check_conn_to_main_server(
     return True
 
 
-async def user_registration(message: types.Message) -> Employee:
+async def user_registration(message: types.Message) -> CustomUser:
     logger.info('Регистрация нового пользователя')
     employee = await Employee.objects.acreate(
+        login=message.from_user.username,
         name=message.from_user.full_name.replace('@', ''),
         tg_id=message.from_user.id,
-        tg_nickname='@' + message.from_user.username,
+        tg_nickname=message.from_user.username,
     )
     senior_engineers = await get_senior_engineers()
     logger.debug('senior_engineers: %s', senior_engineers)
@@ -136,7 +136,7 @@ async def send_message(
 
 
 async def send_notify(
-        employees: list[Employee],
+        employees: list[CustomUser],
         message: str,
         keyboard: types.InlineKeyboardMarkup = None,
 ):
@@ -162,7 +162,7 @@ async def send_notify(
     logger.info('Отправка уведомлений завершена')
 
 
-async def get_senior_engineers() -> list[Employee] | None:
+async def get_senior_engineers() -> list[CustomUser] | None:
     senior_engineers = await sync_to_async(list)(
         Employee.objects.prefetch_related('groups').filter(
             groups__name__contains='Ведущие инженеры'
@@ -193,13 +193,13 @@ async def get_tg_user_info_from_event(event: types.Update) -> TelegramUser:
 
 
 async def send_new_tasks_notify_for_middle(
-        engineer: Employee,
+        engineer: CustomUser,
         message: types.Message
 ):
     logger.debug('Отправка уведомлений о новых задачах старшим инженерам')
     try:
         await engineer.groups.aget(name='Старшие инженеры')
-    except Group.DoesNotExist:
+    except DjangoGroup.DoesNotExist:
         logger.debug('Инженер не входит в группу старшие инженеры')
         return
 
@@ -277,7 +277,7 @@ async def send_documents_out_task(sd_task: SDTask):
     tg_documents = eval(disp_task.tg_documents)
     if not tg_documents:
         await bot.send_message(
-            sd_task.performer.tg_id,
+            sd_task.new_performer.tg_id,
             'Инженер не прожил документы к задаче',
         )
         await bot.session.close()
