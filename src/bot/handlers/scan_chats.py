@@ -11,7 +11,7 @@ from django.utils.dateformat import format
 
 from src.models import SDTask
 from src.models import GSDTask
-from src.models import Employee
+from src.models import CustomUser
 from src.bot.keyboards import assign_task_keyboard
 from src.bot.keyboards import get_gsd_task_keyboard
 from src.management.commands.upload_task import fetch_mail
@@ -53,7 +53,7 @@ async def send_gsd_task_info(query: types.CallbackQuery):
 @router.message(F.text.regexp(r'SD-(\d{5,7})+').as_('regexp'))
 async def local_service(
         message: types.Message,
-        employee: Employee,
+        employee: CustomUser,
         regexp: re.Match[str],
 ):
     logger.info(f'Нашел в сообщении номер локального тикета: {regexp.group()}')
@@ -92,8 +92,8 @@ async def get_local_task_by_number(
 ) -> tuple[Any, Any] | tuple[None, None]:
     logger.info('Получение информации по локальной задачи')
     task = await SDTask.objects.select_related(
-        'performer',
-        'applicant',
+        'new_performer',
+        'new_applicant',
     ).aget(number=task_number)
 
     support_group = 'Инженеры'
@@ -105,31 +105,31 @@ async def get_local_task_by_number(
     message_fo_send = html.code(task.number) + \
         '\n\nУслуга: ' + html.code('Локальная поддержка') + \
         '\nГруппа: ' + html.code(support_group) + \
-        '\nЗаявитель: ' + html.code(task.applicant) + \
+        '\nЗаявитель: ' + html.code(task.new_applicant) + \
         '\nТип обращения: ' + html.code(task.title) + \
         '\nДата регистрации: ' + html.code(start_at) + \
         '\nТекста обращения: ' + html.code(task.description) + \
         '\nДочерние обращения: ' + html.code(task.sub_task_number) + \
         '\nКомментарий закрытия: ' + html.code(task.closing_comment)
 
-    if task.performer and not task.finish_at:
+    if task.new_performer and not task.finish_at:
         message_fo_send += f'\n\nЗадача в работе у сотрудника: ' \
-                           f'{html.code(task.performer)}'
+                           f'{html.code(task.new_performer)}'
     if task.finish_at:
         message_fo_send += f'\n\nЗадача закрыта сотрудником: ' \
-                           f'{html.code(task.performer)}'
+                           f'{html.code(task.new_performer)}'
     return task, message_fo_send
 
 
 async def get_keyboard_for_sd_task(
-        employee: Employee,
+        employee: CustomUser,
         task: SDTask,
 ) -> types.InlineKeyboardMarkup | None:
-    if task.performer:
+    if task.new_performer:
         logger.debug(
             'На задачу %s назначен ответственный %s',
             task.number,
-            task.performer,
+            task.new_performer,
         )
         return
 
