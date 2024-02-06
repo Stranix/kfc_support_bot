@@ -316,3 +316,11 @@ def has_perm_in_group(perm_codename: str, groups: list[DjangoGroup]) -> bool:
             return True
     logger.debug('Нет права %s в группах пользователя', perm_codename)
     return False
+
+
+@sync_to_async
+def get_employee_managers(employee: CustomUser) -> list[CustomUser]:
+    managers = []
+    for group in employee.groups.all():
+        managers.extend(group.managers.all())
+    return list(set(managers))

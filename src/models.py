@@ -205,6 +205,8 @@ class WorkShift(models.Model):
         on_delete=models.PROTECT,
         verbose_name='Сотрудник',
         related_name='work_shifts',
+        null=True,
+        blank=True,
     )
     new_employee = models.ForeignKey(
         'CustomUser',
@@ -242,6 +244,8 @@ class BreakShift(models.Model):
         on_delete=models.PROTECT,
         verbose_name='Сотрудник',
         related_name='break_shifts',
+        null=True,
+        blank=True,
     )
     new_employee = models.ForeignKey(
         'CustomUser',
