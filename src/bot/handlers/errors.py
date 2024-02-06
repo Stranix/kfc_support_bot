@@ -12,7 +12,7 @@ from aiogram.exceptions import TelegramForbiddenError
 
 from django.conf import settings
 
-from src.models import Employee
+from src.models import CustomUser
 
 logger = logging.getLogger('support_bot')
 router = Router(name='errors_handlers')
@@ -27,7 +27,7 @@ async def telegram_api_errors_forbidden_handler(event: ErrorEvent):
 @router.error(ExceptionTypeFilter(Exception), F.update.message.as_('message'))
 async def message_exception(
         event: ErrorEvent,
-        employee: Employee,
+        employee: CustomUser,
         message: Message,
 ):
     logger.critical(event.exception, exc_info=True)
@@ -49,7 +49,7 @@ async def message_exception(
 )
 async def callback_exception(
         event: ErrorEvent,
-        employee: Employee,
+        employee: CustomUser,
         query: CallbackQuery,
 ):
     logger.critical(event.exception, exc_info=True)
