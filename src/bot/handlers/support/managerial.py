@@ -16,7 +16,7 @@ from aiogram.filters import Command
 from django.utils import timezone
 
 from src.models import SDTask
-from src.models import Employee
+from src.models import CustomUser
 from src.models import WorkShift
 
 logger = logging.getLogger('support_bot')
@@ -24,11 +24,14 @@ router = Router(name='managerial_handlers')
 
 
 @router.message(Command('unclosed_tasks'))
-async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
+async def cmd_unclosed_tasks(message: types.Message, employee: CustomUser):
     logger.info('Запрос на показ всех не закрытых задач')
     report = {}
     unclosed_tasks = await sync_to_async(list)(
-        SDTask.objects.prefetch_related('applicant', 'performer').filter(
+        SDTask.objects.prefetch_related(
+            'new_applicant',
+            'new_performer',
+        ).filter(
             finish_at__isnull=True,
         )
     )
@@ -41,8 +44,8 @@ async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
         report['unclosed_tasks'].append({
             'number': task.number,
             'support_group': task.support_group,
-            'applicant': task.applicant.name if task.applicant else '',
-            'performer': task.performer.name if task.performer else '',
+            'applicant': task.new_applicant.name if task.new_applicant else '',
+            'performer': task.new_performer.name if task.new_performer else '',
             'start_at': task_start_at.strftime(time_format),
             'title': task.title,
             'description': task.description,
@@ -56,7 +59,7 @@ async def cmd_unclosed_tasks(message: types.Message, employee: Employee):
 
 
 @router.message(Command('report'))
-async def cmd_report(message: types.Message, employee: Employee):
+async def cmd_report(message: types.Message, employee: CustomUser):
     logger.info('Обработчик команды report')
     check_groups = await employee.groups.filter(
         name__in=('Ведущие инженеры', 'Администратор')
@@ -118,7 +121,10 @@ async def get_task_by_shift(
     logger.info('Получаем информацию по задачам смены')
     tasks = {}
     tasks_db = await sync_to_async(
-        SDTask.objects.prefetch_related('applicant', 'performer').filter
+        SDTask.objects.prefetch_related(
+            'new_applicant',
+            'new_performer',
+        ).filter
     )(
         start_at__lte=shift_end_at,
         start_at__gte=shift_start_at,
@@ -157,8 +163,8 @@ async def get_task_by_shift(
         tasks_info.append({
             'number': task.number,
             'support_group': task.support_group,
-            'applicant': task.applicant.name,
-            'performer': task.performer.name if task.performer else '',
+            'applicant': task.new_applicant.name,
+            'performer': task.new_performer.name if task.new_performer else '',
             'start_at': task_start_at.strftime(time_format),
             'closed_at': task_finish_at,
             'title': task.title,
@@ -182,7 +188,7 @@ async def get_info_for_engineers_on_shift(
     middle_engineers = []
     dispatchers = []
     works_shifts: list[WorkShift] = await sync_to_async(list)(
-        WorkShift.objects.prefetch_related('employee').filter(
+        WorkShift.objects.prefetch_related('new_employee').filter(
             shift_start_at__lte=shift_end_at,
             shift_start_at__gte=shift_start_at,
             shift_end_at__isnull=True,
@@ -195,22 +201,22 @@ async def get_info_for_engineers_on_shift(
         )
     # TODO не правильная логика, переписать
     for work_shift in works_shifts:
-        is_engineer = await work_shift.employee.groups.filter(
+        is_engineer = await work_shift.new_employee.groups.filter(
             name='Инженеры'
         ).afirst()
-        is_middle_engineer = await work_shift.employee.groups.filter(
+        is_middle_engineer = await work_shift.new_employee.groups.filter(
             name='Старшие инженеры'
         ).afirst()
-        is_dispatchers = await work_shift.employee.groups.filter(
+        is_dispatchers = await work_shift.new_employee.groups.filter(
             name='Диспетчеры'
         ).afirst()
         if is_engineer:
-            engineers.append(work_shift.employee)
+            engineers.append(work_shift.new_employee)
             continue
         if is_middle_engineer:
-            middle_engineers.append(work_shift.employee)
+            middle_engineers.append(work_shift.new_employee)
         if is_dispatchers:
-            dispatchers.append(work_shift.employee)
+            dispatchers.append(work_shift.new_employee)
     engineers_on_shift = {
         'count': len(works_shifts),
         'engineers': {
