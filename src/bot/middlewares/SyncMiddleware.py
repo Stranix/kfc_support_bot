@@ -30,7 +30,7 @@ class SyncMiddleware(BaseMiddleware):
     ) -> Any:
         logger.debug('SyncMiddleware')
         employee: CustomUser = data['employee']
-        if event.data not in ('rest_all', ):
+        if event.data not in ('rest_all', 'rest_group'):
             return await handler(event, data)
 
         if not await has_perm('sync', employee):
