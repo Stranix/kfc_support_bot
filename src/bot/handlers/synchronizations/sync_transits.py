@@ -16,7 +16,7 @@ from aiogram.fsm.context import FSMContext
 from django.conf import settings
 from asgiref.sync import sync_to_async
 
-from src.models import Employee
+from src.models import CustomUser
 from src.models import Server
 from src.bot import keyboards
 from src.bot.scheme import SyncStatus
@@ -35,7 +35,7 @@ class SyncTrState(StatesGroup):
 @router.message(Command('sync_tr'))
 async def cmd_sync_tr(message: types.Message, state: FSMContext):
     logging.info(
-        'Запрос на запуск синхронизации от %s',
+        'Запрос на запуск синхронизации транзитов от %s',
         message.from_user.full_name
     )
     await state.set_state(SyncTrState.tr_choice)
@@ -48,7 +48,7 @@ async def cmd_sync_tr(message: types.Message, state: FSMContext):
 @router.callback_query(SyncTrState.tr_choice, F.data.startswith('tr_'))
 async def process_start_sync_tr(
         query: types.CallbackQuery,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext
 ):
     logger.debug('query: %s', query)

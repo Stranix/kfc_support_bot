@@ -7,7 +7,7 @@ from aiogram import Router
 from aiogram import html
 from aiogram import types
 
-from src.models import Employee
+from src.models import CustomUser
 from src.models import SyncReport
 from src.models import ServerType
 from src.bot.scheme import SyncStatus
@@ -31,10 +31,10 @@ async def send_report(query: types.CallbackQuery):
 async def prepare_report_as_file(report_id: int) -> types.BufferedInputFile:
     logger.info('Подготовка отчета для отправки')
     sync_report = await SyncReport.objects.select_related(
-        'employee', 'server_type'
+        'new_employee', 'server_type'
     ).aget(id=report_id)
     final_report = {
-        'initiator': sync_report.employee.name,
+        'initiator': sync_report.new_employee.name,
         'start_at': sync_report.start_at.strftime('%d-%m-%Y %H:%M:%S'),
         'server_type': sync_report.server_type.name,
         'report': {
@@ -58,7 +58,7 @@ async def prepare_report_as_file(report_id: int) -> types.BufferedInputFile:
 
 
 async def report_save_in_db(
-        employee: Employee,
+        employee: CustomUser,
         server_type_name: str,
         sync_statuses: list[SyncStatus],
         user_choice: str,
@@ -67,7 +67,7 @@ async def report_save_in_db(
     server_type = await ServerType.objects.aget(name=server_type_name)
     report = [dataclasses.asdict(st) for st in sync_statuses]
     sync_report = await SyncReport.objects.acreate(
-        employee=employee,
+        new_employee=employee,
         server_type=server_type,
         report=report,
         user_choice=user_choice,

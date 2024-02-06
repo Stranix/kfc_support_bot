@@ -614,6 +614,8 @@ class SyncReport(models.Model):
         on_delete=models.PROTECT,
         related_name='sync_reports',
         verbose_name='Инициатор',
+        null=True,
+        blank=True,
     )
     new_employee = models.ForeignKey(
         'CustomUser',

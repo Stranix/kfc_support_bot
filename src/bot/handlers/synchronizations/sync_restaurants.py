@@ -16,6 +16,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from src.models import Employee
+from src.models import CustomUser
 from src.models import Restaurant
 from src.bot import keyboards
 from src.bot.scheme import SyncStatus
@@ -59,7 +60,7 @@ async def process_rest_list(query: types.CallbackQuery, state: FSMContext):
 @router.message(SyncRestState.rest_list)
 async def process_sync_rest_list(
         message: types.Message,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext,
 ):
     logger.info('Синхронизация ресторанов по списку от пользователя')
@@ -110,7 +111,7 @@ async def process_rest_group(query: types.CallbackQuery, state: FSMContext):
 @router.callback_query(SyncRestState.rest_group, F.data.startswith('rest_'))
 async def process_sync_rest_group(
         query: types.CallbackQuery,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext,
 ):
     logger.info('Синхронизация ресторанов по выбранной группе')
@@ -146,7 +147,7 @@ async def process_sync_rest_group(
 @router.callback_query(SyncRestState.sync_choice, F.data == 'rest_all')
 async def process_sync_rest_all(
         query: types.CallbackQuery,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext,
 ):
     await query.message.edit_text(
