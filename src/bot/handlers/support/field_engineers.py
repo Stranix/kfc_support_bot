@@ -24,7 +24,7 @@ from django.utils import timezone
 
 from src.models import SDTask
 from src.models import Dispatcher
-from src.models import Employee
+from src.models import CustomUser
 from src.bot import keyboards
 from src.bot.utils import send_notify
 from src.bot.utils import send_notify_to_seniors_engineers
@@ -52,7 +52,7 @@ class DispatcherTask(StatesGroup):
 @router.message(Command('support_help'))
 async def start_new_support_task(
         message: types.Message,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext,
 ):
     logger.info('Запрос на создание новой выездной задачи')
@@ -135,7 +135,7 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
 @router.callback_query(F.data.startswith('approved_new_task'))
 async def process_task_approved(
         query: types.CallbackQuery,
-        employee: Employee,
+        employee: CustomUser,
         scheduler: AsyncIOScheduler,
         state: FSMContext,
 ):
@@ -144,7 +144,7 @@ async def process_task_approved(
     data = await state.get_data()
     logger.debug('state_data: %s', data)
     task = await SDTask.objects.acreate(
-        applicant=employee,
+        new_applicant=employee,
         title=f'Помощь по заявке SС-{data["get_gsd_number"]}',
         support_group=data['support_group'].upper(),
         description=data['descriptions'],
@@ -183,13 +183,13 @@ async def task_feedback(query: types.CallbackQuery):
 
 async def sending_new_task_notify(
         task: SDTask,
-        employee: Employee,
+        employee: CustomUser,
 ):
     logger.info('Отправка уведомления по задачам инженерам на смене')
     message_for_send = f'Инженеру требуется помощь ' \
                        f'по задаче {html.code(task.number)}\n\n' \
                        f'Описание: {html.code(task.description)}\n' \
-                       f'Телеграм для связи: {employee.tg_nickname}\n\n'
+                       f'Телеграм для связи: @{employee.tg_nickname}\n\n'
     if task.support_group == 'DISPATCHER':
         message_for_send += html.italic(
             '‼Не забудь запросить акт и заключение (если требуется)',
@@ -211,12 +211,12 @@ async def sending_new_task_notify(
 async def get_recipients_on_shift_by_task_support_group(task: SDTask):
     logger.info('Получение сотрудников по группе поддержки')
     if task.support_group == 'DISPATCHER':
-        dispatchers = await Employee.objects.dispatchers_on_work()
+        dispatchers = await CustomUser.objects.dispatchers_on_work()
         logger.debug('dispatchers: %s', dispatchers)
         return dispatchers
 
     if task.support_group == 'ENGINEER':
-        engineers = await Employee.objects.engineers_on_work()
+        engineers = await CustomUser.objects.engineers_on_work()
         logger.debug('engineers: %s', engineers)
         return engineers
 
@@ -256,7 +256,7 @@ async def add_tasks_schedulers(task: SDTask, scheduler: AsyncIOScheduler):
 @router.callback_query(F.data.startswith('disp_task_'))
 async def process_dispatchers_task(
         query: types.CallbackQuery,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext,
 ):
     logger.info(
@@ -288,7 +288,7 @@ async def process_dispatchers_task(
 @router.message(DispatcherTask.get_doc)
 async def process_dispatchers_task_get_doc(
         message: types.Message,
-        employee: Employee,
+        employee: CustomUser,
         scheduler: AsyncIOScheduler,
         state: FSMContext,
         album: Union[dict, None] = None,
@@ -335,7 +335,7 @@ async def process_dispatchers_task_get_doc(
         task_commit=task.closing_comment,
     )
     sd_task = await SDTask.objects.acreate(
-        applicant=employee,
+        new_applicant=employee,
         title=f'Закрыть заявку GSD из диспетчера {task.dispatcher_number}',
         support_group='DISPATCHER',
         description=description,
