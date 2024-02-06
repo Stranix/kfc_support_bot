@@ -1,8 +1,11 @@
 import logging
 
-from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup, \
-    KeyboardButton
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    InlineKeyboardButton,
+)
 
 logger = logging.getLogger('support_bot')
 
