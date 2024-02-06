@@ -9,10 +9,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardRemove
 from asgiref.sync import sync_to_async
+
 from django.conf import settings
 
-from src.models import Group
-from src.models import Employee
+from src.models import CustomGroup
+from src.models import CustomUser
 from src.models import BotCommand
 from src.bot.keyboards import create_tg_keyboard_markup
 
@@ -29,7 +30,7 @@ class UserFeedBackState(StatesGroup):
 
 
 @router.message(Command('start'))
-async def cmd_start(message: types.Message, employee: Employee):
+async def cmd_start(message: types.Message, employee: CustomUser):
     logger.debug('Обработчик команды /start')
     emp_status = 'Активна' if employee.is_active else 'Не активна'
     await message.answer(
@@ -42,13 +43,13 @@ async def cmd_start(message: types.Message, employee: Employee):
 async def activate_user(query: types.CallbackQuery, state: FSMContext):
     logger.info('Активация пользователя')
     user_id = query.data.split('_')[1]
-    employee = await Employee.objects.aget(id=user_id)
+    employee = await CustomUser.objects.aget(id=user_id)
     employee.is_active = True
     await query.message.delete()
     await employee.asave()
     await state.update_data(employee=employee)
     groups = await sync_to_async(list)(
-        Group.objects.exclude(name__contains='Администратор')
+        CustomGroup.objects.all()
     )
     available_groups_name = [group.name for group in groups]
     await query.message.answer(
@@ -66,12 +67,12 @@ async def activate_user_step_2(message: types.Message, state: FSMContext):
     data = await state.get_data()
     group_name = message.text
     try:
-        group = await Group.objects.aget(name=group_name)
-    except Group.DoesNotExist:
+        group = await CustomGroup.objects.aget(name=group_name)
+    except CustomGroup.DoesNotExist:
         logger.warning('Не найдена группа %s', group_name)
         await state.clear()
         return
-    new_employee: Employee = data['employee']
+    new_employee: CustomUser = data['employee']
     await sync_to_async(new_employee.groups.add)(group)
     await new_employee.asave()
     await message.answer(f'Активировал пользователя {new_employee.name}')
@@ -86,13 +87,13 @@ async def activate_user_step_2(message: types.Message, state: FSMContext):
 
 
 @router.message(Command('help'))
-async def cmd_help(message: types.Message, employee: Employee):
+async def cmd_help(message: types.Message, employee: CustomUser):
     logger.debug('Обработчик команды /help')
     emp_groups = employee.groups.all()
     logger.debug('emp_groups: %s', emp_groups)
     bot_commands = await sync_to_async(list)(
-        BotCommand.objects.prefetch_related('groups', 'category').filter(
-            groups__in=emp_groups,
+        BotCommand.objects.prefetch_related('new_groups', 'category').filter(
+            new_groups__in=emp_groups,
         )
     )
     available_commands = {}
@@ -109,7 +110,9 @@ async def cmd_help(message: types.Message, employee: Employee):
         for command in commands['commands']:
             help_massage += f'{command}\n'
         help_massage += '\n\n'
-
+    if not help_massage:
+        await message.answer('Нет доступных команд')
+        return
     await message.answer(help_massage)
 
 
@@ -141,7 +144,7 @@ async def cmd_feedback(message: types.Message, state: FSMContext):
 @router.message(UserFeedBackState.feedback)
 async def process_feedback(
         message: types.Message,
-        employee: Employee,
+        employee: CustomUser,
         state: FSMContext,
 ):
     feedback = message.text
