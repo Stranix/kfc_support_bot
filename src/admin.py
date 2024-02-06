@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.admin import GroupAdmin
-from django.contrib.auth.models import Group as DjangoGroup
+from django.contrib.auth.models import Group as DjangoGroup, Permission
 from django.shortcuts import redirect
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -27,6 +27,7 @@ from src.models import (
 )
 
 admin.site.unregister(DjangoGroup)
+admin.site.register(Permission)
 
 
 @admin.register(CustomGroup)
