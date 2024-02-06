@@ -12,8 +12,9 @@ from aiogram.types import CallbackQuery
 from django.utils import timezone
 from django.utils.dateformat import format
 
-from src.models import Employee
+from src.models import CustomUser
 from src.models import SyncReport
+from src.bot.utils import has_perm
 from src.bot.keyboards import get_report_keyboard
 
 logger = logging.getLogger('middleware_support_bot')
@@ -27,21 +28,17 @@ class SyncMiddleware(BaseMiddleware):
         event: CallbackQuery,
         data: Dict[str, Any]
     ) -> Any:
-        trust_groups = [
-            'Администраторы',
-            'Ведущие инженеры',
-            'Старшие инженеры',
-        ]
-        employee: Employee = data['employee']
-        if event.data not in ('tr_all', 'rest_all'):
+        logger.debug('SyncMiddleware')
+        employee: CustomUser = data['employee']
+        if event.data not in ('rest_all', ):
             return await handler(event, data)
 
-        if not await employee.groups.filter(name__in=trust_groups).aexists():
+        if not await has_perm('sync', employee):
             await event.message.delete()
             await event.message.answer('Нет прав на выполнения масс синхры')
             return
 
-        report = await SyncReport.objects.select_related('employee') \
+        report = await SyncReport.objects.select_related('new_employee') \
             .filter(user_choice__in=('all', 'rest_all')) \
             .order_by('-start_at') \
             .afirst()

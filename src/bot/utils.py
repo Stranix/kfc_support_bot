@@ -23,13 +23,19 @@ from aiogram.utils.media_group import MediaGroupBuilder
 from bs4 import BeautifulSoup
 
 from django.conf import settings
+from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group as DjangoGroup
 
-from src.models import Group, Dispatcher
-from src.models import SDTask
-from src.models import Employee
 from src.bot.scheme import SyncStatus
 from src.bot.scheme import TelegramUser
 from src.bot.keyboards import get_user_activate_keyboard
+from src.models import (
+    Group,
+    Dispatcher,
+    CustomUser,
+    SDTask,
+    Employee,
+)
 
 logger = logging.getLogger('support_bot')
 
@@ -289,3 +295,25 @@ async def send_documents_out_task(sd_task: SDTask):
     )
     await bot.session.close()
     logger.info('Документы отправлены')
+
+
+@sync_to_async
+def has_perm(perm_codename: str, employee: CustomUser) -> bool:
+    if has_perm_in_group(perm_codename, employee.groups.all()):
+        return True
+    logger.debug('Ищем права у пользователя')
+    employee_permissions = Permission.objects.filter(user=employee)
+    if employee_permissions.filter(codename=perm_codename).exists():
+        logger.debug('У пользователя есть право на синхронизацию')
+        return True
+    return False
+
+
+def has_perm_in_group(perm_codename: str, groups: list[DjangoGroup]) -> bool:
+    for group in groups:
+        perm_exists = group.permissions.filter(codename=perm_codename).exists()
+        if perm_exists:
+            logger.debug('Нашел право %s в группе %s', perm_codename, group)
+            return True
+    logger.debug('Нет права %s в группах пользователя', perm_codename)
+    return False
