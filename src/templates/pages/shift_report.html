@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %} Отчет по сменам {% endblock %}
+
 {% block content %}
   <h3 class="text-center">Дата смены: {{ shift_date|date:'d-m-Y' }}</h3>
   <form action="{% url 'shift_report' %}">

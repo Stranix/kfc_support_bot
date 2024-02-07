@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
 
 from src import utils
 
@@ -27,6 +28,7 @@ def index(request):
 
 
 @login_required
+@permission_required('auth.web_app', raise_exception=True)
 def show_employee(request):
     table_employees = {
         'headers': [
@@ -49,6 +51,7 @@ def show_employee(request):
 
 
 @login_required
+@permission_required('auth.web_app', raise_exception=True)
 def show_support_tasks(request):
     support_group = request.GET.get('support_group')
     start_shift_date = timezone.now().date()
@@ -100,6 +103,7 @@ def show_support_tasks(request):
 
 
 @login_required
+@permission_required('auth.web_app', raise_exception=True)
 def show_shifts(request):
     shift_date = timezone.now().date()
     logger.debug('shift_date: %s', shift_date)
@@ -133,6 +137,7 @@ def show_shifts(request):
 
 
 @login_required
+@permission_required('auth.web_app', raise_exception=True)
 def show_shift_report(request):
     shift_date = request.GET.get('date')
     if shift_date:
@@ -176,6 +181,63 @@ def show_shift_report(request):
         request,
         template_name='pages/shift_report.html',
         context=context,
+    )
+
+
+@login_required
+@permission_required('auth.web_app', raise_exception=True)
+@permission_required('auth.dealers', raise_exception=True)
+def show_dealers_report(request):
+    support_group = request.GET.get('support_group')
+    start_shift_date = timezone.now().date()
+    start_date = request.GET.get('start_date')
+    if start_date:
+        start_shift_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+
+    end_shift_date = timezone.now().date()
+    end_date = request.GET.get('end_date')
+    if end_date:
+        end_shift_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    logger.debug('start_shift_date: %s', start_shift_date)
+    logger.debug('end_shift_date: %s', end_shift_date)
+
+    tasks = SDTask.objects.in_period_date(
+        start_shift_date,
+        end_shift_date,
+        request.user.groups.first().name,
+    )
+    if support_group == 'dispatchers':
+        tasks = tasks.exclude(support_group='ENGINEER')
+    if support_group == 'engineers':
+        tasks = tasks.exclude(support_group='DISPATCHER')
+    tasks_stat = utils.get_tasks_stat(tasks)
+    tasks_table = {
+        'headers': [
+            'Номер',
+            'Тема обращения',
+            'Заявитель',
+            'Исполнитель',
+            'Дата регистрации',
+            'Дата закрытия',
+            'Время выполнения',
+            'Описание',
+            'Комментарий закрытия',
+            'Дочерние заявки',
+            'Документы',
+            'Статус',
+            'Оценка',
+        ],
+        'tasks': asdict(tasks_stat),
+    }
+    return render(
+        request,
+        template_name='pages/dealers.html',
+        context={
+            'tasks_table': tasks_table,
+            'start_shift_date': start_shift_date,
+            'end_shift_date': end_shift_date,
+        },
     )
 
 

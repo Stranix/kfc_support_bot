@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %} Задачи {% endblock %}
+{% block title %} Отчет по задачам {% endblock %}
 
 {% block content %}
-  <form action="{% url 'support_tasks' %}">
+  <form action="{% url 'dealers_report' %}">
     <div class="row mb-2">
       <div class="col-2">
         <div id="dateHelp" class="form-text">Дата С</div>
@@ -59,7 +59,7 @@
       {% endif %}
     {% endif %}
   </h2>
-  <div class="table-responsive">
+  <div class="table-responsive-lg">
     <table class="table table-hover caption-top">
       <caption>
         Количество обращений (закрытых/общее): {{ tasks_table.tasks.closed }}/{{ tasks_table.tasks.count }} <br>
@@ -118,7 +118,7 @@
             {% endif %}
           </td>
           <td>
-            {% if not task.rating %} Нет оценки {% else %} {{ task.rating }} {% endif %}
+            {% if task.rating %} {{ task.rating }} {% endif %}
           </td>
         </tr>
       {% endfor %}

@@ -89,7 +89,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
     groups = models.ManyToManyField(
         'CustomGroup',
-        verbose_name='Менеджеры',
+        verbose_name='Группа Доступа',
         related_name='employees',
         blank=True,
     )
@@ -104,6 +104,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['name', 'tg_id']
 
     objects = CustomUserManager()
+
+    def has_perm(self, perm, obj=None):
+        if self.is_active and self.is_superuser:
+            return True
+
+        if self.is_active:
+            permissions = self.get_user_permissions()
+            if perm in permissions:
+                return True
+        return False
 
     class Meta:
         verbose_name = 'Пользователь'
@@ -443,7 +453,8 @@ class SDTaskQuerySet(models.QuerySet):
     def in_period_date(
             self,
             start_shift_date: date,
-            end_shift_date: date | None = None
+            end_shift_date: date | None = None,
+            group_name: str | None = None,
     ):
         start_at = datetime.combine(start_shift_date, time(), tzinfo=pytz.UTC)
         if not end_shift_date:
@@ -459,7 +470,20 @@ class SDTaskQuerySet(models.QuerySet):
             time(hour=23, minute=59, second=59),
             tzinfo=pytz.UTC,
         )
-        return self.select_related('performer').filter(
+
+        if group_name:
+            return self.select_related(
+                'new_performer',
+                'new_applicant',
+            ).filter(
+                start_at__gte=start_at,
+                start_at__lte=end_at,
+                new_applicant__groups__name=group_name,
+            ).order_by('-id')
+
+        return self.select_related(
+            'new_performer',
+        ).filter(
             start_at__gte=start_at,
             start_at__lte=end_at,
         ).order_by('-id')

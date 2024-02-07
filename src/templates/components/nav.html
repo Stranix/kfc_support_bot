@@ -1,5 +1,6 @@
 {% load auth_extras %}
 {% load static %}
+ {%  if user|has_group:"Администраторы" %}
   <ul class="nav justify-content-center">
     <li class="nav-item">
       <a class="nav-link active" aria-current="page" href="{% url 'emp' %}">Сотрудники</a>
@@ -17,3 +18,4 @@
       <a class="nav-link" href="{% url 'sync_report_prev' %}">Отчет по синхронизации</a>
     </li>
   </ul>
+  {% endif %}

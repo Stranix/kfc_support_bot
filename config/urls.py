@@ -15,4 +15,5 @@ urlpatterns = [
     path('shift_report/', views.show_shift_report, name='shift_report'),
     path('sync_report/', views.show_sync_report_prev, name='sync_report_prev'),
     path('sync_report/<int:pk>', views.show_sync_report, name='sync_report'),
+    path('dealers/', views.show_dealers_report, name='dealers_report'),
 ]
