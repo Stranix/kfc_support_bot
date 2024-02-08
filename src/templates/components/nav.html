@@ -1,6 +1,6 @@
 {% load auth_extras %}
 {% load static %}
- {%  if user|has_group:"Администраторы" %}
+{% if user|has_group:"Администраторы" %}
   <ul class="nav justify-content-center">
     <li class="nav-item">
       <a class="nav-link active" aria-current="page" href="{% url 'emp' %}">Сотрудники</a>
@@ -18,4 +18,14 @@
       <a class="nav-link" href="{% url 'sync_report_prev' %}">Отчет по синхронизации</a>
     </li>
   </ul>
-  {% endif %}
+{% endif %}
+{% if user|has_right:"shin" %}
+  <ul class="nav justify-content-center">
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'dealers_report' %}">Задачи</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'shifts' %}">Сотрудники на смене</a>
+    </li>
+  </ul>
+{% endif %}

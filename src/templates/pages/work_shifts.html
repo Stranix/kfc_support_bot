@@ -17,7 +17,7 @@
       <tbody>
       {% for shift in shift_table.shifts %}
         <tr>
-          <td>{{ shift.employee }}</td>
+          <td>{{ shift.new_employee }}</td>
           <td>{{ shift.shift_start_at|date:'d-m-Y H:i' }}</td>
           <td>
             {% for shift_break in shift.break_shift.all %}
