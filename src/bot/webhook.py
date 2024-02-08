@@ -1,6 +1,9 @@
+import json
+
 import pytz
 import logging
 
+from aiogram.types import Update
 from apscheduler.executors.pool import ThreadPoolExecutor
 from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.redis import RedisJobStore
@@ -13,6 +16,7 @@ from aiogram import Bot
 from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from django.http import HttpRequest
 
 from src.bot.handlers import router
 from src.bot.middlewares import AuthUpdateMiddleware
@@ -48,3 +52,10 @@ def tg_webhook_init() -> tuple[Bot, Dispatcher]:
     dp.update.outer_middleware(SchedulerMiddleware(scheduler))
     dp.message.outer_middleware(EmployeeStatusMiddleware())
     return bot, dp
+
+
+async def proceed_update(bot: Bot, dp: Dispatcher, request: HttpRequest):
+    update = Update.model_validate(
+        json.loads(request.body.decode(encoding='UTF-8')),
+    )
+    await dp.feed_update(bot, update)
