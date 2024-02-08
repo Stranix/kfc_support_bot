@@ -304,11 +304,9 @@ def show_sync_report(request, pk):
 @csrf_exempt
 @async_to_sync
 async def bot_webhook(request):
+    logger.debug('Обновление: ', request.body.decode(encoding='UTF-8'))
     update = Update.model_validate(
         json.loads(request.body.decode(encoding='UTF-8')),
-        context={
-            'bot': bot,
-        },
     )
     await dispatcher.feed_update(bot, update)
     return HttpResponse(status=200)
