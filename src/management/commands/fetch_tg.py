@@ -12,7 +12,7 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.core.management.base import BaseCommand
 
-from src.models import Employee
+from src.models import CustomUser
 from src.models import Dispatcher
 from src.utils import configure_logging
 from src.bot.utils import send_notify
@@ -33,7 +33,7 @@ class DispatcherTaskNotify:
     company: str
     restaurant: str
     itsm_number: int | None
-    performer: Employee | None
+    new_performer: CustomUser | None
     gsd_numbers: list | None
     closing_comment: str
 
@@ -56,7 +56,7 @@ async def get_message_from_tg_chanel(event):
     if dispatcher_task.company not in company:
         logger.debug('Не интересная задача. Пропускаем')
         return
-    if not dispatcher_task.performer:
+    if not dispatcher_task.new_performer:
         logger.debug('Не нашел исполнителя в базе. Пропускаем')
         return
 
@@ -73,7 +73,7 @@ async def get_message_from_tg_chanel(event):
             task_commit=dispatcher_task.closing_comment,
         )
         await send_notify(
-            [dispatcher_task.performer],
+            [dispatcher_task.new_performer],
             message_for_send,
             keyboard,
         )
@@ -95,14 +95,14 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
     performer = message_lines[5].split(':')[1].strip()
     try:
         if settings.DEBUG:
-            performer = await Employee.objects.aget(
+            performer = await CustomUser.objects.aget(
                 dispatcher_name='Смуров К.А.',
             )
         else:
-            performer = await Employee.objects.aget(
+            performer = await CustomUser.objects.aget(
                 dispatcher_name=performer,
             )
-    except Employee.DoesNotExist:
+    except CustomUser.DoesNotExist:
         logger.warning('Не найден сотрудник из диспетчера')
         performer = None
 
@@ -116,7 +116,7 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
         company=message_lines[2].split(':')[1].strip(),
         restaurant=message_lines[3].split(':')[1].strip(),
         itsm_number=itsm_number,
-        performer=performer,
+        new_performer=performer,
         gsd_numbers=re.findall(r'(SC-\d{7})+', message_lines[9]),
         closing_comment=closing_comment.strip(),
     )
