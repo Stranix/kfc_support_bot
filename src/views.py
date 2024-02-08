@@ -6,7 +6,7 @@ from dataclasses import asdict
 from datetime import datetime
 
 from aiogram.types import Update
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async, async_to_sync
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -22,7 +22,7 @@ from src.models import SDTask
 from src.models import CustomUser
 from src.models import WorkShift
 from src.models import SyncReport
-from src.bot.webhook import tg_webhook_init
+from src.bot.webhook import tg_webhook_init, proceed_update
 
 logger = logging.getLogger('support_web')
 bot, dispatcher = tg_webhook_init()
@@ -300,12 +300,8 @@ def show_sync_report(request, pk):
     )
 
 
-@sync_to_async
 @csrf_exempt
 def bot_webhook(request):
     logger.debug('Обновление: ', request.body.decode(encoding='UTF-8'))
-    update = Update.model_validate(
-        json.loads(request.body.decode(encoding='UTF-8')),
-    )
-    await dispatcher.feed_update(bot, update)
+    async_to_sync(proceed_update)(bot, dispatcher)
     return HttpResponse(status=200)
