@@ -13,10 +13,10 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
         - name: create-json
           id: create-json
-          uses: jsdaniell/create-json@v1.2.2
+          uses: jsdaniell/create-json@v1.2.3
           with:
             name: "logging_config.json"
             json: ${{ secrets.LOGGING_JSON }}
