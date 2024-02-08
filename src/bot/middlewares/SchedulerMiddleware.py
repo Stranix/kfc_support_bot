@@ -7,7 +7,7 @@ from typing import Awaitable
 
 from aiogram import BaseMiddleware
 from aiogram.types import Update
-from apscheduler.schedulers import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 
 logger = logging.getLogger('middleware_support_bot')
 
