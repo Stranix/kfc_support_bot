@@ -124,12 +124,12 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomGroup(Group):
-    managers = models.ManyToManyField(
-        'CustomUser',
-        verbose_name='Менеджеры',
-        related_name='managers',
-        blank=True,
-    )
+    # managers = models.ManyToManyField(
+    #     'CustomUser',
+    #     verbose_name='Менеджеры',
+    #     related_name='managers',
+    #     blank=True,
+    # )
 
     class Meta:
         verbose_name = 'Группа'
@@ -218,14 +218,14 @@ class WorkShift(models.Model):
         null=True,
         blank=True,
     )
-    new_employee = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        verbose_name='Сотрудник',
-        related_name='new_work_shifts',
-    )
+    # new_employee = models.ForeignKey(
+    #     'CustomUser',
+    #     on_delete=models.PROTECT,
+    #     null=True,
+    #     blank=True,
+    #     verbose_name='Сотрудник',
+    #     related_name='new_work_shifts',
+    # )
     shift_start_at = models.DateTimeField('Старт смены')
     shift_end_at = models.DateTimeField(
         'Завершение смены',
@@ -257,14 +257,14 @@ class BreakShift(models.Model):
         null=True,
         blank=True,
     )
-    new_employee = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        verbose_name='Сотрудник(Новый)',
-        related_name='new_break_shifts',
-    )
+    # new_employee = models.ForeignKey(
+    #     'CustomUser',
+    #     on_delete=models.PROTECT,
+    #     null=True,
+    #     blank=True,
+    #     verbose_name='Сотрудник(Новый)',
+    #     related_name='new_break_shifts',
+    # )
     start_break_at = models.DateTimeField(
         'Старт перерыва',
         auto_now_add=True,
@@ -545,13 +545,13 @@ class SDTask(models.Model):
         related_name='applicant_sd_tasks',
         null=True,
     )
-    new_applicant = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.PROTECT,
-        verbose_name='Заявитель(Новый)',
-        related_name='new_applicant_sd_tasks',
-        null=True,
-    )
+    # new_applicant = models.ForeignKey(
+    #     'CustomUser',
+    #     on_delete=models.PROTECT,
+    #     verbose_name='Заявитель(Новый)',
+    #     related_name='new_applicant_sd_tasks',
+    #     null=True,
+    # )
     number = models.CharField(
         'Номер заявки SD',
         db_index=True,
@@ -565,14 +565,14 @@ class SDTask(models.Model):
         null=True,
         blank=True,
     )
-    new_performer = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.PROTECT,
-        verbose_name='Исполнитель(Новый)',
-        related_name='new_sd_tasks',
-        null=True,
-        blank=True,
-    )
+    # new_performer = models.ForeignKey(
+    #     'CustomUser',
+    #     on_delete=models.PROTECT,
+    #     verbose_name='Исполнитель(Новый)',
+    #     related_name='new_sd_tasks',
+    #     null=True,
+    #     blank=True,
+    # )
     restaurant = models.ForeignKey(
         'Restaurant',
         on_delete=models.PROTECT,
@@ -645,14 +645,14 @@ class SyncReport(models.Model):
         null=True,
         blank=True,
     )
-    new_employee = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='new_sync_reports',
-        verbose_name='Инициатор(Новый)',
-    )
+    # new_employee = models.ForeignKey(
+    #     'CustomUser',
+    #     on_delete=models.PROTECT,
+    #     null=True,
+    #     blank=True,
+    #     related_name='new_sync_reports',
+    #     verbose_name='Инициатор(Новый)',
+    # )
     server_type = models.ForeignKey(
         'ServerType',
         on_delete=models.PROTECT,
@@ -745,14 +745,14 @@ class Dispatcher(models.Model):
         related_name='dispatcher_tasks',
         verbose_name='Исполнитель',
     )
-    new_performer = models.ForeignKey(
-        'CustomUser',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='new_dispatcher_tasks',
-        verbose_name='Исполнитель(Новый)',
-    )
+    # new_performer = models.ForeignKey(
+    #     'CustomUser',
+    #     on_delete=models.PROTECT,
+    #     null=True,
+    #     blank=True,
+    #     related_name='new_dispatcher_tasks',
+    #     verbose_name='Исполнитель(Новый)',
+    # )
     gsd_numbers = models.CharField(
         'Связанные заявки GSD',
         max_length=100,
