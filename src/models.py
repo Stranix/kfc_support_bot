@@ -117,7 +117,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
+        verbose_name_plural = 'Пользователи (Новые)'
 
     def __str__(self):
         return str(self.name)
@@ -203,7 +203,7 @@ class Employee(models.Model):
 
     class Meta:
         verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
+        verbose_name_plural = 'Пользователи (Архив)'
 
     def __str__(self):
         return self.name
@@ -245,7 +245,7 @@ class WorkShift(models.Model):
         verbose_name_plural = 'Рабочие Смены'
 
     def __str__(self):
-        return f'{self.employee.name} - {self.shift_start_at}'
+        return f'{self.new_employee.name} - {self.shift_start_at}'
 
 
 class BreakShift(models.Model):
@@ -281,7 +281,7 @@ class BreakShift(models.Model):
         verbose_name_plural = 'Перерывы'
 
     def __str__(self):
-        return f'{self.employee.name} - {self.start_break_at}'
+        return f'{self.new_employee.name} - {self.start_break_at}'
 
 
 class Group(models.Model):
@@ -300,7 +300,7 @@ class Group(models.Model):
 
     class Meta:
         verbose_name = 'Группа доступа'
-        verbose_name_plural = 'Группы доступа'
+        verbose_name_plural = 'Группы доступа(Архив)'
 
     def __str__(self):
         return self.name

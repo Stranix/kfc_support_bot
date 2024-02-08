@@ -104,38 +104,8 @@ class CustomUserAdmin(UserAdmin):
         ),
     )
     readonly_fields = ['date_joined']
-    search_fields = ['login', 'tg_nickname']
+    search_fields = ['name', 'tg_nickname']
     ordering = ['date_joined', ]
-
-
-@admin.register(Employee)
-class EmployeeAdmin(admin.ModelAdmin):
-    search_fields = [
-        'name',
-    ]
-
-    list_display = [
-        'name',
-        'tg_id',
-        'dispatcher_name',
-        'registered_at',
-        'is_active',
-    ]
-
-    filter_horizontal = [
-        'groups',
-        'managers',
-    ]
-
-    list_filter = [
-        'groups',
-    ]
-
-    readonly_fields = [
-        'registered_at',
-        'tg_nickname',
-        'tg_id',
-    ]
 
     def response_change(self, request, obj):
         if 'next' not in request.GET:
@@ -182,16 +152,6 @@ class GSDTaskAdmin(admin.ModelAdmin):
     search_fields = [
         'number',
     ]
-
-
-@admin.register(Group)
-class GroupAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Right)
-class RightAdmin(admin.ModelAdmin):
-    pass
 
 
 @admin.register(Server)
@@ -259,6 +219,7 @@ class SyncReportAdmin(admin.ModelAdmin):
         'employee',
         'new_employee',
         'server_type',
+        'user_choice',
         'start_at',
     ]
 

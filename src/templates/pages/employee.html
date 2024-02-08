@@ -18,7 +18,7 @@
       <tbody>
       {% for employee in table_employees.users %}
         <tr style="cursor: pointer;"
-            onclick="window.open('{% url 'admin:src_employee_change' object_id=employee.id %}?next={{ request.path|urlencode }}', '_self')">
+            onclick="window.open('{% url 'admin:src_customuser_change' object_id=employee.id %}?next={{ request.path|urlencode }}', '_self')">
           <th scope="row">{{ forloop.counter }}</th>
           <td>{{ employee.name }}</td>
           <td>{{ employee.dispatcher_name|default_if_none:'' }}</td>
