@@ -158,7 +158,7 @@ async def process_start_task(query: types.CallbackQuery, employee: CustomUser):
     await query.bot.send_message(
         task.new_applicant.tg_id,
         f'Вашу задачу взял в работу инженер: {employee.name}\n'
-        f'Телеграм для связи: {employee.tg_nickname}'
+        f'Телеграм для связи: @{employee.tg_nickname}'
     )
     logger.info('Задачу взял в работу сотрудник %s', employee.name)
 
