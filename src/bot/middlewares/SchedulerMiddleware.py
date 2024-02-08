@@ -7,13 +7,13 @@ from typing import Awaitable
 
 from aiogram import BaseMiddleware
 from aiogram.types import Update
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger('middleware_support_bot')
 
 
 class SchedulerMiddleware(BaseMiddleware):
-    def __init__(self, scheduler: BackgroundScheduler) -> None:
+    def __init__(self, scheduler: AsyncIOScheduler) -> None:
         logger.debug('SchedulerMiddleware init')
         self._scheduler = scheduler
 

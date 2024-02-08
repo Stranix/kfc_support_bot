@@ -1,9 +1,8 @@
 import os
 import ssl
-import json
-import logging.config
 
 import dj_database_url
+import rollbar
 
 from environs import Env
 
@@ -22,16 +21,6 @@ CSRF_TRUSTED_ORIGINS = env.list(
     'CSRF_TRUSTED_ORIGINS',
     ['http://localhost:1337', ]
 )
-
-LOGGING_CONFIG = None
-try:
-    with open('config/logging_config.json', 'r', encoding='utf-8') as file:
-        logging.config.dictConfig(json.load(file))
-except FileNotFoundError:
-    print(
-        'Для настройки логирования нужен logging_config.json '
-        'в корне проекта'
-    )
 
 TG_BOT_TOKEN = env.str('TG_BOT_TOKEN', '')
 TG_BOT_ADMIN = env.int('TG_BOT_ADMIN')
@@ -68,6 +57,7 @@ ROLLBAR = {
     'environment': ROLLBAR_ENV,
     'root': BASE_DIR,
 }
+rollbar.init(ROLLBAR_ACCESS_TOKEN, ROLLBAR_ENV)
 
 # Application definition
 
