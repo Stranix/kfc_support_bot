@@ -101,7 +101,7 @@ class CustomUserAdmin(UserAdmin):
                     'is_active',
                 ]
             }
-         ),
+        ),
     )
     readonly_fields = ['date_joined']
     search_fields = ['login', 'tg_nickname']
