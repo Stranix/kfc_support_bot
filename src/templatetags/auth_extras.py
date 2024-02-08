@@ -1,8 +1,11 @@
+import logging
+
 from django import template
 from django.contrib.auth.models import Permission
 
 from src.models import CustomGroup
 
+logger = logging.getLogger('src')
 register = template.Library()
 
 
@@ -14,7 +17,11 @@ def has_group(user, group_name):
 
 @register.filter(name='has_right')
 def has_right(user, right_name):
-    employee_permissions = Permission.objects.filter(user=user)
-    if employee_permissions.filter(codename=right_name).exists():
+    try:
+        user.user_permissions.get(codename=right_name)
         return True
-    return False
+    except Permission.DoesNotExist:
+        return False
+    except TypeError as e:
+        logger.exception(e)
+        return False
