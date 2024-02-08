@@ -6,6 +6,7 @@ from dataclasses import asdict
 from datetime import datetime
 
 from aiogram.types import Update
+from asgiref.sync import sync_to_async
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -299,6 +300,8 @@ def show_sync_report(request, pk):
     )
 
 
+@sync_to_async
+@csrf_exempt
 async def bot_webhook(request):
     logger.debug('Обновление: ', request.body.decode(encoding='UTF-8'))
     update = Update.model_validate(
