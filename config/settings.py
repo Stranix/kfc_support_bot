@@ -118,7 +118,7 @@ DATABASES = {
     )
 }
 
-AUTH_USER_MODEL = 'src.CustomUser'
+# AUTH_USER_MODEL = 'src.CustomUser'
 LOGIN_REDIRECT_URL = '/dealers'
 
 AUTH_PASSWORD_VALIDATORS = [

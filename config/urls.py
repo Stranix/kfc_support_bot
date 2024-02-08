@@ -16,5 +16,5 @@ urlpatterns = [
     path('sync_report/', views.show_sync_report_prev, name='sync_report_prev'),
     path('sync_report/<int:pk>', views.show_sync_report, name='sync_report'),
     path('dealers/', views.show_dealers_report, name='dealers_report'),
-    path(f'bot/{settings.TG_BOT_TOKEN}', views.bot_webhook),
+    # path(f'bot/{settings.TG_BOT_TOKEN}', views.bot_webhook),
 ]

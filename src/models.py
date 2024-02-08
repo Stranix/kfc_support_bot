@@ -60,67 +60,67 @@ class CustomUserManager(BaseUserManager):
         return employees
 
 
-class CustomUser(AbstractBaseUser, PermissionsMixin):
-    login = models.CharField('Login', max_length=50, unique=True)
-    name = models.CharField('Имя', max_length=50, unique=True)
-    tg_id = models.PositiveBigIntegerField(
-        'Telegram_id',
-        db_index=True,
-        unique=True,
-    )
-    tg_nickname = models.CharField(
-        'Ник в телеге',
-        max_length=50,
-        blank=True,
-        default='',
-    )
-    dispatcher_name = models.CharField(
-        'Имя в диспетчере',
-        max_length=50,
-        blank=True,
-        null=True,
-    )
-    email = models.EmailField(
-        unique=True,
-        db_index=True,
-        null=True,
-        blank=True,
-        verbose_name='Адрес эл. почты'
-    )
-    groups = models.ManyToManyField(
-        'CustomGroup',
-        verbose_name='Группа Доступа',
-        related_name='employees',
-        blank=True,
-    )
-    is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(
-        default=timezone.now,
-        verbose_name='Дата регистрации'
-    )
-
-    USERNAME_FIELD = 'login'
-    REQUIRED_FIELDS = ['name', 'tg_id']
-
-    objects = CustomUserManager()
-
-    def has_perm(self, perm, obj=None):
-        if self.is_active and self.is_superuser:
-            return True
-
-        if self.is_active:
-            permissions = self.get_user_permissions()
-            if perm in permissions:
-                return True
-        return False
-
-    class Meta:
-        verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
-
-    def __str__(self):
-        return str(self.name)
+# class CustomUser(AbstractBaseUser, PermissionsMixin):
+#     login = models.CharField('Login', max_length=50, unique=True)
+#     name = models.CharField('Имя', max_length=50, unique=True)
+#     tg_id = models.PositiveBigIntegerField(
+#         'Telegram_id',
+#         db_index=True,
+#         unique=True,
+#     )
+#     tg_nickname = models.CharField(
+#         'Ник в телеге',
+#         max_length=50,
+#         blank=True,
+#         default='',
+#     )
+#     dispatcher_name = models.CharField(
+#         'Имя в диспетчере',
+#         max_length=50,
+#         blank=True,
+#         null=True,
+#     )
+#     email = models.EmailField(
+#         unique=True,
+#         db_index=True,
+#         null=True,
+#         blank=True,
+#         verbose_name='Адрес эл. почты'
+#     )
+#     groups = models.ManyToManyField(
+#         'CustomGroup',
+#         verbose_name='Группа Доступа',
+#         related_name='employees',
+#         blank=True,
+#     )
+#     is_staff = models.BooleanField(default=False)
+#     is_active = models.BooleanField(default=False)
+#     date_joined = models.DateTimeField(
+#         default=timezone.now,
+#         verbose_name='Дата регистрации'
+#     )
+#
+#     USERNAME_FIELD = 'login'
+#     REQUIRED_FIELDS = ['name', 'tg_id']
+#
+#     objects = CustomUserManager()
+#
+#     def has_perm(self, perm, obj=None):
+#         if self.is_active and self.is_superuser:
+#             return True
+#
+#         if self.is_active:
+#             permissions = self.get_user_permissions()
+#             if perm in permissions:
+#                 return True
+#         return False
+#
+#     class Meta:
+#         verbose_name = 'Пользователь'
+#         verbose_name_plural = 'Пользователи'
+#
+#     def __str__(self):
+#         return str(self.name)
 
 
 class CustomGroup(Group):
