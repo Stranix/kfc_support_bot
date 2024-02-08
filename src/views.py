@@ -303,5 +303,5 @@ def show_sync_report(request, pk):
 @csrf_exempt
 def bot_webhook(request):
     logger.debug('Обновление: ', request.body.decode(encoding='UTF-8'))
-    async_to_sync(proceed_update)(bot, dispatcher)
+    async_to_sync(proceed_update)(bot, dispatcher, request)
     return HttpResponse(status=200)
