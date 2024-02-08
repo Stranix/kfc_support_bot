@@ -289,7 +289,7 @@ async def send_documents_out_task(sd_task: SDTask):
         text_file = types.BufferedInputFile(io_file.read(), filename=doc_name)
         media_group.add_document(text_file)
     await bot.send_media_group(
-        chat_id=sd_task.performer.tg_id,
+        chat_id=sd_task.new_performer.tg_id,
         media=media_group.build()
     )
     await bot.session.close()
