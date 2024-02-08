@@ -60,76 +60,76 @@ class CustomUserManager(BaseUserManager):
         return employees
 
 
-# class CustomUser(AbstractBaseUser, PermissionsMixin):
-#     login = models.CharField('Login', max_length=50, unique=True)
-#     name = models.CharField('Имя', max_length=50, unique=True)
-#     tg_id = models.PositiveBigIntegerField(
-#         'Telegram_id',
-#         db_index=True,
-#         unique=True,
-#     )
-#     tg_nickname = models.CharField(
-#         'Ник в телеге',
-#         max_length=50,
-#         blank=True,
-#         default='',
-#     )
-#     dispatcher_name = models.CharField(
-#         'Имя в диспетчере',
-#         max_length=50,
-#         blank=True,
-#         null=True,
-#     )
-#     email = models.EmailField(
-#         unique=True,
-#         db_index=True,
-#         null=True,
-#         blank=True,
-#         verbose_name='Адрес эл. почты'
-#     )
-#     groups = models.ManyToManyField(
-#         'CustomGroup',
-#         verbose_name='Группа Доступа',
-#         related_name='employees',
-#         blank=True,
-#     )
-#     is_staff = models.BooleanField(default=False)
-#     is_active = models.BooleanField(default=False)
-#     date_joined = models.DateTimeField(
-#         default=timezone.now,
-#         verbose_name='Дата регистрации'
-#     )
-#
-#     USERNAME_FIELD = 'login'
-#     REQUIRED_FIELDS = ['name', 'tg_id']
-#
-#     objects = CustomUserManager()
-#
-#     def has_perm(self, perm, obj=None):
-#         if self.is_active and self.is_superuser:
-#             return True
-#
-#         if self.is_active:
-#             permissions = self.get_user_permissions()
-#             if perm in permissions:
-#                 return True
-#         return False
-#
-#     class Meta:
-#         verbose_name = 'Пользователь'
-#         verbose_name_plural = 'Пользователи'
-#
-#     def __str__(self):
-#         return str(self.name)
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    login = models.CharField('Login', max_length=50, unique=True)
+    name = models.CharField('Имя', max_length=50, unique=True)
+    tg_id = models.PositiveBigIntegerField(
+        'Telegram_id',
+        db_index=True,
+        unique=True,
+    )
+    tg_nickname = models.CharField(
+        'Ник в телеге',
+        max_length=50,
+        blank=True,
+        default='',
+    )
+    dispatcher_name = models.CharField(
+        'Имя в диспетчере',
+        max_length=50,
+        blank=True,
+        null=True,
+    )
+    email = models.EmailField(
+        unique=True,
+        db_index=True,
+        null=True,
+        blank=True,
+        verbose_name='Адрес эл. почты'
+    )
+    groups = models.ManyToManyField(
+        'CustomGroup',
+        verbose_name='Группа Доступа',
+        related_name='employees',
+        blank=True,
+    )
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(
+        default=timezone.now,
+        verbose_name='Дата регистрации'
+    )
+
+    USERNAME_FIELD = 'login'
+    REQUIRED_FIELDS = ['name', 'tg_id']
+
+    objects = CustomUserManager()
+
+    def has_perm(self, perm, obj=None):
+        if self.is_active and self.is_superuser:
+            return True
+
+        if self.is_active:
+            permissions = self.get_user_permissions()
+            if perm in permissions:
+                return True
+        return False
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
+    def __str__(self):
+        return str(self.name)
 
 
 class CustomGroup(Group):
-    # managers = models.ManyToManyField(
-    #     'CustomUser',
-    #     verbose_name='Менеджеры',
-    #     related_name='managers',
-    #     blank=True,
-    # )
+    managers = models.ManyToManyField(
+        'CustomUser',
+        verbose_name='Менеджеры',
+        related_name='managers',
+        blank=True,
+    )
 
     class Meta:
         verbose_name = 'Группа'
@@ -218,14 +218,14 @@ class WorkShift(models.Model):
         null=True,
         blank=True,
     )
-    # new_employee = models.ForeignKey(
-    #     'CustomUser',
-    #     on_delete=models.PROTECT,
-    #     null=True,
-    #     blank=True,
-    #     verbose_name='Сотрудник',
-    #     related_name='new_work_shifts',
-    # )
+    new_employee = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name='Сотрудник',
+        related_name='new_work_shifts',
+    )
     shift_start_at = models.DateTimeField('Старт смены')
     shift_end_at = models.DateTimeField(
         'Завершение смены',
@@ -257,14 +257,14 @@ class BreakShift(models.Model):
         null=True,
         blank=True,
     )
-    # new_employee = models.ForeignKey(
-    #     'CustomUser',
-    #     on_delete=models.PROTECT,
-    #     null=True,
-    #     blank=True,
-    #     verbose_name='Сотрудник(Новый)',
-    #     related_name='new_break_shifts',
-    # )
+    new_employee = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        verbose_name='Сотрудник(Новый)',
+        related_name='new_break_shifts',
+    )
     start_break_at = models.DateTimeField(
         'Старт перерыва',
         auto_now_add=True,
@@ -545,13 +545,13 @@ class SDTask(models.Model):
         related_name='applicant_sd_tasks',
         null=True,
     )
-    # new_applicant = models.ForeignKey(
-    #     'CustomUser',
-    #     on_delete=models.PROTECT,
-    #     verbose_name='Заявитель(Новый)',
-    #     related_name='new_applicant_sd_tasks',
-    #     null=True,
-    # )
+    new_applicant = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        verbose_name='Заявитель(Новый)',
+        related_name='new_applicant_sd_tasks',
+        null=True,
+    )
     number = models.CharField(
         'Номер заявки SD',
         db_index=True,
@@ -565,14 +565,14 @@ class SDTask(models.Model):
         null=True,
         blank=True,
     )
-    # new_performer = models.ForeignKey(
-    #     'CustomUser',
-    #     on_delete=models.PROTECT,
-    #     verbose_name='Исполнитель(Новый)',
-    #     related_name='new_sd_tasks',
-    #     null=True,
-    #     blank=True,
-    # )
+    new_performer = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        verbose_name='Исполнитель(Новый)',
+        related_name='new_sd_tasks',
+        null=True,
+        blank=True,
+    )
     restaurant = models.ForeignKey(
         'Restaurant',
         on_delete=models.PROTECT,
@@ -645,14 +645,14 @@ class SyncReport(models.Model):
         null=True,
         blank=True,
     )
-    # new_employee = models.ForeignKey(
-    #     'CustomUser',
-    #     on_delete=models.PROTECT,
-    #     null=True,
-    #     blank=True,
-    #     related_name='new_sync_reports',
-    #     verbose_name='Инициатор(Новый)',
-    # )
+    new_employee = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='new_sync_reports',
+        verbose_name='Инициатор(Новый)',
+    )
     server_type = models.ForeignKey(
         'ServerType',
         on_delete=models.PROTECT,
@@ -745,14 +745,14 @@ class Dispatcher(models.Model):
         related_name='dispatcher_tasks',
         verbose_name='Исполнитель',
     )
-    # new_performer = models.ForeignKey(
-    #     'CustomUser',
-    #     on_delete=models.PROTECT,
-    #     null=True,
-    #     blank=True,
-    #     related_name='new_dispatcher_tasks',
-    #     verbose_name='Исполнитель(Новый)',
-    # )
+    new_performer = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='new_dispatcher_tasks',
+        verbose_name='Исполнитель(Новый)',
+    )
     gsd_numbers = models.CharField(
         'Связанные заявки GSD',
         max_length=100,

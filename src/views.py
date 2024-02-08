@@ -20,13 +20,13 @@ from django.contrib.auth.decorators import permission_required
 
 from src import utils
 from src.models import SDTask
-# from src.models import CustomUser
+from src.models import CustomUser
 from src.models import WorkShift
 from src.models import SyncReport
-# from src.bot.webhook import tg_webhook_init
+from src.bot.webhook import tg_webhook_init
 
 logger = logging.getLogger('support_web')
-# bot, dispatcher = tg_webhook_init()
+bot, dispatcher = tg_webhook_init()
 
 
 def index(request):
@@ -49,8 +49,7 @@ def show_employee(request):
             'Активирован?'
         ],
     }
-    # employees = CustomUser.objects.prefetch_related('groups').order_by('-id')
-    employees = []
+    employees = CustomUser.objects.prefetch_related('groups').order_by('-id')
     table_employees['users'] = employees
     return render(
         request,
@@ -302,14 +301,14 @@ def show_sync_report(request, pk):
     )
 
 
-# @csrf_exempt
-# @async_to_sync
-# async def bot_webhook(request):
-#     update = Update.model_validate(
-#         json.loads(request.body.decode(encoding='UTF-8')),
-#         context={
-#             'bot': bot,
-#         },
-#     )
-#     await dispatcher.feed_update(bot, update)
-#     return HttpResponse(status=200)
+@csrf_exempt
+@async_to_sync
+async def bot_webhook(request):
+    update = Update.model_validate(
+        json.loads(request.body.decode(encoding='UTF-8')),
+        context={
+            'bot': bot,
+        },
+    )
+    await dispatcher.feed_update(bot, update)
+    return HttpResponse(status=200)
