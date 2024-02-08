@@ -1,10 +1,12 @@
 import os
 import ssl
+import json
+import logging.config
 
-import rollbar
 import dj_database_url
 
 from environs import Env
+
 
 env = Env()
 env.read_env()
@@ -16,21 +18,28 @@ SECRET_KEY = env.str('SECRET_KEY', 'django-unsecure')
 DEBUG = env.bool('DEBUG', False)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
+CSRF_TRUSTED_ORIGINS = env.list(
+    'CSRF_TRUSTED_ORIGINS',
+    ['http://localhost:1337', ]
+)
+
+LOGGING_CONFIG = None
+try:
+    with open('config/logging_config.json', 'r', encoding='utf-8') as file:
+        logging.config.dictConfig(json.load(file))
+except FileNotFoundError:
+    print(
+        'Для настройки логирования нужен logging_config.json '
+        'в корне проекта'
+    )
 
 TG_BOT_TOKEN = env.str('TG_BOT_TOKEN', '')
 TG_BOT_ADMIN = env.int('TG_BOT_ADMIN')
-
 TG_API_ID = env.int('TG_API_ID')
 TG_API_HASH = env.str('TG_API_HASH', '')
 TG_SESSION = env.str('TG_SESSION', '')
 TG_GET_MESSAGE_FROM = env.int('TG_GET_MESSAGE_FROM')
-
 TG_ADDITIONAL_CHAT_ID = env.int('TG_ADDITIONAL_CHAT_ID')
-
-CSRF_TRUSTED_ORIGINS = env.list(
-    'CSRF_TRUSTED_ORIGINS',
-    ['http://localhost:1337']
-)
 
 XML_LOGIN = env.str('XML_LOGIN')
 XML_PASSWORD = env.str('XML_PASSWORD')
@@ -54,7 +63,11 @@ REDIS_PORT = env.int('REDIS_PORT', 6379)
 
 ROLLBAR_ACCESS_TOKEN = env.str('ROLLBAR_ACCESS_TOKEN', '')
 ROLLBAR_ENV = env.str('ROLLBAR_ENV', 'dev')
-rollbar.init(ROLLBAR_ACCESS_TOKEN, ROLLBAR_ENV)
+ROLLBAR = {
+    'access_token': ROLLBAR_ACCESS_TOKEN,
+    'environment': ROLLBAR_ENV,
+    'root': BASE_DIR,
+}
 
 # Application definition
 
@@ -106,6 +119,7 @@ DATABASES = {
 }
 
 AUTH_USER_MODEL = 'src.CustomUser'
+LOGIN_REDIRECT_URL = '/dealers'
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -133,12 +147,4 @@ USE_TZ = True
 STATIC_URL = env.str('STATIC_URL', '/static/')
 STATIC_ROOT = env.str('STATIC_ROOT', os.path.join(BASE_DIR, 'static'))
 
-LOGIN_REDIRECT_URL = '/work_shifts'
-
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
-
-ROLLBAR = {
-    'access_token': ROLLBAR_ACCESS_TOKEN,
-    'environment': ROLLBAR_ENV,
-    'root': BASE_DIR,
-}

@@ -35,7 +35,8 @@ async def get_scheduler_jobs(
     jobs = scheduler.get_jobs()
     message_for_send = ['Активные задачи scheduler:\n']
     for job in jobs:
-        job_next_run_time = job.next_run_time + timedelta(hours=3)
+        print(job)
+        job_next_run_time = job.trigger.run_date + timedelta(hours=3)
         job_next_run_time = html.code(
             job_next_run_time.strftime('%d-%m-%Y %H:%M:%S'),
         )

@@ -5,16 +5,15 @@ from typing import Dict
 from typing import Callable
 from typing import Awaitable
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
 from aiogram import BaseMiddleware
 from aiogram.types import Update
+from apscheduler.schedulers import BackgroundScheduler
 
 logger = logging.getLogger('middleware_support_bot')
 
 
 class SchedulerMiddleware(BaseMiddleware):
-    def __init__(self, scheduler: AsyncIOScheduler) -> None:
+    def __init__(self, scheduler: BackgroundScheduler) -> None:
         logger.debug('SchedulerMiddleware init')
         self._scheduler = scheduler
 

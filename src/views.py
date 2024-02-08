@@ -1,24 +1,32 @@
+import json
 import logging
 
 from dataclasses import asdict
 
 from datetime import datetime
 
+from asgiref.sync import async_to_sync
+
+from aiogram.types import Update
+
+from django.http import HttpResponse
 from django.utils import timezone
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.decorators import permission_required
 
 from src import utils
-
 from src.models import SDTask
 from src.models import CustomUser
 from src.models import WorkShift
 from src.models import SyncReport
+from src.bot.webhook import tg_webhook_init
 
 logger = logging.getLogger('support_web')
+bot, dispatcher = tg_webhook_init()
 
 
 def index(request):
@@ -291,3 +299,16 @@ def show_sync_report(request, pk):
         template_name='pages/sync_report.html',
         context={'sync_report': sync_report},
     )
+
+
+@csrf_exempt
+@async_to_sync
+async def bot_webhook(request):
+    update = Update.model_validate(
+        json.loads(request.body.decode(encoding='UTF-8')),
+        context={
+            'bot': bot,
+        },
+    )
+    await dispatcher.feed_update(bot, update)
+    return HttpResponse(status=200)
