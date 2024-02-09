@@ -69,6 +69,7 @@ class CustomUserAdmin(UserAdmin):
                     'login',
                     'name',
                     'email',
+                    'dispatcher_name',
                     'tg_nickname',
                     'password',
                 ]
