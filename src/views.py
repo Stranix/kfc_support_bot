@@ -115,7 +115,7 @@ def show_shifts(request):
     ).filter(
         Q(shift_start_at__gte=shift_start_at),
         Q(shift_end_at__lte=shift_end_at) | Q(shift_end_at__isnull=True),
-    )
+    ).order_by('-is_works')
     shift_table = {
         'headers': [
             'Сотрудник',
@@ -205,7 +205,7 @@ def show_dealers_report(request):
         start_shift_date,
         end_shift_date,
         request.user.groups.first().name,
-    )
+    ).order_by('-status', '-id')
     if support_group == 'dispatchers':
         tasks = tasks.exclude(support_group='ENGINEER')
     if support_group == 'engineers':

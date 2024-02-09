@@ -182,12 +182,6 @@ class Employee(models.Model):
         blank=True,
         null=True,
     )
-    groups = models.ManyToManyField(
-        'Group',
-        related_name='employees',
-        verbose_name='Группа доступа',
-        blank=True,
-    )
     managers = models.ManyToManyField(
         'Employee',
         verbose_name='Менеджеры',
@@ -282,28 +276,6 @@ class BreakShift(models.Model):
 
     def __str__(self):
         return f'{self.new_employee.name} - {self.start_break_at}'
-
-
-class Group(models.Model):
-    name = models.CharField(
-        'Имя группы',
-        max_length=50,
-        unique=True,
-        db_index=True,
-    )
-    rights = models.ManyToManyField(
-        'Right',
-        related_name='groups',
-        verbose_name='Права',
-        blank=True,
-    )
-
-    class Meta:
-        verbose_name = 'Группа доступа'
-        verbose_name_plural = 'Группы доступа(Архив)'
-
-    def __str__(self):
-        return self.name
 
 
 class Right(models.Model):
@@ -696,12 +668,6 @@ class BotCommand(models.Model):
         'Порядок вывода команды',
         default=1,
     )
-    groups = models.ManyToManyField(
-        'Group',
-        related_name='bot_commands',
-        verbose_name='Доступна для групп',
-        blank=True,
-    )
     new_groups = models.ManyToManyField(
         'CustomGroup',
         related_name='new_bot_commands',
@@ -744,6 +710,8 @@ class Dispatcher(models.Model):
         on_delete=models.PROTECT,
         related_name='dispatcher_tasks',
         verbose_name='Исполнитель',
+        null=True,
+        blank=True,
     )
     new_performer = models.ForeignKey(
         'CustomUser',

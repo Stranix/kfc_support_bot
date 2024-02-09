@@ -9,11 +9,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from src.models import (
     CustomUser,
     CustomGroup,
-    Employee,
     SDTask,
     GSDTask,
-    Group,
-    Right,
     Server,
     ServerType,
     Restaurant,
@@ -68,7 +65,13 @@ class CustomUserAdmin(UserAdmin):
         (
             None,
             {
-                'fields': ['login', 'name', 'email', 'password', ]
+                'fields': [
+                    'login',
+                    'name',
+                    'email',
+                    'tg_nickname',
+                    'password',
+                ]
             }
         ),
         (
@@ -247,7 +250,6 @@ class BotCommandAdmin(admin.ModelAdmin):
         'category',
     ]
     filter_horizontal = [
-        'groups',
         'new_groups'
     ]
 
