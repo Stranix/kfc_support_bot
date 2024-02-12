@@ -610,6 +610,8 @@ async def get_new_tasks(
     tasks = await sync_to_async(list)(
         SDTask.objects.prefetch_related('new_applicant').filter(
             new_performer__isnull=True,
+        ).exclude(
+            status='COMPLETED',
         )
     )
     logger.debug('Список найденных новых задач: %s', tasks)
