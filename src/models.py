@@ -62,7 +62,7 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     login = models.CharField('Login', max_length=50, unique=True)
-    name = models.CharField('Имя', max_length=50, unique=True)
+    name = models.CharField('Имя', max_length=50)
     tg_id = models.PositiveBigIntegerField(
         'Telegram_id',
         db_index=True,
