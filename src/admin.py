@@ -96,7 +96,10 @@ class CustomUserAdmin(UserAdmin):
                 'fields': [
                     'login',
                     'name',
+                    'email',
                     'tg_id',
+                    'tg_nickname',
+                    'dispatcher_name',
                     'password1',
                     'password2',
                     'groups',
