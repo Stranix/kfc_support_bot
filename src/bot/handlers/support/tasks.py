@@ -38,6 +38,7 @@ class TaskState(StatesGroup):
     approved_sub_tasks = State()
     task_comment = State()
     approved_close_tasks = State()
+    show_docs = State()
 
 
 class AssignedTaskState(StatesGroup):
@@ -158,7 +159,9 @@ async def process_start_task(query: types.CallbackQuery, employee: CustomUser):
     await query.bot.send_message(
         task.new_applicant.tg_id,
         f'Вашу задачу взял в работу инженер: {employee.name}\n'
-        f'Телеграм для связи: @{employee.tg_nickname}'
+        f'Телеграм для связи: @{employee.tg_nickname}\n\n'
+        f'Внутренний номер: {html.code(task.number)}\n'
+        f'Запрос: {task.title}'
     )
     logger.info('Задачу взял в работу сотрудник %s', employee.name)
 
@@ -276,7 +279,9 @@ async def process_assigned_task_step_2(
     await message.bot.send_message(
         task_applicant.tg_id,
         f'Задача взята в работу инженером {html.code(selected_engineer.name)}'
-        f'\nТелеграм для связи: @{selected_engineer.tg_nickname}'
+        f'\nТелеграм для связи: @{selected_engineer.tg_nickname}\n\n'
+        f'Внутренний номер: {html.code(task.number)}\n'
+        f'Запрос: {task.title}'
     )
     logger.info('Отправлено')
     await state.clear()
@@ -361,11 +366,30 @@ async def process_close_task(
         )
         await state.clear()
         return
+    if task.support_group == 'DISPATCHER' and task.is_close_task_command:
+        await dispatcher_close_task_command(message, task, state)
+        return
     if task.support_group == 'DISPATCHER':
         await dispatcher_close_task(message, task, state)
         return
     if task.support_group == 'ENGINEER':
         await engineer_close_task(message, task, state)
+
+
+async def dispatcher_close_task_command(
+        message: types.Message,
+        task: SDTask,
+        state: FSMContext,
+):
+    logger.info('Закрытие заявки созданной выездным по команде /close')
+    await state.update_data(close_task=task, get_doc=eval(task.tg_docs))
+    await message.answer('Готовлю документы. Ожидайте...')
+    await send_documents_out_task(task, dispatcher=False)
+    await message.answer(
+        'Внимательно проверь документы!\nВсе верно?',
+        reply_markup=await keyboards.get_choice_task_doc_approved_keyboard(),
+    )
+    await state.set_state(TaskState.doc_approved)
 
 
 async def dispatcher_close_task(
@@ -537,7 +561,8 @@ async def dispatcher_close_task_approved(
 
     await query.bot.send_message(
         task.new_applicant.tg_id,
-        'Ваше обращение закрыто.\n'
+        f'Ваше обращение {task.number} закрыто.\n'
+        f'Запрос: {task.title}\n\n'
         'Оцените пожалуйста работу от 1 до 5',
         reply_markup=await keyboards.get_task_feedback_keyboard(task.id)
     )
@@ -573,7 +598,8 @@ async def engineer_close_task(
     await task.asave()
     await message.bot.send_message(
         task.new_applicant.tg_id,
-        'Ваше обращение закрыто.\n'
+        f'Ваше обращение {task.number} закрыто.\n'
+        f'Запрос: {task.title}\n\n'
         'Оцените пожалуйста работу от 1 до 5',
         reply_markup=await keyboards.get_task_feedback_keyboard(task.id)
     )

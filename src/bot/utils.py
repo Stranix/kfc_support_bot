@@ -23,6 +23,7 @@ from aiogram.utils.media_group import MediaGroupBuilder
 from bs4 import BeautifulSoup
 
 from django.conf import settings
+from django.db.models import Q
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import Group as DjangoGroup
 
@@ -261,19 +262,25 @@ async def save_doc_from_tg_to_disk(
     return save_report
 
 
-async def send_documents_out_task(sd_task: SDTask):
+async def send_documents_out_task(sd_task: SDTask, dispatcher: bool = True):
     logger.info('Отправляю документы из задачи')
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     dispatcher_number = re.search(r'\d{6}', sd_task.title).group()
-    try:
-        disp_task = await Dispatcher.objects.aget(
-            dispatcher_number=dispatcher_number,
-        )
-    except Dispatcher.DoesNotExist:
-        logger.warning('Нет задачи в бд. Отправка документов не возможна')
-        await bot.session.close()
-        return
-    tg_documents = eval(disp_task.tg_documents)
+    tg_documents = {}
+    if dispatcher:
+        try:
+            disp_task = await Dispatcher.objects.aget(
+                dispatcher_number=dispatcher_number,
+            )
+        except Dispatcher.DoesNotExist:
+            logger.warning('Нет задачи в бд. Отправка документов не возможна')
+            await bot.session.close()
+            return
+        tg_documents = eval(disp_task.tg_documents)
+
+    if not dispatcher:
+        tg_documents = eval(sd_task.tg_docs)
+
     if not tg_documents:
         await bot.send_message(
             sd_task.new_performer.tg_id,
@@ -324,3 +331,13 @@ def get_employee_managers(employee: CustomUser) -> list[CustomUser]:
     for group in employee.groups.all():
         managers.extend(group.managers.all())
     return list(set(managers))
+
+
+async def check_employee_groups(
+        employee: CustomUser,
+        name_contains: str,
+) -> bool:
+    logger.debug('Проверка группы пользователя. Ищем -> %s', name_contains)
+    return await employee.groups.filter(
+            Q(name__icontains=name_contains) | Q(name='Администраторы')
+    ).aexists()

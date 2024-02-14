@@ -137,6 +137,7 @@ def show_shifts(request):
 
 @login_required
 @permission_required('auth.web_app', raise_exception=True)
+@permission_required('auth.shift_report', raise_exception=True)
 def show_shift_report(request):
     shift_date = request.GET.get('date')
     if shift_date:

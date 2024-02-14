@@ -17,16 +17,15 @@ from aiogram.exceptions import TelegramBadRequest
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from django.db.models import Q
 from django.conf import settings
 from django.utils import timezone
-
 
 from src.models import SDTask
 from src.models import Dispatcher
 from src.models import CustomUser
 from src.bot import keyboards
 from src.bot.utils import send_notify
+from src.bot.utils import check_employee_groups
 from src.bot.utils import send_notify_to_seniors_engineers
 
 from src.bot.handlers.schedulers import check_task_deadline
@@ -44,9 +43,163 @@ class NewTaskState(StatesGroup):
     approved = State()
 
 
+class CloseTaskState(StatesGroup):
+    get_number = State()
+    get_documents = State()
+    documents_approved = State()
+
+
 class DispatcherTask(StatesGroup):
     task = State()
     get_doc = State()
+
+
+@router.message(Command('close'))
+async def start_close_task(
+        message: types.Message,
+        employee: CustomUser,
+        state: FSMContext,
+):
+    logger.info('Запрос на закрытие заявки от инженера %s', employee.name)
+    # TODO вынести в слой middleware
+    if not await check_employee_groups(employee, 'Подрядчик'):
+        logger.warning(
+            'Пользователь %s не состоит в группе Подрядчики',
+            employee.name,
+        )
+        await message.answer('Нет прав на использование команды')
+        return
+    await message.answer(
+        'Напишите номер заявки по которой вы приехали\n'
+        f'Например: {html.code("SC1395412")}, {html.code("INC0002295")}\n\n'
+        f'‼{html.italic("Буквы обязательны !!!")}'
+    )
+    await state.set_state(CloseTaskState.get_number)
+
+
+@router.message(CloseTaskState.get_number)
+async def process_get_number(message: types.Message, state: FSMContext):
+    logger.info('Закрытие заявки. Обработка номера задачи')
+    task_number = re.match(r'([a-zA-Z]{2,3}[0-9]{7})+', message.text)
+    if not task_number:
+        logger.warning('Не правильный номер задачи')
+        await message.answer(
+            'Не правильный формат номера задачи\n'
+            'Номер задачи должен содержать:\n'
+            '1. буквенный код (2-3 символа)\n'
+            '2. 7-ми значный номер'
+            f'Пример: {html.code("SC1395412, INC0002295")} \n\n'
+            + html.italic('Если передумал - используй команду отмены /cancel')
+        )
+        return
+    await state.update_data(get_number=task_number.group())
+    await message.answer(
+        'Приложи акты.\n'
+        'Файлы прикладываются в виде документа (без сжатия)'
+    )
+    await state.set_state(CloseTaskState.get_documents)
+    logger.info('Обработано')
+
+
+@router.message(CloseTaskState.get_documents)
+async def process_close_task_get_documents(
+        message: types.Message,
+        state: FSMContext,
+        album: Union[dict, None] = None,
+):
+    if album is None:
+        album = {}
+    logger.info('Получение документов')
+    keyboard = await keyboards.get_yes_no_cancel_keyboard()
+
+    if not message.document and not album:
+        await message.answer(
+            'Все еще жду документы.\n'
+            'Пересылку, сжатые фото - не понимаю',
+        )
+        return
+
+    if message.document and not album:
+        await message.answer(
+            'Получен один документ. Все верно?',
+            reply_markup=keyboard,
+        )
+        await state.update_data(
+            get_documents={
+                message.document.file_name: message.document.file_id
+            }
+        )
+        await state.set_state(CloseTaskState.documents_approved)
+        return
+
+    documents = {}
+    for doc in album:
+        documents[doc.document.file_name] = doc.document.file_id
+
+    await message.answer(
+        f'Получил {len(documents)} документ(ов)\n'
+        f'Имена файлов: {html.code(", ".join(documents.keys()))}\n\n'
+        f'Все верно?',
+        reply_markup=keyboard,
+    )
+    await state.update_data(get_documents=documents)
+    await state.set_state(CloseTaskState.documents_approved)
+
+
+@router.callback_query(
+    CloseTaskState.documents_approved,
+    F.data == 'uni_yes',
+)
+async def process_close_task_approved_doc_yes(
+        query: types.CallbackQuery,
+        employee: CustomUser,
+        scheduler: AsyncIOScheduler,
+        state: FSMContext,
+):
+    logger.info('Создание заявки на закрытие. Финальный этап')
+    await query.message.edit_text('Формирую задачу. Ожидайте...')
+    data = await state.get_data()
+    logger.debug('state_data: %s', data)
+    task = await SDTask.objects.acreate(
+        new_applicant=employee,
+        title=f'Закрыть заявку {data["get_number"]}',
+        support_group='DISPATCHER',
+        description='Закрытие заявки во внешней системе',
+        is_close_task_command=True,
+        tg_docs=data['get_documents'],
+    )
+    task.number = f'SD-{task.id}'
+    await task.asave()
+    logger.debug('Задача зафиксирована в БД. Номер: %s', task.number)
+    await add_tasks_schedulers(task, scheduler)
+    await sending_new_task_notify(task, employee)
+    await query.message.edit_text(
+        f'Заявка принята. \n'
+        f'Внутренний номер: {html.code(task.number)}\n'
+        f'Запрос: {task.title}\n'
+        f'Инженерам отправлено уведомление\n\n'
+        + html.italic('Регламентное время связи 10 минут')
+    )
+    await state.clear()
+    logger.info('Процесс завершен')
+
+
+@router.callback_query(
+    CloseTaskState.documents_approved,
+    F.data == 'uni_no',
+)
+async def process_close_task_approved_doc_no(
+        query: types.CallbackQuery,
+        state: FSMContext,
+):
+    logger.info('Не уверен в документах, просим еще раз')
+    await query.message.edit_text(
+        'Приложи акты.\n'
+        'Файлы прикладываются в виде документа (без сжатия)'
+    )
+    await state.update_data(get_documents={})
+    await state.set_state(CloseTaskState.get_documents)
+    logger.info('Процесс завершен')
 
 
 @router.message(Command('support_help'))
@@ -56,9 +209,8 @@ async def start_new_support_task(
         state: FSMContext,
 ):
     logger.info('Запрос на создание новой выездной задачи')
-    if not await employee.groups.filter(
-            Q(name__contains='Подрядчик') | Q(name='Администраторы')
-    ).afirst():
+    # TODO вынести в слой middleware
+    if not await check_employee_groups(employee, 'Подрядчик'):
         logger.warning(
             'Пользователь %s не состоит в группе Подрядчики',
             employee.name,
@@ -157,6 +309,7 @@ async def process_task_approved(
     await query.message.answer(
         f'Заявка принята. \n'
         f'Внутренний номер: {html.code(task.number)}\n'
+        f'Запрос: {task.title}\n'
         f'Инженерам отправлено уведомление\n\n'
         + html.italic('Регламентное время связи 10 минут')
     )

@@ -592,7 +592,16 @@ class SDTask(models.Model):
         null=True,
         blank=True,
     )
+    tg_docs = models.TextField(
+        'Телеграм Документы',
+        blank=True,
+        null=True,
+    )
     is_automatic = models.BooleanField('Автоматическая?', default=False)
+    is_close_task_command = models.BooleanField(
+        'Команда закрытия задачи?',
+        default=False,
+    )
 
     objects = SDTaskQuerySet.as_manager()
 

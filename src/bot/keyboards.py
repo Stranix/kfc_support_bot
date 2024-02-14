@@ -255,3 +255,33 @@ async def get_choice_dispatcher_task_closed_keyboard(task_id: int):
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_check_docks_keyboard():
+    logger.debug('Создаю клавиатуру для запроса проверки документов')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='Проверить',
+                callback_data='show_doc_yes',
+            ),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_yes_no_cancel_keyboard():
+    logger.debug('Создаю клавиатуру да-нет-отмена')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(text='Да', callback_data='uni_yes'),
+            InlineKeyboardButton(text='Нет', callback_data='uni_no'),
+        ],
+        [
+            InlineKeyboardButton(text='Отмена', callback_data='cancel')
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

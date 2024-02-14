@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from src.models import SDTask
+from src.bot.keyboards import get_task_feedback_keyboard
 
 logger = logging.getLogger('support_bot')
 router = Router(name='additional_handlers')
@@ -64,6 +65,14 @@ async def process_additional_work(
     await query.message.answer(
         'Передал информацию в группу доп/рем работ',
         reply_markup=types.ReplyKeyboardRemove(),
+    )
+    await query.message.bot.send_message(
+        task.new_applicant.tg_id,
+        f'Ваше обращение {task.number}.\n'
+        f'Запрос: {task.title}\n\n'
+        'Передано на группу по доп работам/ремонтам.\n'
+        'Задача закрывается без нашего участия',
+        reply_markup=await get_task_feedback_keyboard(task.id)
     )
     await state.clear()
     logger.info('Работа обработчика завершена')
