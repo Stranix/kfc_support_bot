@@ -339,5 +339,5 @@ async def check_employee_groups(
 ) -> bool:
     logger.debug('Проверка группы пользователя. Ищем -> %s', name_contains)
     return await employee.groups.filter(
-            Q(name__icontains=name_contains) | Q(name='Администраторы')
+        Q(name__icontains=name_contains) | Q(name='Администраторы')
     ).aexists()
