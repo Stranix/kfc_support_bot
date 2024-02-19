@@ -4,6 +4,8 @@ from datetime import timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from asgiref.sync import sync_to_async
+
 from aiogram import F
 from aiogram import html
 from aiogram import types
@@ -172,8 +174,10 @@ async def check_end_of_shift(shift_id: int):
     )
     logger.debug('Отправка уведомления менеджерам')
     managers = []
-    for group in engineer.groups.all():
-        managers.extend(group.managers.all())
+    for group in await sync_to_async(list)(engineer.groups.all()):
+        group_managers = await sync_to_async(list)(group.managers.all())
+        logger.debug('group_managers: %s', group_managers)
+        managers.extend(group_managers)
     logger.debug('managers: %s', managers)
     await send_notify(managers, notify)
     logger.debug('Отправка уведомления инженеру')
