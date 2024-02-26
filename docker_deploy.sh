@@ -6,7 +6,7 @@ set -e
 echo -e "Выкачиваем изменения из репозитория..."
 git pull
 
-VERSION=`grep -m 1 version pyproject.toml | tr -s ' ' | tr -d '"' | tr -d "'" | cut -d' ' -f3`
+VERSION=$(grep -m 1 version pyproject.toml | tr -s ' ' | tr -d '"' | tr -d "'" | cut -d' ' -f3)
 LOCAL_USERNAME=$(whoami)
 
 echo -e "Скачиваем последний образ приложения с DockerHub"
