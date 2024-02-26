@@ -5,7 +5,7 @@ on:
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: docker.io
-  IMAGE_NAME: ${{ secrets.DOCKER_USER }}/kfc_support_bot:latest
+  IMAGE_NAME: ${{ secrets.DOCKER_USER }}/kfc_support_bot
 
 jobs:
     publish:
@@ -28,8 +28,10 @@ jobs:
         - name: Build and Publish
           run: |
             cat config/logging_config.json
-            docker build . --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            version=$(grep -m 1 version pyproject.toml | tr -s ' ' | tr -d '"' | tr -d "'" | cut -d' ' -f3)
+            docker build . --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$version --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$version
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
     deploy:
       needs: publish
