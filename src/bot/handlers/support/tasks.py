@@ -15,7 +15,6 @@ from aiogram.types import ReplyKeyboardRemove
 
 from asgiref.sync import sync_to_async
 
-from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateformat import format
 
@@ -188,7 +187,7 @@ async def process_assigned_task(
         return
 
     employee_engineer_group = await employee.groups.aget(
-        Q(name__icontains='Администратор') | Q(name__icontains='инженер'),
+        name__icontains='инженер',
     )
     logger.debug('employee_engineer_group: %s', employee_engineer_group)
     engineers_on_shift = await get_engineers_for_assigned_task(
