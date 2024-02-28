@@ -2,8 +2,6 @@ import logging
 
 from datetime import timedelta
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
 from asgiref.sync import sync_to_async
 
 from aiogram import F
@@ -15,6 +13,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
 
+from src.entities.Service import service
 from src.models import WorkShift
 from src.models import CustomGroup
 from src.models import SDTask
@@ -32,9 +31,8 @@ class SchedulerJobState(StatesGroup):
 @router.message(Command('scheduler_jobs'))
 async def get_scheduler_jobs(
         message: types.Message,
-        scheduler: AsyncIOScheduler,
 ):
-    jobs = scheduler.get_jobs()
+    jobs = service.scheduler.get_jobs()
     message_for_send = ['Активные задачи scheduler:\n']
     for job in jobs:
         print(job)
@@ -60,10 +58,9 @@ async def close_scheduler_job(
 @router.message(F.text.startswith('job_'))
 async def process_close_scheduler_job(
         message: types.Message,
-        scheduler: AsyncIOScheduler,
         state: FSMContext,
 ):
-    scheduler.remove_job(message.text)
+    service.scheduler.remove_job(message.text)
     await message.answer(f'Job {message.text} удален')
     await state.clear()
 

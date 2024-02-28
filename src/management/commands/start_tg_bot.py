@@ -19,6 +19,7 @@ from src.bot.handlers import router
 from src.bot.middlewares import AuthUpdateMiddleware
 from src.bot.middlewares import SchedulerMiddleware
 from src.bot.middlewares import EmployeeStatusMiddleware
+from src.bot.middlewares import UserGroupMiddleware
 
 logger = logging.getLogger('support_bot')
 
@@ -77,6 +78,7 @@ async def run_bot():
     dp.include_router(router)
     dp.startup.register(start_bot)
     dp.update.outer_middleware(AuthUpdateMiddleware())
+    dp.update.outer_middleware(UserGroupMiddleware())
     dp.update.outer_middleware(SchedulerMiddleware(scheduler))
     dp.message.outer_middleware(EmployeeStatusMiddleware())
     scheduler.start()

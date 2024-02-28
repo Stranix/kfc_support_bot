@@ -1,13 +1,10 @@
 import re
 import logging
 
-from datetime import timedelta
-
 from typing import Union
 
 from aiogram import F
 from aiogram import Router
-from aiogram import html
 from aiogram import types
 from aiogram.filters import Command
 from aiogram.fsm.state import State
@@ -15,22 +12,15 @@ from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-from django.conf import settings
-from django.utils import timezone
-
+from src.entities.Dialog import Dialog
+from src.entities.FieldEngineer import FieldEngineer
+from src.entities.Message import Message
+from src.entities.Service import service
 from src.models import SDTask
 from src.models import Dispatcher
 from src.models import CustomUser
 from src.bot import keyboards
-from src.bot.utils import send_notify
 from src.bot.utils import check_employee_groups
-from src.bot.utils import send_notify_to_seniors_engineers
-
-from src.bot.handlers.schedulers import check_task_deadline
-from src.bot.handlers.schedulers import check_task_activate_step_1
-from src.bot.handlers.schedulers import check_task_activate_step_2
 
 logger = logging.getLogger('support_bot')
 router = Router(name='field_engineers_handlers')
@@ -67,13 +57,9 @@ async def start_close_task(
             'Пользователь %s не состоит в группе Подрядчики',
             employee.name,
         )
-        await message.answer('Нет прав на использование команды')
+        await message.answer(Dialog.no_rights_for_command())
         return
-    await message.answer(
-        'Напишите номер заявки по которой вы приехали\n'
-        f'Например: {html.code("SC1395412")}, {html.code("INC0002295")}\n\n'
-        f'‼{html.italic("Буквы обязательны !!!")}'
-    )
+    await message.answer(Dialog.close_task_request_task_number())
     await state.set_state(CloseTaskState.get_number)
 
 
@@ -83,20 +69,10 @@ async def process_get_number(message: types.Message, state: FSMContext):
     task_number = re.match(r'([a-zA-Z]{2,3}[0-9]{7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')
-        await message.answer(
-            'Не правильный формат номера задачи\n'
-            'Номер задачи должен содержать:\n'
-            '1. буквенный код (2-3 символа)\n'
-            '2. 7-ми значный номер'
-            f'Пример: {html.code("SC1395412, INC0002295")} \n\n'
-            + html.italic('Если передумал - используй команду отмены /cancel')
-        )
+        await message.answer(Dialog.close_task_wrong_task_number())
         return
     await state.update_data(get_number=task_number.group())
-    await message.answer(
-        'Приложи акты.\n'
-        'Файлы прикладываются в виде документа (без сжатия)'
-    )
+    await message.answer(Dialog.close_task_request_acts())
     await state.set_state(CloseTaskState.get_documents)
     logger.info('Обработано')
 
@@ -113,15 +89,12 @@ async def process_close_task_get_documents(
     keyboard = await keyboards.get_yes_no_cancel_keyboard()
 
     if not message.document and not album:
-        await message.answer(
-            'Все еще жду документы.\n'
-            'Пересылку, сжатые фото - не понимаю',
-        )
+        await message.answer(Dialog.close_task_wrong_acts())
         return
 
     if message.document and not album:
         await message.answer(
-            'Получен один документ. Все верно?',
+            Dialog.close_task_confirmation_one_document(),
             reply_markup=keyboard,
         )
         await state.update_data(
@@ -137,9 +110,7 @@ async def process_close_task_get_documents(
         documents[doc.document.file_name] = doc.document.file_id
 
     await message.answer(
-        f'Получил {len(documents)} документ(ов)\n'
-        f'Имена файлов: {html.code(", ".join(documents.keys()))}\n\n'
-        f'Все верно?',
+        Dialog.close_task_confirmation_documents(documents),
         reply_markup=keyboard,
     )
     await state.update_data(get_documents=documents)
@@ -152,34 +123,23 @@ async def process_close_task_get_documents(
 )
 async def process_close_task_approved_doc_yes(
         query: types.CallbackQuery,
-        employee: CustomUser,
-        scheduler: AsyncIOScheduler,
+        field_engineer: FieldEngineer,
         state: FSMContext,
 ):
     logger.info('Создание заявки на закрытие. Финальный этап')
     await query.message.edit_text('Формирую задачу. Ожидайте...')
     data = await state.get_data()
     logger.debug('state_data: %s', data)
-    task = await SDTask.objects.acreate(
-        new_applicant=employee,
-        title=f'Закрыть заявку {data["get_number"]}',
-        support_group='DISPATCHER',
-        description='Закрытие заявки во внешней системе',
+    task = await field_engineer.create_sd_task(
+        f'Закрыть заявку {data["get_number"]}',
+        'DISPATCHER',
+        'Закрытие заявки во внешней системе',
         is_close_task_command=True,
-        tg_docs=data['get_documents'],
+        tg_documents=data['get_documents'],
     )
-    task.number = f'SD-{task.id}'
-    await task.asave()
-    logger.debug('Задача зафиксирована в БД. Номер: %s', task.number)
-    await add_tasks_schedulers(task, scheduler)
-    await sending_new_task_notify(task, employee)
-    await query.message.edit_text(
-        f'Заявка принята. \n'
-        f'Внутренний номер: {html.code(task.number)}\n'
-        f'Запрос: {task.title}\n'
-        f'Инженерам отправлено уведомление\n\n'
-        + html.italic('Регламентное время связи 10 минут')
-    )
+    await service.add_tasks_schedulers(task)
+    await Message.send_new_task_notify(task, field_engineer)
+    await query.message.edit_text(Dialog.new_support_task_for_creator(task))
     await state.clear()
     logger.info('Процесс завершен')
 
@@ -193,10 +153,7 @@ async def process_close_task_approved_doc_no(
         state: FSMContext,
 ):
     logger.info('Не уверен в документах, просим еще раз')
-    await query.message.edit_text(
-        'Приложи акты.\n'
-        'Файлы прикладываются в виде документа (без сжатия)'
-    )
+    await query.message.edit_text(Dialog.close_task_request_acts())
     await state.update_data(get_documents={})
     await state.set_state(CloseTaskState.get_documents)
     logger.info('Процесс завершен')
@@ -215,11 +172,11 @@ async def start_new_support_task(
             'Пользователь %s не состоит в группе Подрядчики',
             employee.name,
         )
-        await message.answer('Нет прав на использование команды')
+        await message.answer(Dialog.no_rights_for_command())
         return
     keyboard = await keyboards.get_choice_support_group_keyboard()
     await message.answer(
-        'Чья помощь требуется',
+        Dialog.support_help_whose_help_is_needed(),
         reply_markup=keyboard,
     )
     await state.set_state(NewTaskState.support_group)
@@ -233,10 +190,7 @@ async def new_task_engineer(query: types.CallbackQuery, state: FSMContext):
     logger.info('Запрос на создание новой задачи поддержки')
     await query.message.delete()
     await state.update_data(support_group=query.data)
-    await query.message.answer(
-        'Напишите номер заявки по которой вы приехали\n'
-        f'Например: {html.code("1395412")}'
-    )
+    await query.message.answer(Dialog.support_help_request_task_number())
     await state.set_state(NewTaskState.get_gsd_number)
 
 
@@ -246,73 +200,50 @@ async def process_get_gsd_number(message: types.Message, state: FSMContext):
     task_number = re.match(r'(\d{6,7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')
-        await message.answer(
-            'Не правильный формат номера задачи\n'
-            'Номер задачи должен быть от 6 до 7 цифр\n'
-            f'Пример: {html.code("1395412")} \n\n'
-            + html.italic('Если передумал - используй команду отмены /cancel')
-        )
+        await message.answer(Dialog.support_help_wrong_task_number())
         return
     await state.update_data(get_gsd_number=task_number.group())
-    await message.answer('Напиши с чем нужна помощь?')
+    await message.answer(Dialog.support_help_request_task_description())
     await state.set_state(NewTaskState.descriptions)
     logger.info('Обработано')
 
 
 @router.message(NewTaskState.descriptions)
 async def process_task_descriptions(message: types.Message, state: FSMContext):
-    logger.info('Получение описание по задаче')
+    logger.info('Получение описания по задаче')
     task_description = message.text
     if not task_description:
-        await message.answer(
-            f'Нет описания по задаче. Чем помочь?\n\n'
-            f'{html.italic("описание только в виде текста")}'
-        )
+        await message.answer(Dialog.support_help_wrong_task_description())
         return
     data = await state.get_data()
     task_number = data['get_gsd_number']
     await state.update_data(descriptions=task_description)
     await message.answer(
-        'Подводим итог: \n'
-        f'Требуется помощь по задаче: SC-{task_number}\n'
-        f'Детали: {task_description}\n\n'
-        'Все верно?',
+        Dialog.support_help_request_task_result(task_number, task_description),
         reply_markup=await keyboards.get_approved_task_keyboard(task_number)
     )
     await state.set_state(NewTaskState.approved)
     logger.info('Описание получено')
 
 
-# TODO продумать логику уведомлений если задача уже в работе
 @router.callback_query(F.data.startswith('approved_new_task'))
 async def process_task_approved(
         query: types.CallbackQuery,
-        employee: CustomUser,
-        scheduler: AsyncIOScheduler,
+        field_engineer: FieldEngineer,
         state: FSMContext,
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
-    await query.message.edit_text('Формирую задачу. Ожидайте...')
+    await query.message.edit_text(Dialog.prepare_task_message())
     data = await state.get_data()
     logger.debug('state_data: %s', data)
-    task = await SDTask.objects.acreate(
-        new_applicant=employee,
-        title=f'Помощь по заявке SС-{data["get_gsd_number"]}',
-        support_group=data['support_group'].upper(),
-        description=data['descriptions'],
+    task = await field_engineer.create_sd_task(
+        data['get_gsd_number'],
+        data['support_group'],
+        data['descriptions'],
     )
-    task.number = f'SD-{task.id}'
-    await task.asave()
-    logger.debug('Задача зафиксирована в БД. Номер: %s', task.number)
-    await add_tasks_schedulers(task, scheduler)
-    await sending_new_task_notify(task, employee)
-    await query.message.answer(
-        f'Заявка принята. \n'
-        f'Внутренний номер: {html.code(task.number)}\n'
-        f'Запрос: {task.title}\n'
-        f'Инженерам отправлено уведомление\n\n'
-        + html.italic('Регламентное время связи 10 минут')
-    )
+    await service.add_tasks_schedulers(task)
+    await Message.send_new_task_notify(task, field_engineer)
+    await query.message.answer(Dialog.new_support_task_for_creator(task))
     await query.message.delete()
     await state.clear()
     logger.info('Процесс завершен')
@@ -328,82 +259,10 @@ async def task_feedback(query: types.CallbackQuery):
     await task.asave()
     try:
         await query.message.delete()
-        await query.message.answer(f'Спасибо за оценку задачи {task.number}')
+        await query.message.answer(Dialog.rating_feedback(task.number))
     except TelegramBadRequest:
         logger.debug('Сообщение уже удалено')
     logger.info('Оценка проставлена')
-
-
-async def sending_new_task_notify(
-        task: SDTask,
-        employee: CustomUser,
-):
-    logger.info('Отправка уведомления по задачам инженерам на смене')
-    message_for_send = f'Инженеру требуется помощь ' \
-                       f'по задаче {html.code(task.number)}\n\n' \
-                       f'Описание: {html.code(task.description)}\n' \
-                       f'Телеграм для связи: @{employee.tg_nickname}\n\n'
-    if task.support_group == 'DISPATCHER':
-        message_for_send += html.italic(
-            '‼Не забудь запросить акт и заключение (если требуется)',
-        )
-    recipients = await get_recipients_on_shift_by_task_support_group(task)
-
-    if not recipients:
-        logger.warning('На смене нет инженеров или диспетчеров')
-        notify = f'Поступил запрос на помощь, но нет инженеров на смене\n' \
-                 f'Номер обращения: {html.code(task.number)}'
-        await send_notify_to_seniors_engineers(notify)
-        return
-
-    keyboard = await keyboards.get_support_task_keyboard(task.id)
-    await send_notify(recipients, message_for_send, keyboard)
-    logger.info('Завершено')
-
-
-async def get_recipients_on_shift_by_task_support_group(task: SDTask):
-    logger.info('Получение сотрудников по группе поддержки')
-    if task.support_group == 'DISPATCHER':
-        dispatchers = await CustomUser.objects.dispatchers_on_work()
-        logger.debug('dispatchers: %s', dispatchers)
-        return dispatchers
-
-    if task.support_group == 'ENGINEER':
-        engineers = await CustomUser.objects.engineers_on_work()
-        logger.debug('engineers: %s', engineers)
-        return engineers
-
-
-async def add_tasks_schedulers(task: SDTask, scheduler: AsyncIOScheduler):
-    logger.debug('Добавление временных проверок по задаче')
-    task_escalation = settings.TASK_ESCALATION
-    task_deadline = settings.TASK_DEADLINE
-
-    scheduler.add_job(
-        check_task_activate_step_1,
-        'date',
-        run_date=timezone.now() + timedelta(minutes=task_escalation),
-        timezone='Europe/Moscow',
-        args=(task.number,),
-        id=f'job_{task.number}_step1',
-    )
-    scheduler.add_job(
-        check_task_activate_step_2,
-        'date',
-        run_date=timezone.now() + timedelta(minutes=task_escalation * 2),
-        timezone='Europe/Moscow',
-        args=(task.number,),
-        id=f'job_{task.number}_step2',
-    )
-    scheduler.add_job(
-        check_task_deadline,
-        'date',
-        run_date=timezone.now() + timedelta(minutes=task_deadline),
-        timezone='Europe/Moscow',
-        args=(task.number,),
-        id=f'job_{task.number}_deadline',
-    )
-    logger.debug('Проверки добавлены')
 
 
 @router.callback_query(F.data.startswith('disp_task_'))
@@ -422,16 +281,13 @@ async def process_dispatchers_task(
         task = await Dispatcher.objects.aget(id=task_id)
     except Dispatcher.DoesNotExist:
         logger.warning('Не нашел задачу с id %s в базе', task_id)
-        await query.message.answer('Не нашел информацию по задаче')
+        await query.message.answer(Dialog.task_not_found_message())
         await query.message.delete()
         return
+    keyboard = await keyboards.create_tg_keyboard_markup(['без документов'])
     await query.message.answer(
-        'Приложите акты и заключения (если есть) '
-        '<b>БЕЗ СЖАТИЯ(Документом)</b>\n'
-        f'Если документов нет напишите: {html.italic("без документов")}',
-        reply_markup=await keyboards.create_tg_keyboard_markup(
-            ['без документов'],
-        ),
+        Dialog.dispatcher_task_request_acts(),
+        reply_markup=keyboard,
     )
     await query.message.delete()
     await state.set_state(DispatcherTask.get_doc)
@@ -441,8 +297,7 @@ async def process_dispatchers_task(
 @router.message(DispatcherTask.get_doc)
 async def process_dispatchers_task_get_doc(
         message: types.Message,
-        employee: CustomUser,
-        scheduler: AsyncIOScheduler,
+        field_engineer: FieldEngineer,
         state: FSMContext,
         album: Union[dict, None] = None,
 ):
@@ -457,10 +312,7 @@ async def process_dispatchers_task_get_doc(
         return
 
     if message.text and message.text != 'без документов':
-        await message.answer(
-            'Все еще жду документы.\n'
-            'Пересылку пока не понимаю',
-        )
+        await message.answer(Dialog.close_task_wrong_acts())
         return
 
     documents = {}
@@ -477,33 +329,21 @@ async def process_dispatchers_task_get_doc(
     task.tg_documents = documents
     await task.asave()
     logger.info('Процесс подтверждения и создания новой заявки')
-    await message.answer('Формирую задачу. Ожидайте...')
+    await message.answer(Dialog.prepare_task_message())
 
-    description = '\nЗакрыть заявку в GSD\n' \
-                  'Связана с задачами GSD: {gsd_numbers}\n' \
-                  'Комментарий закрытия от инженера: {task_commit}'
+    description = Dialog.dispatcher_task_description()
     description = description.format(
         number=task.dispatcher_number,
         gsd_numbers=task.gsd_numbers,
         task_commit=task.closing_comment,
     )
-    sd_task = await SDTask.objects.acreate(
-        new_applicant=employee,
-        title=f'Закрыть заявку GSD из диспетчера {task.dispatcher_number}',
-        support_group='DISPATCHER',
-        description=description,
+    sd_task = await field_engineer.create_sd_task(
+        f'Закрыть заявку из диспетчера {task.dispatcher_number}',
+        'DISPATCHER',
+        description,
         is_automatic=True,
     )
-    sd_task.number = f'SD-{sd_task.id}'
-    await sd_task.asave()
-    logger.debug('Задача зафиксирована в БД. Номер: %s', sd_task.number)
-    await add_tasks_schedulers(sd_task, scheduler)
-    await sending_new_task_notify(sd_task, employee)
-    await message.answer(
-        f'Заявка принята. \n'
-        f'Внутренний номер: {html.code(sd_task.number)}\n'
-        f'Инженерам отправлено уведомление\n\n'
-        + html.italic('Регламентное время связи 10 минут')
-    )
+    await service.add_tasks_schedulers(sd_task)
+    await Message.send_new_task_notify(sd_task, field_engineer)
     await state.clear()
     logger.info('Процесс завершен')
