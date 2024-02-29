@@ -53,7 +53,7 @@ class SyncMiddleware(BaseMiddleware):
             report_start_at = format(report.start_at, 'd-m-Y H:i:s')
             await event.message.answer(
                 'Запуск массовой синхронизации только раз в 10 минут\n\n'
-                f'Последний запуск от:  {html.code(report.employee.name)}\n'
+                f'Последний запуск от: {html.code(report.new_employee.name)}\n'
                 f'Время запуска: {html.code(report_start_at)}',
                 reply_markup=await get_report_keyboard(report.id)
             )
