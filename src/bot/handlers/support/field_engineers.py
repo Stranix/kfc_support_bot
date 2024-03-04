@@ -1,8 +1,6 @@
 import re
 import logging
 
-from typing import Union
-
 from aiogram import F
 from aiogram import Router
 from aiogram import types
@@ -16,13 +14,11 @@ from src.entities.Dialog import Dialog
 from src.entities.FieldEngineer import FieldEngineer
 from src.entities.Message import Message
 from src.entities.Service import Service
-from src.management.commands.fetch_tg import get_message_from_tg_chanel
 
+from src.bot import dialogs
 from src.models import SDTask
 from src.models import Dispatcher
 from src.models import CustomUser
-from src.bot import keyboards, dialogs
-from src.bot.utils import check_employee_groups
 
 logger = logging.getLogger('support_bot')
 router = Router(name='field_engineers_handlers')
