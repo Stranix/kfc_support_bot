@@ -30,5 +30,62 @@ class FieldEngineer(User):
         )
         task.number = f'SD-{task.id}'
         await task.asave()
-        logger.debug('Задача зафиксирована в БД. Номер: %s', task.number)
+        logger.info('Задача зафиксирована в БД. Номер: %s', task.number)
         return task
+
+    async def create_sd_task_to_close(
+            self,
+            number: str,
+            documents: dict,
+    ) -> SDTask:
+        """Создание задачи для закрытия выездной задачи во внешней системе"""
+        logger.info(
+            'Формирования заявки на закрытие задачи %s во внешней системе',
+            number,
+        )
+        sd_task = await self.create_sd_task(
+            f'Закрыть заявку {number}',
+            'DISPATCHER',
+            'Закрытие заявки во внешней системе',
+            is_close_task_command=True,
+            tg_documents=documents,
+        )
+        return sd_task
+
+    async def create_sd_task_to_help(
+            self,
+            number: str,
+            support_group: str,
+            description: str,
+    ) -> SDTask:
+        """Создание задачи для помощи выездному инженеру"""
+        logger.info(
+            'Создание задачи для помощи выездному инженеру по задаче %s',
+            number,
+        )
+        sd_task = await self.create_sd_task(
+            f'Помощь по заявке {number}',
+            support_group,
+            description,
+        )
+        return sd_task
+
+    async def create_task_closing_from_dispatcher(
+            self,
+            number: str,
+            description: str,
+            documents: dict,
+    ) -> SDTask:
+        """Создание задачи для закрытия на основе отбивки в чате"""
+        logger.info(
+            'Создание задачи для помощи выездному инженеру по задаче %s',
+            number,
+        )
+        sd_task = await self.create_sd_task(
+            f'Закрыть заявку из диспетчера {number}',
+            'DISPATCHER',
+            description,
+            is_close_task_command=True,
+            tg_documents=documents,
+        )
+        return sd_task

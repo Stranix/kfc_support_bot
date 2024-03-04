@@ -15,11 +15,13 @@ from aiogram.exceptions import TelegramBadRequest
 from src.entities.Dialog import Dialog
 from src.entities.FieldEngineer import FieldEngineer
 from src.entities.Message import Message
-from src.entities.Service import service
+from src.entities.Service import Service
+from src.management.commands.fetch_tg import get_message_from_tg_chanel
+
 from src.models import SDTask
 from src.models import Dispatcher
 from src.models import CustomUser
-from src.bot import keyboards
+from src.bot import keyboards, dialogs
 from src.bot.utils import check_employee_groups
 
 logger = logging.getLogger('support_bot')
@@ -51,28 +53,20 @@ async def start_close_task(
         state: FSMContext,
 ):
     logger.info('Запрос на закрытие заявки от инженера %s', employee.name)
-    # TODO вынести в слой middleware
-    if not await check_employee_groups(employee, 'Подрядчик'):
-        logger.warning(
-            'Пользователь %s не состоит в группе Подрядчики',
-            employee.name,
-        )
-        await message.answer(Dialog.no_rights_for_command())
-        return
-    await message.answer(Dialog.close_task_request_task_number())
+    await message.answer(await dialogs.required_task_number())
     await state.set_state(CloseTaskState.get_number)
 
 
 @router.message(CloseTaskState.get_number)
 async def process_get_number(message: types.Message, state: FSMContext):
     logger.info('Закрытие заявки. Обработка номера задачи')
-    task_number = re.match(r'([a-zA-Z]{2,3}[0-9]{7})+', message.text)
+    task_number = re.match(r'([a-zA-Z]{2,3}\S?[0-9]{7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')
-        await message.answer(Dialog.close_task_wrong_task_number())
+        await message.answer(await dialogs.wrong_task_number())
         return
     await state.update_data(get_number=task_number.group())
-    await message.answer(Dialog.close_task_request_acts())
+    await message.answer(await dialogs.required_documents())
     await state.set_state(CloseTaskState.get_documents)
     logger.info('Обработано')
 
@@ -81,39 +75,18 @@ async def process_get_number(message: types.Message, state: FSMContext):
 async def process_close_task_get_documents(
         message: types.Message,
         state: FSMContext,
-        album: Union[dict, None] = None,
+        service: Service,
+        album: dict,
 ):
-    if album is None:
-        album = {}
-    logger.info('Получение документов')
-    keyboard = await keyboards.get_yes_no_cancel_keyboard()
-
-    if not message.document and not album:
-        await message.answer(Dialog.close_task_wrong_acts())
+    tg_documents = await service.get_documents(message, album)
+    if tg_documents.is_error:
+        await message.answer(tg_documents.error_msg)
         return
-
-    if message.document and not album:
-        await message.answer(
-            Dialog.close_task_confirmation_one_document(),
-            reply_markup=keyboard,
-        )
-        await state.update_data(
-            get_documents={
-                message.document.file_name: message.document.file_id
-            }
-        )
-        await state.set_state(CloseTaskState.documents_approved)
-        return
-
-    documents = {}
-    for doc in album:
-        documents[doc.document.file_name] = doc.document.file_id
-
-    await message.answer(
-        Dialog.close_task_confirmation_documents(documents),
-        reply_markup=keyboard,
+    text, keyboard = await dialogs.confirmation_received_documents(
+        tg_documents.documents,
     )
-    await state.update_data(get_documents=documents)
+    await message.answer(text, reply_markup=keyboard)
+    await state.update_data(get_documents=tg_documents.documents)
     await state.set_state(CloseTaskState.documents_approved)
 
 
@@ -124,22 +97,24 @@ async def process_close_task_get_documents(
 async def process_close_task_approved_doc_yes(
         query: types.CallbackQuery,
         field_engineer: FieldEngineer,
+        service: Service,
         state: FSMContext,
 ):
     logger.info('Создание заявки на закрытие. Финальный этап')
-    await query.message.edit_text('Формирую задачу. Ожидайте...')
+    await query.message.edit_text(await dialogs.waiting_creating_task())
     data = await state.get_data()
     logger.debug('state_data: %s', data)
-    task = await field_engineer.create_sd_task(
-        f'Закрыть заявку {data["get_number"]}',
-        'DISPATCHER',
-        'Закрытие заявки во внешней системе',
-        is_close_task_command=True,
-        tg_documents=data['get_documents'],
+    task = await field_engineer.create_sd_task_to_close(
+        data["get_number"],
+        data["get_documents"],
     )
-    await service.add_tasks_schedulers(task)
-    await Message.send_new_task_notify(task, field_engineer)
-    await query.message.edit_text(Dialog.new_support_task_for_creator(task))
+    await service.add_new_task_schedulers(task)
+    await Message.send_new_task_notify(task)
+    edit_text = await dialogs.new_task_notify_for_creator(
+        task.number,
+        task.title,
+    )
+    await query.message.edit_text(edit_text)
     await state.clear()
     logger.info('Процесс завершен')
 
@@ -153,32 +128,17 @@ async def process_close_task_approved_doc_no(
         state: FSMContext,
 ):
     logger.info('Не уверен в документах, просим еще раз')
-    await query.message.edit_text(Dialog.close_task_request_acts())
+    await query.message.edit_text(await dialogs.required_documents())
     await state.update_data(get_documents={})
     await state.set_state(CloseTaskState.get_documents)
     logger.info('Процесс завершен')
 
 
 @router.message(Command('support_help'))
-async def start_new_support_task(
-        message: types.Message,
-        employee: CustomUser,
-        state: FSMContext,
-):
+async def start_new_support_task(message: types.Message, state: FSMContext):
     logger.info('Запрос на создание новой выездной задачи')
-    # TODO вынести в слой middleware
-    if not await check_employee_groups(employee, 'Подрядчик'):
-        logger.warning(
-            'Пользователь %s не состоит в группе Подрядчики',
-            employee.name,
-        )
-        await message.answer(Dialog.no_rights_for_command())
-        return
-    keyboard = await keyboards.get_choice_support_group_keyboard()
-    await message.answer(
-        Dialog.support_help_whose_help_is_needed(),
-        reply_markup=keyboard,
-    )
+    text, keyboard = await dialogs.support_help_whose_help_is_needed()
+    await message.answer(text, reply_markup=keyboard)
     await state.set_state(NewTaskState.support_group)
 
 
@@ -187,7 +147,7 @@ async def start_new_support_task(
     F.data.startswith('engineer') | F.data.startswith('dispatcher')
 )
 async def new_task_engineer(query: types.CallbackQuery, state: FSMContext):
-    logger.info('Запрос на создание новой задачи поддержки')
+    logger.info('support_help_step_2')
     await query.message.delete()
     await state.update_data(support_group=query.data)
     await query.message.answer(Dialog.support_help_request_task_number())
@@ -197,13 +157,13 @@ async def new_task_engineer(query: types.CallbackQuery, state: FSMContext):
 @router.message(NewTaskState.get_gsd_number)
 async def process_get_gsd_number(message: types.Message, state: FSMContext):
     logger.info('Обработка номера задачи от инженера')
-    task_number = re.match(r'(\d{6,7})+', message.text)
+    task_number = re.match(r'([a-zA-Z]{2,3}\S?[0-9]{7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')
-        await message.answer(Dialog.support_help_wrong_task_number())
+        await message.answer(await dialogs.wrong_task_number())
         return
     await state.update_data(get_gsd_number=task_number.group())
-    await message.answer(Dialog.support_help_request_task_description())
+    await message.answer(await dialogs.request_task_description())
     await state.set_state(NewTaskState.descriptions)
     logger.info('Обработано')
 
@@ -213,15 +173,16 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
     logger.info('Получение описания по задаче')
     task_description = message.text
     if not task_description:
-        await message.answer(Dialog.support_help_wrong_task_description())
+        await message.answer(await dialogs.error_wrong_task_description())
         return
     data = await state.get_data()
     task_number = data['get_gsd_number']
     await state.update_data(descriptions=task_description)
-    await message.answer(
-        Dialog.support_help_request_task_result(task_number, task_description),
-        reply_markup=await keyboards.get_approved_task_keyboard(task_number)
+    text, keyboard = await dialogs.request_task_confirmation(
+        task_number,
+        task_description,
     )
+    await message.answer(text, reply_markup=keyboard)
     await state.set_state(NewTaskState.approved)
     logger.info('Описание получено')
 
@@ -230,21 +191,25 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
 async def process_task_approved(
         query: types.CallbackQuery,
         field_engineer: FieldEngineer,
+        service: Service,
         state: FSMContext,
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
-    await query.message.edit_text(Dialog.prepare_task_message())
+    await query.message.edit_text(await dialogs.waiting_creating_task())
     data = await state.get_data()
     logger.debug('state_data: %s', data)
-    task = await field_engineer.create_sd_task(
+    task = await field_engineer.create_sd_task_to_help(
         data['get_gsd_number'],
         data['support_group'],
         data['descriptions'],
     )
-    await service.add_tasks_schedulers(task)
-    await Message.send_new_task_notify(task, field_engineer)
-    await query.message.answer(Dialog.new_support_task_for_creator(task))
-    await query.message.delete()
+    await service.add_new_task_schedulers(task)
+    await Message.send_new_task_notify(task)
+    edit_text = await dialogs.new_task_notify_for_creator(
+        task.number,
+        task.title,
+    )
+    await query.message.edit_text(edit_text)
     await state.clear()
     logger.info('Процесс завершен')
 
@@ -259,7 +224,7 @@ async def task_feedback(query: types.CallbackQuery):
     await task.asave()
     try:
         await query.message.delete()
-        await query.message.answer(Dialog.rating_feedback(task.number))
+        await query.message.answer(await dialogs.rating_feedback(task.number))
     except TelegramBadRequest:
         logger.debug('Сообщение уже удалено')
     logger.info('Оценка проставлена')
@@ -272,7 +237,7 @@ async def process_dispatchers_task(
         state: FSMContext,
 ):
     logger.info(
-        'Создание заявки на закрытие в GSD от выездного %s',
+        'Создание заявки на закрытие в GSD из диспетчера от выездного %s',
         employee.name,
     )
     task_id = query.data.split('_')[2]
@@ -281,14 +246,10 @@ async def process_dispatchers_task(
         task = await Dispatcher.objects.aget(id=task_id)
     except Dispatcher.DoesNotExist:
         logger.warning('Не нашел задачу с id %s в базе', task_id)
-        await query.message.answer(Dialog.task_not_found_message())
+        await query.message.answer(await dialogs.error_task_not_found())
         await query.message.delete()
         return
-    keyboard = await keyboards.create_tg_keyboard_markup(['без документов'])
-    await query.message.answer(
-        Dialog.dispatcher_task_request_acts(),
-        reply_markup=keyboard,
-    )
+    await query.message.answer(await dialogs.required_documents())
     await query.message.delete()
     await state.set_state(DispatcherTask.get_doc)
     await state.update_data(task=task)
@@ -299,51 +260,46 @@ async def process_dispatchers_task_get_doc(
         message: types.Message,
         field_engineer: FieldEngineer,
         state: FSMContext,
-        album: Union[dict, None] = None,
+        service: Service,
+        album: dict,
 ):
     logger.info('Получение документов от выездного')
     data = await state.get_data()
     task: Dispatcher = data['task']
-    if album is None:
-        album = {}
-
-    if message.photo:
-        await message.answer('Присланы фото, жду документы!')
+    tg_documents = await service.get_documents(message, album)
+    if tg_documents.is_error:
+        await message.answer(tg_documents.error_msg)
         return
 
-    if message.text and message.text != 'без документов':
-        await message.answer(Dialog.close_task_wrong_acts())
-        return
-
-    documents = {}
-
-    if message.document and not album:
-        logger.info('Получен один документ')
-        documents[message.document.file_name] = message.document.file_id
-
-    if album:
-        logger.info('Получена группа документов')
-        for doc in album:
-            documents[doc.document.file_name] = doc.document.file_id
-
-    task.tg_documents = documents
+    task.tg_documents = tg_documents.documents
     await task.asave()
     logger.info('Процесс подтверждения и создания новой заявки')
-    await message.answer(Dialog.prepare_task_message())
-
-    description = Dialog.dispatcher_task_description()
+    send_message = await message.answer(await dialogs.waiting_creating_task())
+    description = (
+        'Закрыть заявку во внешней системе\n\n'
+        '<b>Связанные задачи GSD:</b> <code>{gsd_numbers}</code>\n'
+        '<b>Связанные задачи SimpleOne:</b> <code>{simple_one}</code>\n'
+        '<b>Связанные задачи ITSM:</b> <code>{itsm}</code>\n\n'
+        '<u><b>Комментарий закрытия от инженера:</b></u>\n{task_commit}'
+    )
     description = description.format(
         number=task.dispatcher_number,
         gsd_numbers=task.gsd_numbers,
+        simple_one=task.simpleone_number,
+        itsm=task.itsm_number,
         task_commit=task.closing_comment,
     )
-    sd_task = await field_engineer.create_sd_task(
-        f'Закрыть заявку из диспетчера {task.dispatcher_number}',
-        'DISPATCHER',
+    sd_task = await field_engineer.create_task_closing_from_dispatcher(
+        str(task.dispatcher_number),
         description,
-        is_automatic=True,
+        tg_documents.documents,
     )
-    await service.add_tasks_schedulers(sd_task)
-    await Message.send_new_task_notify(sd_task, field_engineer)
+    await service.add_new_task_schedulers(sd_task)
+    await Message.send_new_task_notify(sd_task)
+    text = await dialogs.new_task_notify_for_creator(
+        sd_task.number,
+        sd_task.title,
+    )
+    await send_message.edit_text(text)
     await state.clear()
     logger.info('Процесс завершен')
