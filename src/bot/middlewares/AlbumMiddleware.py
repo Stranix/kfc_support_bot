@@ -20,26 +20,28 @@ class AlbumMiddleware(BaseMiddleware):
     def __init__(self, latency: Union[int, float] = 0.01):
         self.latency = latency
         self.is_last = False
-        super().__init__()
 
     async def __call__(
         self,
         handler: Callable[[Message, Dict[str, Any]], Awaitable[Any]],
-        event: Message,
+        message: Message,
         data: Dict[str, Any],
     ) -> Any:
         logger.debug('AlbumMiddleware')
 
-        if not event.media_group_id:
-            return await handler(event, data)
+        if not message.media_group_id:
+            data['album'] = {}
+            return await handler(message, data)
 
         try:
             logger.debug('Добавляем файлы в альбом')
-            self.album_data[event.media_group_id].append(event)
+            self.album_data[message.media_group_id].append(message)
             return
         except KeyError:
-            self.album_data[event.media_group_id] = [event]
+            self.album_data[message.media_group_id] = [message]
             await asyncio.sleep(self.latency)
             self.is_last = True
-            data['album'] = self.album_data[event.media_group_id]
-            return await handler(event, data)
+            data['album'] = self.album_data[message.media_group_id]
+            await handler(message, data)
+            if self.is_last:
+                del self.album_data[message.media_group_id]
