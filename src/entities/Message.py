@@ -6,12 +6,10 @@ from aiogram import types, Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
-from src.bot import keyboards
-from src.entities.Dialog import Dialog
-from src.entities.FieldEngineer import FieldEngineer
+from src.bot import keyboards, dialogs
 from src.entities.Service import Service
 from src.entities.User import User
-from src.models import SDTask
+from src.models import SDTask, CustomGroup
 
 logger = logging.getLogger('support_bot')
 
@@ -60,10 +58,23 @@ class Message:
         )
 
     @staticmethod
-    async def send_new_task_notify(
-            task: SDTask,
-            field_engineer: FieldEngineer,
+    async def send_notify_to_group_managers(
+            group_id: int,
+            message: str,
+            keyboard=None,
     ):
+        logger.info('Менеджерам группы')
+        group_managers = await Service.get_group_managers_by_group_id(
+            group_id,
+        )
+        await Message.send_tg_notification(
+            group_managers,
+            message,
+            keyboard=keyboard,
+        )
+
+    @staticmethod
+    async def send_new_task_notify(task: SDTask):
         logger.info('Отправка уведомлений о новой задаче')
         recipients = await Service.get_engineers_on_shift_by_support_group(
             task.support_group,
@@ -71,11 +82,25 @@ class Message:
 
         if not recipients:
             logger.warning('На смене нет инженеров или диспетчеров')
-            notify = Dialog.new_task_no_engineers_on_shift(task.number)
+            group_id = 0
+            if task.support_group == 'DISPATCHER':
+                group = await CustomGroup.objects.aget(name='Диспетчеры')
+                group_id = group.id
+            if task.support_group == 'ENGINEER':
+                group_id = await CustomGroup.objects.aget(
+                    name='Старшие инженеры',
+                ).id
+            notify = await dialogs.error_no_engineers_on_shift(task.number)
+            await Message.send_notify_to_group_managers(group_id, notify)
             await Message.send_notify_to_seniors_engineers(notify)
             return
 
-        message = Dialog.new_task_notify_for_engineers(task, field_engineer)
+        message = await dialogs.new_task_notify_for_engineers(
+            task.number,
+            task.description,
+            task.new_applicant.tg_nickname,
+            task.support_group,
+        )
         keyboard = await keyboards.get_support_task_keyboard(task.id)
         await Message.send_tg_notification(
             recipients,

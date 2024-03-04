@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from dataclasses import field
 from dataclasses import dataclass
 
 from src.models import GSDTask
@@ -46,3 +47,10 @@ class TasksOnShift:
     avg_processing_time: str
     tasks: list[GSDTask]
     avg_rating: float = 0.0
+
+
+@dataclass
+class TGDocument:
+    documents: dict = field(default_factory=dict)
+    is_error: bool = False
+    error_msg: str = ''

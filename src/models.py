@@ -123,6 +123,18 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return str(self.name)
 
 
+class GroupQuerySet(models.QuerySet):
+
+    async def group_managers(self, group_name: str, db_group_alias: str = ''):
+        if db_group_alias == 'DISPATCHER':
+            group_name = 'Диспетчеры'
+        if db_group_alias == 'ENGINEER':
+            group_name = 'Инженеры'
+        group = await self.prefetch_related('managers').aget(name=group_name)
+        managers = group.managers.all()
+        return managers
+
+
 class CustomGroup(Group):
     managers = models.ManyToManyField(
         'CustomUser',
@@ -130,6 +142,8 @@ class CustomGroup(Group):
         related_name='managers',
         blank=True,
     )
+
+    objects = GroupQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Группа'
@@ -735,6 +749,12 @@ class Dispatcher(models.Model):
         max_length=100,
         blank=True,
         default='',
+    )
+    simpleone_number = models.CharField(
+        'Связанные заявки SimpleOne',
+        max_length=100,
+        blank=True,
+        null=True,
     )
     closing_comment = models.TextField(
         'Комментарий закрытия',

@@ -12,11 +12,13 @@ from django.conf import settings
 from django.db import IntegrityError
 from django.core.management.base import BaseCommand
 
+from src.utils import configure_logging
 from src.models import CustomUser
 from src.models import Dispatcher
-from src.utils import configure_logging
-from src.bot.utils import send_notify
+from src.entities.User import User
+from src.entities.Message import Message
 from src.bot.keyboards import get_choice_dispatcher_task_closed_keyboard
+from src.bot.dialogs import notify_for_engineers_from_dispatcher
 
 logger = logging.getLogger('dispatchers_bot')
 client = TelegramClient(
@@ -35,6 +37,7 @@ class DispatcherTaskNotify:
     itsm_number: int | None
     new_performer: CustomUser | None
     gsd_numbers: list | None
+    simpleone_number: str | None
     closing_comment: str
 
 
@@ -46,12 +49,6 @@ async def get_message_from_tg_chanel(event):
         'Рестораны быстрого питания',
         'ИНТЕРНЭШНЛ РЕСТОРАНТ БРЭНДС',
     ]
-    message_for_send = 'Закрыта заявка в диспетчере с номером {number}\n\n' \
-                       'Связана с задачами GSD: {gsd_numbers}\n' \
-                       'Комментарий закрытия:\n ' \
-                       '<code>{task_commit}</code>\n\n' \
-                       'Подтвердить и создать задачу на закрытия в GSD?'
-
     dispatcher_task = await parce_tg_notify(event.text)
     if dispatcher_task.company not in company:
         logger.debug('Не интересная задача. Пропускаем')
@@ -60,22 +57,27 @@ async def get_message_from_tg_chanel(event):
         logger.debug('Не нашел исполнителя в базе. Пропускаем')
         return
 
+    outside_number = dispatcher_task.gsd_numbers
+    if dispatcher_task.simpleone_number:
+        outside_number = dispatcher_task.simpleone_number
+
     logger.info('Подходящая задача, сохраняю в базе')
     try:
         task = await Dispatcher.objects.acreate(**asdict(dispatcher_task))
+        message, keyboard = await notify_for_engineers_from_dispatcher(
+            task.id,
+            str(dispatcher_task.dispatcher_number),
+            outside_number,
+            dispatcher_task.closing_comment,
+        )
         logger.info('Сохранил. Подготавливаю и отправляю уведомление')
         keyboard = await get_choice_dispatcher_task_closed_keyboard(
             task.id,
         )
-        message_for_send = message_for_send.format(
-            number=dispatcher_task.dispatcher_number,
-            gsd_numbers=dispatcher_task.gsd_numbers,
-            task_commit=dispatcher_task.closing_comment,
-        )
-        await send_notify(
-            [dispatcher_task.new_performer],
-            message_for_send,
-            keyboard,
+        await Message.send_tg_notification(
+            [User(dispatcher_task.new_performer)],
+            message,
+            keyboard=keyboard,
         )
     except IntegrityError as err:
         logger.warning(
@@ -93,6 +95,7 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
     itsm_number = re.search(r'ITSM_\d{5}', message_lines[4])
     closing_comment = clear_message.split('Решение:')[1].replace('\n', '')
     performer = message_lines[5].split(':')[1].strip()
+    simpleone_number = re.search(r'[A-Z]{3}[0-9]{7}', message_lines[9])
     try:
         if settings.DEBUG:
             performer = await CustomUser.objects.aget(
@@ -110,6 +113,8 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
         dispatcher_number = int(dispatcher_number.group())
     if itsm_number:
         itsm_number = itsm_number.group()
+    if simpleone_number:
+        simpleone_number = simpleone_number.group()
 
     dispatcher_task_notify = DispatcherTaskNotify(
         dispatcher_number=dispatcher_number,
@@ -118,6 +123,7 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
         itsm_number=itsm_number,
         new_performer=performer,
         gsd_numbers=re.findall(r'(SC-\d{7})+', message_lines[9]),
+        simpleone_number=simpleone_number,
         closing_comment=closing_comment.strip(),
     )
     logger.info('Успех. Разобрали')
