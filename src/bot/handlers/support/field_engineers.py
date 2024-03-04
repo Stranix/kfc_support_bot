@@ -10,7 +10,6 @@ from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
-from src.entities.Dialog import Dialog
 from src.entities.FieldEngineer import FieldEngineer
 from src.entities.Message import Message
 from src.entities.Service import Service
@@ -146,7 +145,7 @@ async def new_task_engineer(query: types.CallbackQuery, state: FSMContext):
     logger.info('support_help_step_2')
     await query.message.delete()
     await state.update_data(support_group=query.data)
-    await query.message.answer(Dialog.support_help_request_task_number())
+    await query.message.answer(await dialogs.required_task_number())
     await state.set_state(NewTaskState.get_gsd_number)
 
 
