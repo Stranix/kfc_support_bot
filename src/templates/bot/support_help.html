@@ -1,0 +1,6 @@
+{% if task_confirmation %}
+Подводим итог: <br><br>
+Требуется помощь по задаче: <code>{{ task_number }}</code><br>
+Детали: {{ task_description|safe }}
+<br><br><i>Все верно?</i>
+{% endif %}
