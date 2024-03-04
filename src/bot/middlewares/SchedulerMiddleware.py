@@ -7,15 +7,16 @@ from typing import Awaitable
 
 from aiogram import BaseMiddleware
 from aiogram.types import Update
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from src.entities.Service import Service
 
 logger = logging.getLogger('middleware_support_bot')
 
 
 class SchedulerMiddleware(BaseMiddleware):
-    def __init__(self, scheduler: AsyncIOScheduler) -> None:
+    def __init__(self, service: Service) -> None:
         logger.debug('SchedulerMiddleware init')
-        self._scheduler = scheduler
+        self._service = service
 
     async def __call__(
         self,
@@ -24,5 +25,5 @@ class SchedulerMiddleware(BaseMiddleware):
         data: Dict[str, Any]
     ) -> Any:
         logger.debug('SchedulerMiddleware - Получение шедулера')
-        data['scheduler'] = self._scheduler
+        data['service'] = self._service
         return await handler(event, data)

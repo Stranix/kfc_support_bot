@@ -59,8 +59,6 @@ ROLLBAR = {
 }
 rollbar.init(ROLLBAR_ACCESS_TOKEN, ROLLBAR_ENV)
 
-# Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -104,7 +102,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=env.str('DB_URL', 'sqlite:///db.sqlite3')
+        default=env.str('DB_URL', 'sqlite:///db.sqlite3'),
+        conn_max_age=30,
     )
 }
 
