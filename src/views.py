@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 from datetime import datetime
 
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
@@ -251,7 +252,7 @@ def show_sync_report_prev(request):
         sync_report = {
             'id': sync.id,
             'sync_date': sync.start_at,
-            'employee': sync.employee,
+            'employee': sync.new_employee,
             'what_sync': sync.user_choice,
         }
         sync_completed, sync_errors = utils.get_sync_statuses(sync.report)
@@ -276,7 +277,7 @@ def show_sync_report(request, pk):
             ],
         },
         'sync_date': sync.start_at,
-        'employee': sync.employee,
+        'employee': sync.new_employee,
         'what_sync': sync.user_choice,
         'sync_status': {
             'errors': [],
@@ -291,3 +292,9 @@ def show_sync_report(request, pk):
         template_name='pages/sync_report.html',
         context={'sync_report': sync_report},
     )
+
+
+def example_view(request):
+    from django.template.response import TemplateResponse
+    print(render_to_string('test_for_bot.html', {'abc': 'gfg'}))
+    return TemplateResponse(request, 'test_for_bot.html', {'abc': 'gfg'})

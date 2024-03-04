@@ -115,7 +115,9 @@
           <td>{{ task.performer|default_if_none:'' }}</td>
           <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
+          {% autoescape off %}
           <td>{{ task.description|linebreaks }}</td>
+          {%  endautoescape %}
           <td>
             {% if task.status == 'NEW' %}
               <span class="badge text-bg-danger">Новая</span>

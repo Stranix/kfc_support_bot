@@ -94,7 +94,9 @@
           <td>{{ task.start_at|date:'d-m-Y H:i' }}</td>
           <td>{{ task.finish_at|date:'d-m-Y H:i' }}</td>
           <td>{{ task.processing_time }}</td>
+          {% autoescape off %}
           <td>{{ task.description|linebreaks }}</td>
+          {%  endautoescape %}
           <td>{{ task.closing_comment|default_if_none:''|linebreaks }}</td>
           <td>
             {% for  sub_task in task.sub_tasks_number %}
