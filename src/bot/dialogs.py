@@ -159,3 +159,36 @@ async def notify_for_engineers_from_dispatcher(
         task_id,
     )
     return message, keyboard
+
+
+async def additional_chat_message(number: str):
+    """Сообщение для чата доп работ"""
+    context = {
+        'for_chat': True,
+        'number': number,
+    }
+    return await tg_render_message('bot/additional.html', context)
+
+
+async def additional_chat_for_creator(
+        task_id: str,
+        number: str,
+        title: str,
+) -> tuple:
+    """Сообщение по доп работам для выездного инженера"""
+    context = {
+        'for_creator': True,
+        'number': number,
+        'task_title': title,
+    }
+    message = await tg_render_message('bot/additional.html', context)
+    keyboard = await keyboards.get_task_feedback_keyboard(int(task_id))
+    return message, keyboard
+
+
+async def additional_chat_for_performer():
+    """Сообщение по доп работам для диспетчера"""
+    context = {
+        'for_performer': True,
+    }
+    return await tg_render_message('bot/additional.html', context)
