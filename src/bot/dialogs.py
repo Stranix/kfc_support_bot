@@ -142,13 +142,23 @@ async def error_task_not_found() -> str:
     return 'Не нашел информацию по задаче'
 
 
+async def work_shift_exist() -> str:
+    """Информация. Смена уже открыта"""
+    return 'У вас уже есть открытая смена'
+
+
+async def start_work_shift() -> str:
+    """Информация. Смена Начата"""
+    return 'Вы добавлены в очередь на получение задач'
+
+
 async def notify_for_engineers_from_dispatcher(
         task_id: int,
         disp_number: str,
         outside_number: str,
         commit: str,
 ) -> tuple:
-    """Создание заявки из отбивки диспетчера в телеграме"""
+    """Создание заявки из отбивки диспетчера в телеграм"""
     context = {
         'number': disp_number,
         'outside_number': outside_number,
@@ -186,9 +196,26 @@ async def additional_chat_for_creator(
     return message, keyboard
 
 
-async def additional_chat_for_performer():
+async def additional_chat_for_performer() -> str:
     """Сообщение по доп работам для диспетчера"""
     context = {
         'for_performer': True,
     }
     return await tg_render_message('bot/additional.html', context)
+
+
+async def new_task_notify_for_middle(task_numbers: list):
+    """Сообщение с новыми задачами для старших инженеров"""
+    context = {
+        'new_task_for_middle': True,
+        'task_numbers': task_numbers,
+    }
+    return await tg_render_message('bot/common.html', context)
+
+
+async def engineer_on_shift(name: str) -> str:
+    """Уведомление. Инженер на смене для менеджеров"""
+    context = {
+        'name': name
+    }
+    return await tg_render_message('bot/on_shift', context)

@@ -9,6 +9,7 @@ from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import Message, BufferedInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
+from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -20,7 +21,8 @@ from django.utils import timezone
 from src.bot import dialogs
 from src.bot.scheme import TGDocument
 from src.entities.User import User
-from src.bot.tasks import check_task_deadline, check_task_activate_step_2
+from src.bot.tasks import check_task_deadline, check_task_activate_step_2, \
+    check_end_of_shift
 from src.bot.tasks import check_task_activate_step_1
 from src.models import CustomUser, SDTask, CustomGroup
 
@@ -78,6 +80,21 @@ class Service:
             task.number,
         )
         logger.info('Проверки добавлены')
+
+    async def add_check_shift(self, shift_id: int):
+        logger.debug(
+            'Добавляю задачу на проверку окончания смены через 9 часов')
+        try:
+            await self.add_scheduler_job_datetime(
+                    check_end_of_shift,
+                    timezone.now() + timedelta(hours=9),
+                    f'job_{shift_id}_end_shift',
+                    shift_id,
+            )
+            logger.debug('Задача добавлена')
+        except ConflictingIdError:
+            logger.debug(
+                'Не смог добавить задачу. Такая задача уже существует.')
 
     @staticmethod
     def get_job_store():

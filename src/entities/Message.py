@@ -1,6 +1,7 @@
 import logging
 
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup
+from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from aiogram import types, Bot
@@ -167,3 +168,15 @@ class Message:
             text_performer,
             keyboard=ReplyKeyboardRemove(),
         )
+
+    @staticmethod
+    async def send_new_tasks_notify_for_middle(engineer: SupportEngineer):
+        new_tasks = await sync_to_async(list)(
+            SDTask.objects.filter(status='NEW')
+        )
+        if not new_tasks:
+            logger.debug('Нет новых задач')
+            return
+        tasks_numbers = [task.number for task in new_tasks]
+        message = await dialogs.new_task_notify_for_middle(tasks_numbers)
+        await Message.send_tg_notification([engineer], message)
