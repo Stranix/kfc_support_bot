@@ -1,10 +1,14 @@
 import logging
+import re
 
 from typing import Any
 from datetime import datetime
 from datetime import timedelta
 
-from aiogram.types import Message
+from aiogram import Bot
+from aiogram.enums import ParseMode
+from aiogram.types import Message, BufferedInputFile
+from aiogram.utils.media_group import MediaGroupBuilder
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -153,3 +157,29 @@ class Service:
             tg_documents.is_error = True
             tg_documents.error_msg = await dialogs.error_empty_documents()
         return tg_documents
+
+    @staticmethod
+    async def find_external_number_in_task(text_for_search: str) -> list:
+        """Поиск номера заявки внешней системы в задаче"""
+        found_numbers = []
+        regex_pattern = re.compile(r'([a-zA-Z]{2,3}\S?[0-9]{7})+')
+        found_numbers.extend(regex_pattern.findall(text_for_search))
+        logger.debug('found_numbers: %s', found_numbers)
+        if not found_numbers:
+            logger.info('Не нашел номеров внешней системы в задачах')
+        return found_numbers
+
+    @staticmethod
+    async def create_documents_media_group(
+            tg_documents: dict,
+    ) -> list:
+        """Создаем медиа-группу из полученных ранее документов"""
+        bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+        media_group = MediaGroupBuilder(caption='Приложенные документы')
+        for doc_name, doc_id in tg_documents.items():
+            tg_file = await bot.get_file(doc_id)
+            io_file = await bot.download_file(tg_file.file_path)
+            text_file = BufferedInputFile(io_file.read(), filename=doc_name)
+            media_group.add_document(text_file)
+        await bot.session.close()
+        return media_group.build()
