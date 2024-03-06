@@ -218,4 +218,58 @@ async def engineer_on_shift(name: str) -> str:
     context = {
         'name': name
     }
-    return await tg_render_message('bot/on_shift', context)
+    return await tg_render_message('bot/on_shift.html', context)
+
+
+async def start_break_message() -> str:
+    """Команда /break_start. Уведомление для сотрудника"""
+    return '⏰Ваш перерыв начался'
+
+
+async def engineer_start_break(engineer_name: str) -> str:
+    """Команда /break_start. Уведомление для менеджеров"""
+    context = {
+        'start_break': True,
+        'name': engineer_name,
+    }
+    return await tg_render_message('bot/breaks_shift.html', context)
+
+
+async def stop_break_message() -> str:
+    """Команда /break_stop. Уведомление для сотрудника"""
+    return '⏰Ваш перерыв завершен'
+
+
+async def engineer_stop_break(engineer_name: str) -> str:
+    """Команда /break_stop. Уведомление для менеджеров"""
+    context = {
+        'end_break': True,
+        'name': engineer_name,
+    }
+    return await tg_render_message('bot/breaks_shift.html', context)
+
+
+async def error_no_active_shift() -> str:
+    """Сообщение об ошибке. Нет активной смены"""
+    context = {
+        'no_active_shift': True,
+    }
+    return await tg_render_message('bot/errors.html', context)
+
+
+async def error_no_active_breaks() -> str:
+    """Сообщение об ошибке. Нет активных перерывов"""
+    context = {
+        'no_active_breaks': True,
+    }
+    return await tg_render_message('bot/errors.html', context)
+
+
+async def error_active_break_exist() -> str:
+    """Команда /break_start. Сообщение об ошибке: перерыв уже начат"""
+    return 'Есть незавершенный перерыв.\nЗавершите его.'
+
+
+async def error_active_break_not_exist() -> str:
+    """Команда /break_stop. Сообщение об ошибке: нет активного перерыва"""
+    return 'У вас нет активных перерывов 🤷‍♂'

@@ -1,8 +1,10 @@
 import logging
 
+from django.db.models import Q
 from django.utils import timezone
 
-from src.models import SDTask, WorkShift
+from src.exceptions import BreakShiftError
+from src.models import SDTask, WorkShift, BreakShift
 from src.entities.User import User
 
 logger = logging.getLogger('support_bot')
@@ -11,7 +13,7 @@ logger = logging.getLogger('support_bot')
 class SupportEngineer(User):
 
     @staticmethod
-    async def close_sd_task(task_id: int, task_data: dict):
+    async def update_sd_task(task_id: int, task_data: dict):
         try:
             sd_task = await SDTask.objects.aget(id=task_id)
             logger.debug('task_data: %s')
@@ -29,7 +31,7 @@ class SupportEngineer(User):
             'closing_comment': 'Передана на группу по доп работам/ремонтам',
             'finish_at': timezone.now(),
         }
-        await SupportEngineer.close_sd_task(task_id, task_data=update)
+        await SupportEngineer.update_sd_task(task_id, task_data=update)
 
     async def start_work_shift(self) -> WorkShift:
         shift = await WorkShift.objects.acreate(
@@ -37,6 +39,42 @@ class SupportEngineer(User):
             shift_start_at=timezone.now(),
         )
         return shift
+
+    async def start_break(self):
+        work_shift = await self.current_work_shift
+        if not work_shift.is_works:
+            raise BreakShiftError('Есть не завершенный перерыв')
+        await work_shift.break_shift.acreate(
+            new_employee=self.user,
+        )
+        work_shift.is_works = False
+        await work_shift.asave()
+
+    async def stop_break(self):
+        logger.info('Фиксируем завершение перерыва в БД')
+        work_shift, active_break = await self.current_active_break
+        active_break.end_break_at = timezone.now()
+        active_break.is_active = False
+        work_shift.is_works = True
+        await active_break.asave()
+        await work_shift.asave()
+        logger.info('Успех')
+
+    @property
+    async def current_active_break(self) -> tuple[WorkShift, BreakShift]:
+        work_shift = await self.current_work_shift
+        active_break = await work_shift.break_shift.select_related(
+            'new_employee'
+        ).aget(is_active=True)
+        return work_shift, active_break
+
+    @property
+    async def current_work_shift(self) -> WorkShift:
+        work_shift = await self.user.new_work_shifts.aget(
+            shift_start_at__isnull=False,
+            shift_end_at__isnull=True,
+        )
+        return work_shift
 
     @property
     async def is_active_shift(self) -> bool:
@@ -55,13 +93,14 @@ class SupportEngineer(User):
     @property
     async def is_middle_engineer(self) -> bool:
         logger.info('Проверяем является ли инженер старшим')
-        return await self.user.groups.filter(
-            name__contains='Старшие инженеры',
-        ).afirst()
+        logger.debug('Группы инженера: %s', self.user.groups.all())
+        return await self.user.groups.filter(name='Старшие инженеры').aexists()
 
     @property
     async def group_id(self) -> int:
         logger.info('Получаем id основной группы сотрудника')
         groups = self.user.groups
-        main_group = await groups.filter(name__icontains='инженер').afirst()
+        main_group = await groups.filter(
+            Q(name__icontains='инженер') | Q(name='Диспетчеры')
+        ).afirst()
         return main_group.id

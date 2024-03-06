@@ -29,7 +29,7 @@
 {% if new_task_for_middle %}
 ‼Внимание есть новые задачи:
 {% for number in task_numbers %}
-<code>number</code>,
+<code>{{ number }}</code>,
 {% endfor %}
 <br><br>Возьмите в работу или назначьте инженеру
 {% endif %}
