@@ -8,7 +8,10 @@ from typing import Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
+from django.db.models import Q
+
 from src.entities.FieldEngineer import FieldEngineer
+from src.entities.SupportEngineer import SupportEngineer
 from src.models import CustomUser
 
 logger = logging.getLogger('middleware_support_bot')
@@ -29,4 +32,8 @@ class UserGroupMiddleware(BaseMiddleware):
         logger.debug('employee: %s', employee.name)
         if await employee.groups.filter(name__contains='Подрядчик').aexists():
             data['field_engineer'] = FieldEngineer(employee)
+        if await employee.groups.filter(
+                Q(name__icontains='инженер') | Q(name='Диспетчеры')
+        ).aexists():
+            data['support_engineer'] = SupportEngineer(employee)
         return await handler(event, data)

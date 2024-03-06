@@ -30,7 +30,7 @@ async def on_shift(
 
     logger.info('Отправляю уведомление менеджеру и пользователю')
     await message.answer(await dialogs.start_work_shift())
-    if support_engineer.is_middle_engineer:
+    if await support_engineer.is_middle_engineer:
         await Message.send_new_tasks_notify_for_middle(support_engineer)
     await Message.send_notify_to_group_managers(
         await support_engineer.group_id,
