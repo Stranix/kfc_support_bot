@@ -9,7 +9,7 @@ from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import Message, BufferedInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
-from apscheduler.jobstores.base import ConflictingIdError
+from apscheduler.jobstores.base import ConflictingIdError, JobLookupError
 from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -56,7 +56,10 @@ class Service:
     async def delete_scheduler_job_by_id(self, job_id: str):
         """Удаляем задачу шедулера по id"""
         logger.info('Удаляем задачу шедулера: %s', job_id)
-        self.scheduler.remove_job(job_id)
+        try:
+            self.scheduler.remove_job(job_id)
+        except JobLookupError:
+            logger.debug('Не нашел подходящей джобы')
         logger.info('Задача удалена')
 
     async def add_new_task_schedulers(self, task: SDTask):

@@ -34,10 +34,22 @@ class SupportEngineer(User):
         await SupportEngineer.update_sd_task(task_id, task_data=update)
 
     async def start_work_shift(self) -> WorkShift:
+        logger.debug('Фиксируем начало смены в БД')
         shift = await WorkShift.objects.acreate(
             new_employee=self.user,
             shift_start_at=timezone.now(),
         )
+        return shift
+
+    async def end_work_shift(self) -> WorkShift:
+        logger.debug('Фиксируем завершение смены в БД')
+        shift = await self.user.new_work_shifts.aget(
+            shift_start_at__isnull=False,
+            shift_end_at__isnull=True,
+        )
+        shift.shift_end_at = timezone.now()
+        shift.is_works = False
+        await shift.asave()
         return shift
 
     async def start_break(self):

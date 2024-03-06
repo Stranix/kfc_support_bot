@@ -152,6 +152,11 @@ async def start_work_shift() -> str:
     return 'Вы добавлены в очередь на получение задач'
 
 
+async def end_work_shift() -> str:
+    """Информация. Смена Закончена"""
+    return 'Смена окончена. Пока 👋'
+
+
 async def notify_for_engineers_from_dispatcher(
         task_id: int,
         disp_number: str,
@@ -219,6 +224,14 @@ async def engineer_on_shift(name: str) -> str:
         'name': name
     }
     return await tg_render_message('bot/on_shift.html', context)
+
+
+async def engineer_end_shift(name: str) -> str:
+    """Уведомление. Инженер завершил смену для менеджеров"""
+    context = {
+        'name': name
+    }
+    return await tg_render_message('bot/end_shift.html', context)
 
 
 async def start_break_message() -> str:
