@@ -1,12 +1,13 @@
 import logging
 
-from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup
 from asgiref.sync import sync_to_async
+
 from django.conf import settings
 
-from aiogram import types, Bot
+from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
+from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup
 
 from src.bot import keyboards, dialogs
 from src.entities.FieldEngineer import FieldEngineer
@@ -180,3 +181,72 @@ class Message:
         tasks_numbers = [task.number for task in new_tasks]
         message = await dialogs.new_task_notify_for_middle(tasks_numbers)
         await Message.send_tg_notification([engineer], message)
+
+    @staticmethod
+    async def send_start_task_notify(sd_task: SDTask):
+        text_for_performer = await dialogs.sd_task_start_for_performer(sd_task)
+        text_for_creator = await dialogs.sd_task_start_for_creator(sd_task)
+        await Message.send_tg_notification(
+            [User(sd_task.new_performer)],
+            text_for_performer,
+            keyboard=ReplyKeyboardRemove(),
+        )
+        if sd_task.is_automatic:
+            await Service.send_documents_out_task(sd_task)
+        await Message.send_tg_notification(
+            [User(sd_task.new_applicant)],
+            text_for_creator,
+        )
+
+    @staticmethod
+    async def send_assigned_task_notify(
+            sd_task: SDTask,
+            appointer: SupportEngineer,
+    ):
+        logger.info('Отправка уведомлений о назначении задачи')
+        text_for_appointer = await dialogs.sd_task_assign_for_appointer(
+            sd_task.number,
+            sd_task.new_performer.name,
+        )
+        text_for_performer = await dialogs.sd_task_assign_for_performer(
+            appointer.user.name,
+            sd_task,
+        )
+        text_for_creator = await dialogs.sd_task_assign_for_creator(sd_task)
+        await Message.send_tg_notification(
+            [appointer],
+            text_for_appointer,
+            keyboard=ReplyKeyboardRemove(),
+        )
+        await Message.send_tg_notification(
+            [User(sd_task.new_performer)],
+            text_for_performer,
+        )
+        await Message.send_tg_notification(
+            [User(sd_task.new_applicant)],
+            text_for_creator,
+        )
+        logger.info('Уведомления отправлены')
+
+    @staticmethod
+    async def send_close_task_notify(task: SDTask):
+        logger.info('Отправка уведомлений о закрытии задачи')
+        text_for_creator, keyboard = await dialogs.sd_task_close_for_creator(
+            task.id,
+            task.number,
+            task.title,
+        )
+        text_for_performer = await dialogs.sd_task_close_for_performer(
+            task.number,
+        )
+        await Message.send_tg_notification(
+            [User(task.new_applicant)],
+            text_for_creator,
+            keyboard=keyboard,
+        )
+        await Message.send_tg_notification(
+            [User(task.new_performer)],
+            text_for_performer,
+            keyboard=ReplyKeyboardRemove(),
+        )
+        logger.info('Уведомления отправлены')

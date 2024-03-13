@@ -5,6 +5,7 @@ from typing import Any
 from django.template.loader import render_to_string
 
 from src.bot import keyboards
+from src.models import SDTask
 
 logger = logging.getLogger('support_bot')
 
@@ -47,6 +48,18 @@ async def confirmation_received_documents(documents: dict) -> tuple:
     }
     message = await tg_render_message('bot/close.html', context)
     keyboard = await keyboards.get_yes_no_cancel_keyboard()
+    return message, keyboard
+
+
+async def confirmation_received_documents_disp(documents: dict) -> tuple:
+    """Команда /close_task. Подтверждение для полученных документов"""
+    context = {
+        'step': 3,
+        'doc_count': len(documents),
+        'doc_names': ', '.join(documents.keys()),
+    }
+    message = await tg_render_message('bot/close.html', context)
+    keyboard = await keyboards.get_choice_task_doc_approved_keyboard()
     return message, keyboard
 
 
@@ -286,3 +299,206 @@ async def error_active_break_exist() -> str:
 async def error_active_break_not_exist() -> str:
     """Команда /break_stop. Сообщение об ошибке: нет активного перерыва"""
     return 'У вас нет активных перерывов 🤷‍♂'
+
+
+async def error_no_new_tasks() -> str:
+    """Сообщение об ошибке: нет новых задач"""
+    return 'Нет новых задач 🥹'
+
+
+async def request_show_task_info(tasks_numbers: list) -> tuple:
+    """Запрос по какой задаче показать информацию"""
+    keyboard = await keyboards.create_tg_keyboard_markup(tasks_numbers)
+    message = 'По какой задаче показать информацию?'
+    return message, keyboard
+
+
+async def error_task_performer_exist(performer_name: str) -> str:
+    """На задачу уже назначен исполнитель"""
+    context = {
+        'performer_exist': True,
+        'name': performer_name,
+    }
+    return await tg_render_message('bot/errors.html', context)
+
+
+async def sd_task_info(task: SDTask, short: bool = True) -> tuple:
+    """Описание по внутренней задачи поддержки"""
+    context = {
+        'short': short,
+        'task': task,
+    }
+    keyboard = keyboards.get_support_task_keyboard(task.id)
+    message = await tg_render_message('bot/sd_task.html', context)
+    return message, keyboard
+
+
+async def sd_task_start_for_performer(task: SDTask) -> str:
+    """Сообщение: задачу взяли в работу для исполнителя"""
+    context = {
+        'for_performer': True,
+        'task': task,
+    }
+    return await tg_render_message('bot/sd_task.html', context)
+
+
+async def sd_task_start_for_creator(task: SDTask) -> str:
+    """Сообщение: задачу взяли в работу для создателя"""
+    context = {
+        'for_creator': True,
+        'task': task,
+    }
+    return await tg_render_message('bot/sd_task.html', context)
+
+
+async def request_choice_engineer_for_assign(engineers_names: list) -> tuple:
+    """Запрос выбора инженера для назначения на задачу"""
+    message = 'Выберите инженера на смене для назначения'
+    keyboard = await keyboards.create_tg_keyboard_markup(engineers_names)
+    return message, keyboard
+
+
+async def sd_task_assign_for_appointer(
+        task_number: str,
+        performer: str,
+) -> str:
+    """Назначение заявки. Сообщение для назначающего"""
+    context = {
+        'for_appointer': True,
+        'number': task_number,
+        'engineer_name': performer,
+    }
+    return await tg_render_message('bot/sd_task.html', context)
+
+
+async def sd_task_assign_for_creator(task: SDTask) -> str:
+    """Назначение заявки. Сообщение автору задачи"""
+    return await sd_task_start_for_creator(task)
+
+
+async def sd_task_assign_for_performer(
+        appointer_name: str,
+        task: SDTask,
+) -> str:
+    """Назначение заявки. Уведомление для исполнителя"""
+    context = {
+        'assign_performer': True,
+        'appointer_name': appointer_name,
+        'task': task,
+    }
+    return await tg_render_message('bot/sd_task.html', context)
+
+
+async def error_not_tasks_in_work() -> str:
+    """Ошибка. Нет задач в работе"""
+    context = {
+        'not_tasks_in_work': True,
+    }
+    return await tg_render_message('bot/errors.html', context)
+
+
+async def request_task_for_close(task_numbers: list) -> tuple:
+    """Команда /close_task. Запрос номера задачи на закрытие"""
+    keyboard = await keyboards.create_tg_keyboard_markup(task_numbers)
+    message = 'Какую задачу будем закрывать?'
+    return message, keyboard
+
+
+async def error_wrong_task_performer(performer_name: str) -> str:
+    """Ошибка. Неправильный исполнитель"""
+    context = {
+        'wrong_task_performer': True,
+        'name': performer_name,
+    }
+    return await tg_render_message('bot/errors.html', context)
+
+
+async def request_check_documents() -> tuple:
+    """Запрос проверки документов"""
+    message = 'Внимательно проверь документы!\nВсе верно?'
+    keyboard = await keyboards.get_choice_task_doc_approved_keyboard()
+    return message, keyboard
+
+
+async def wait_load_documents() -> str:
+    """Ожидание загрузки документов"""
+    return 'Готовлю документы. Ожидайте...'
+
+
+async def request_documents() -> tuple:
+    """Команда /close_task. Диспетчер. Запрос документов"""
+    context = {
+        'dispatcher_request_documents': True,
+    }
+    keyboard = await keyboards.create_tg_keyboard_markup(['без документов'])
+    message = await tg_render_message('bot/close_task.html', context)
+    return message, keyboard
+
+
+async def without_documents() -> tuple:
+    """Команда /close_task. Диспетчер. Без документов"""
+    keyboard = await keyboards.get_choice_task_doc_approved_keyboard()
+    message = 'Нет актов и заключений. Все верно?'
+    return message, keyboard
+
+
+async def request_sub_tasks() -> tuple:
+    """Команда /close_task. Диспетчер. Запрос дочерних задач"""
+    context = {
+        'disp_sub_tasks': True,
+    }
+    keyboard = await keyboards.create_tg_keyboard_markup(['нет'])
+    message = await tg_render_message('bot/close_task.html', context)
+    return message, keyboard
+
+
+async def retry_request_documents() -> str:
+    """Команда /close_task. Диспетчер. Повторный запрос документов"""
+    return 'Ок. Давай попробуем еще раз. Жду документы'
+
+
+async def request_task_close_commit() -> str:
+    """Команда /close_task. Диспетчер. Запрос комментария закрытия задачи"""
+    return 'Введите комментарий для закрытия'
+
+
+async def close_task_request_approved(
+        tg_docs_name: str,
+        task_number: str,
+        sub_tasks: list[str],
+        task_close_comment: str,
+) -> tuple:
+    """Команда /close_task. Подведение итогов, перед закрытием заявки"""
+    context = {
+        'close_task_approved': True,
+        'task_number': task_number,
+        'tg_docs_name': tg_docs_name,
+        'sub_tasks': sub_tasks,
+        'task_close_comment': task_close_comment,
+    }
+    keyboard = await keyboards.get_choice_task_closed_approved_keyboard()
+    message = await tg_render_message('bot/close_task.html', context)
+    return message, keyboard
+
+
+async def sd_task_close_for_creator(
+        task_id: int,
+        task_number: str,
+        task_title: str,
+) -> tuple:
+    context = {
+        'for_creator': True,
+        'number': task_number,
+        'title': task_title,
+    }
+    keyboard = await keyboards.get_task_feedback_keyboard(task_id)
+    message = await tg_render_message('bot/close_task.html', context)
+    return message, keyboard
+
+
+async def sd_task_close_for_performer(task_number: str) -> str:
+    context = {
+        'for_performer': True,
+        'number': task_number,
+    }
+    return await tg_render_message('bot/close_task.html', context)

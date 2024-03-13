@@ -1,0 +1,37 @@
+{% if short %}
+Информация по задаче <code>{{ task.number }}</code><br><br>
+Заявитель: <code>{{ task.new_applicant.name }}</code><br>
+Тема обращения: <code>{{ task.title }}</code><br>
+Описание:<br>{{ task.description }}
+{% endif %}
+
+{% if for_performer %}
+💼Вы взяли задачу <code>{{ task.number }}</code> в работу.<br>
+Контакт для обратной связи: {{ task.new_applicant.name }}(@{{ task.new_applicant.tg_nickname}})<br><br>
+<code>{{ task.title }}</code><br>
+👇Что требуется:<br>
+{{  task.description }}<br><br>
+<i>Для закрытия задачи, используйте команду</i> /close_task
+{% endif %}
+
+{% if for_creator %}
+Вашу задачу взял в работу инженер: <code>{{ task.new_performer.name }}</code><br>
+Телеграм для связи: @{{ task.new_performer.tg_nickname }}<br><br>
+Внутренний номер: <code>{{ task.number }}</code><br>
+Запрос: {{ task.title }}
+{% endif %}
+
+{% if for_appointer %}
+Задача: {{ number }}<br>
+Назначена инженеру: {{ engineer_name }}
+{% endif %}
+
+{% if assign_performer %}
+💼<code>{{ appointer_name }}</code> назначил на вас задачу <code>{{ task.number }}</code><br>
+Задача у вас в работе.<br>
+Контакт для обратной связи: {task.new_applicant.name}(@{task.new_applicant.tg_nickname})<br><br>
+<code>{{ task.title }}</code><br>
+Что требуется:<br>
+{{  task.description }}<br><br>
+<i>Для закрытия задачи, используйте команду</i> /close_task',
+{% endif %}

@@ -59,6 +59,24 @@ class CustomUserManager(BaseUserManager):
         )
         return employees
 
+    async def available_to_assign_by_groups_name(self, groups_name: tuple):
+        engineers = await sync_to_async(list)(
+            self.filter(
+                new_work_shifts__is_works=True,
+                groups__name__in=groups_name,
+            )
+        )
+        return engineers
+
+    async def available_to_assign_for_disp(self):
+        engineers = await sync_to_async(list)(
+            self.filter(
+                new_work_shifts__is_works=True,
+                groups__name='Диспетчеры',
+            ).exclude(id=self.id)
+        )
+        return engineers
+
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     login = models.CharField('Login', max_length=50, unique=True)
@@ -435,6 +453,44 @@ class Server(models.Model):
 
 
 class SDTaskQuerySet(models.QuerySet):
+
+    async def by_id(self, task_id: str):
+        return await self.select_related(
+            'new_applicant',
+            'new_performer',
+        ).aget(id=task_id)
+
+    async def by_number(self, task_number: str):
+        return await self.select_related(
+            'new_applicant',
+            'new_performer',
+        ).aget(number=task_number)
+
+    async def get_not_assign_task(self):
+        return await sync_to_async(list)(
+            self.prefetch_related('new_applicant').filter(
+                new_performer__isnull=True,
+            ).exclude(
+                status='COMPLETED',
+            )
+        )
+
+    async def new_task_by_engineer_group(
+            self,
+            engineer,
+    ) -> list:
+        support_group = 'DISPATCHER'
+        engineer_groups = engineer.user.groups.all()
+        if await engineer_groups.filter(name__icontains='инженер').aexists():
+            support_group = 'ENGINEER'
+
+        tasks = await sync_to_async(list)(
+            self.filter(
+                status='NEW',
+                support_group=support_group,
+            ).order_by('-id')
+        )
+        return tasks
 
     def in_period_date(
             self,

@@ -47,3 +47,20 @@
 Сначала перерыв надо начать.<br><br>
 <i>Используй команду:</i> <code>/break_start</code>
 {% endif %}
+
+{% if performer_exist %}
+Заявку взял другой сотрудник <code>{{ name }}</code>.<br>
+Выберете другую.<br><br>
+<i>Поможет команда: /get_task'</i>
+{% endif %}
+
+{% if not_tasks_in_work %}
+❗У вас нет задач в работе.<br><br>
+<i>Чтобы взять задачу в работу используйте команду</i> /start_task <br>
+<i>Или можно выбрать задачу используя команду</i> /get_task
+{% endif %}
+
+{% if wrong_task_performer %}
+⛔Это не ваша задача.<br>
+Ответственный по задаче <code>{{ name }}</code>
+{% endif %}

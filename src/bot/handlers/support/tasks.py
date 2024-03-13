@@ -1,11 +1,8 @@
 import re
 import logging
 
-from typing import Union
-
 from aiogram import F
 from aiogram import Router
-from aiogram import html
 from aiogram import types
 from aiogram.filters import Command
 from aiogram.fsm.state import State
@@ -13,17 +10,13 @@ from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 
-from asgiref.sync import sync_to_async
-
-from django.utils import timezone
-from django.utils.dateformat import format
-
-from src.bot import keyboards
+from src import exceptions
+from src.bot import dialogs
 from src.models import SDTask
-from src.models import CustomUser
-from src.models import CustomGroup
-from src.bot.utils import save_doc_from_tg_to_disk
-from src.bot.utils import send_documents_out_task
+from src.entities.Message import Message
+from src.entities.Service import Service
+from src.entities.SupportEngineer import SupportEngineer
+
 
 logger = logging.getLogger('support_bot')
 router = Router(name='support_task_handlers')
@@ -49,38 +42,18 @@ class AssignedTaskState(StatesGroup):
 @router.message(Command('get_task'))
 async def get_task(
         message: types.Message,
-        employee: CustomUser,
+        support_engineer: SupportEngineer,
         state: FSMContext
 ):
     logger.info('Получаем список доступных задач')
-    tasks = []
-    engineers_groups = ['Старшие инженеры', 'Ведущее инженеры', 'Инженеры']
-    if await employee.groups.filter(name__in=engineers_groups).aexists():
-        logger.debug('Задачи инженеров')
-        tasks = await sync_to_async(list)(
-            SDTask.objects.filter(
-                status='NEW',
-                support_group='ENGINEER',
-            ).order_by('-id')
-        )
-    if await employee.groups.filter(name__in=['Диспетчеры']).aexists():
-        logger.debug('Задачи диспетчеров')
-        tasks = await sync_to_async(list)(
-            SDTask.objects.filter(
-                status='NEW',
-                support_group='DISPATCHER',
-            ).order_by('-id')
-        )
+    tasks = await SDTask.objects.new_task_by_engineer_group(support_engineer)
     if not tasks:
         logger.info('Нет новых задач')
-        await message.answer('Нет новых задач 🥹')
+        await message.answer(await dialogs.error_no_new_tasks())
         return
     tasks_numbers = [task.number for task in tasks]
-    tasks_keyboard = await keyboards.create_tg_keyboard_markup(tasks_numbers)
-    await message.answer(
-        'По какой задаче показать информацию?',
-        reply_markup=tasks_keyboard,
-    )
+    text, keyboard = await dialogs.request_show_task_info(tasks_numbers)
+    await message.answer(text, reply_markup=keyboard)
     await state.set_state(TaskState.show_info)
     logger.info('Список доступных задач отправлен')
 
@@ -96,248 +69,128 @@ async def show_task_info(
 ):
     logger.info(f'Запрос показа информации по задаче: {regexp.group()}')
     task_number = regexp.group()
-    task = await SDTask.objects.select_related(
-        'new_applicant',
-        'new_performer',
-    ).aget(number=task_number)
+    task = await SDTask.objects.by_number(task_number)
     if task.new_performer:
         logger.warning('Заявку уже назначена на сотрудника')
-        performer = task.new_performer.name
         await message.answer(
-            f'Заявку взял другой сотрудник ({performer}). Выберете другую. \n'
-            f'Поможет команда: /get_task',
+            await dialogs.error_task_performer_exist(task.new_performer.name),
             reply_markup=ReplyKeyboardRemove()
         )
         await state.clear()
         return
-
-    await message.answer(
-        f'Информация по задаче {html.code(task_number)}\n\n'
-        f'Заявитель: {task.new_applicant.name}\n'
-        f'Тема обращения: {task.title}\n'
-        f'Описание: {task.description}\n',
-        reply_markup=await keyboards.get_support_task_keyboard(task.id),
-    )
+    text, keyboard = dialogs.sd_task_info(task)
+    await message.answer(text, reply_markup=keyboard)
     logger.info('Информация по задаче отправлена')
     await state.clear()
 
 
 @router.callback_query(F.data.startswith('stask_'))
-async def process_start_task(query: types.CallbackQuery, employee: CustomUser):
-    logger.info('Берем задачу в работу')
+async def process_start_task(
+        query: types.CallbackQuery,
+        support_engineer: SupportEngineer,
+):
     task_id = query.data.split('_')[1]
-    task = await SDTask.objects.select_related(
-        'new_applicant',
-        'new_performer',
-    ).aget(id=task_id)
-
-    if task.new_performer:
-        logger.warning('Заявку уже назначена на сотрудника')
-        performer = task.new_performer.name
-        await query.answer()
-        await query.message.answer(
-            f'Заявку взял другой сотрудник ({performer}). Выберете другую. \n'
-            f'Поможет команда: /get_task'
+    try:
+        task = await support_engineer.start_task(task_id)
+        await Message.send_start_task_notify(task)
+        logger.info(
+            'Задачу взял в работу сотрудник %s',
+            support_engineer.user.name,
         )
-        return
-    task.new_performer = employee
-    task.status = 'IN_WORK'
-    await task.asave()
-    await query.message.delete()
-    await query.message.answer(
-        f'💼Вы взяли задачу {html.bold(task.number)} в работу\n'
-        f'Контакт для обратной связи: {task.new_applicant.name} '
-        f'(@{task.new_applicant.tg_nickname})\n\n'
-        f'{task.title}\n'
-        f'Что требуется: {html.code(task.description)}\n\n'
-        'Для закрытия задачи, используйте команду /close_task',
-        reply_markup=ReplyKeyboardRemove()
-    )
-    if task.is_automatic:
-        await send_documents_out_task(task)
-    await query.bot.send_message(
-        task.new_applicant.tg_id,
-        f'Вашу задачу взял в работу инженер: {employee.name}\n'
-        f'Телеграм для связи: @{employee.tg_nickname}\n\n'
-        f'Внутренний номер: {html.code(task.number)}\n'
-        f'Запрос: {task.title}'
-    )
-    logger.info('Задачу взял в работу сотрудник %s', employee.name)
+    except exceptions.TaskAssignedError as error:
+        logger.debug('Задача %s назначена на сотрудника', task_id)
+        await query.message.answer(error.message)
+    except SDTask.DoesNotExist:
+        logger.warning('Задачи %s нет в базе', task_id)
+        await query.message.answer(await dialogs.error_task_not_found())
+    finally:
+        await query.message.delete()
 
 
 @router.callback_query(F.data.startswith('atask_'))
 async def process_assigned_task(
         query: types.CallbackQuery,
-        employee: CustomUser,
+        support_engineer: SupportEngineer,
         state: FSMContext,
 ):
     logger.info('Назначить задачу на сотрудника')
     task_id = query.data.split('_')[1]
-    task = await SDTask.objects.select_related(
-        'new_applicant',
-        'new_performer',
-    ).aget(id=task_id)
-
-    if task.new_performer:
-        logger.warning('Заявку уже назначена на сотрудника')
-        await query.answer()
-        await query.message.answer(
-            f'Заявку взял другой сотрудник: {task.new_performer.name}'
+    try:
+        task = await SDTask.objects.by_id(task_id)
+        available_to_assign = await support_engineer.get_available_to_assign()
+        engineers_names = [engineer.name for engineer in available_to_assign]
+        await state.update_data(
+            task=task,
+            engineers_on_shift=available_to_assign,
+            task_applicant=task.new_applicant,
         )
-        return
-
-    employee_engineer_group = await employee.groups.aget(
-        name__icontains='инженер',
-    )
-    logger.debug('employee_engineer_group: %s', employee_engineer_group)
-    engineers_on_shift = await get_engineers_for_assigned_task(
-        employee_engineer_group,
-        employee.id,
-    )
-    if not engineers_on_shift:
-        await query.message.answer(
-            'Нет инженеров на смене на которых вы можете назначить задачу'
+        text, keyboard = await dialogs.request_choice_engineer_for_assign(
+            engineers_names,
         )
-        return
-    engineers_names = [engineer.name for engineer in engineers_on_shift]
-    keyboard = await keyboards.create_tg_keyboard_markup(engineers_names)
-    await state.update_data(
-        task=task,
-        engineers_on_shift=engineers_on_shift,
-        task_applicant=task.new_applicant,
-    )
-    await query.message.answer(
-        'Выберите инженера на смене для назначения',
-        reply_markup=keyboard,
-    )
-    await query.message.delete()
-    await state.set_state(AssignedTaskState.task)
+        await query.message.answer(text, reply_markup=keyboard)
+        await query.message.delete()
+        await state.set_state(AssignedTaskState.task)
+    except exceptions.TaskAssignedError as error:
+        logger.debug('Задача %s назначена на сотрудника', task_id)
+        await query.message.answer(error.message)
+    except exceptions.NotAvailableToAssignError as assign_error:
+        logger.debug('Нет подходящих инженеров для назначения')
+        await query.message.answer(assign_error.message)
 
 
 @router.message(AssignedTaskState.task)
 async def process_assigned_task_step_2(
         message: types.Message,
-        employee: CustomUser,
+        support_engineer: SupportEngineer,
         state: FSMContext,
 ):
     logger.info('Назначения задачи на инженера шаг 2')
-    data = await state.get_data()
-    task = await SDTask.objects.select_related(
-        'new_applicant',
-        'new_performer',
-    ).aget(id=data['task'].id)
-    if task.new_performer:
-        await message.answer(
-            f'Задачу взял другой инженер {task.performer.name}'
-        )
-        await state.clear()
-        return
     selected_engineer_name = message.text
+    data = await state.get_data()
+    task_id = data['task'].id
     engineers_on_shift = data['engineers_on_shift']
-    task_applicant = data['task_applicant']
-    selected_engineer = None
-
-    for engineer in engineers_on_shift:
-        if engineer.name == selected_engineer_name:
-            selected_engineer = engineer
-            break
-
-    if not selected_engineer:
-        logger.debug('Нет такого инженера на смене')
+    try:
+        selected_engineer = await Service.select_engineer_on_shift(
+            selected_engineer_name,
+            engineers_on_shift,
+        )
+        task = await support_engineer.assigned_task(task_id, selected_engineer)
+        logger.info(
+            'Инженер %s назначен на задачу %s',
+            selected_engineer.name,
+            task.number,
+        )
+        await Message.send_assigned_task_notify(task, support_engineer)
+    except exceptions.NoSelectedEngineerError as selected_error:
         await message.answer(
-            'Нет такого инженера на смене. Попробуй еще раз с начала',
+            selected_error.message,
             reply_markup=ReplyKeyboardRemove(),
         )
+    except exceptions.TaskAssignedError as assigned_error:
+        logger.debug('Задача %s назначена на сотрудника', task_id)
+        await message.answer(
+            assigned_error.message,
+            reply_markup=ReplyKeyboardRemove(),
+        )
+    finally:
         await state.clear()
-        return
-    logger.debug('engineers_on_shift: %s', engineers_on_shift)
-    logger.debug('selected_engineer: %s', selected_engineer)
-    task.new_performer = selected_engineer
-    task.status = 'IN_WORK'
-    await task.asave()
-    logger.info(
-        'Инженер %s назначен на задачу %s',
-        selected_engineer.name,
-        task.number,
-    )
-    logger.info('Отправляю уведомление назначившему инженеру')
-    await message.answer(
-        f'Задача {html.code(task.number)} '
-        f'назначена инженеру {html.code(selected_engineer.name)}'
-    )
-    logger.info('Отправлено')
-    logger.info('Отправка уведомления исполнителю')
-    await message.bot.send_message(
-        selected_engineer.tg_id,
-        f'{employee.name} назначил на вас задачу {task.number}\n.'
-        f'Контакт для связи {task_applicant.name} '
-        f'({task_applicant.tg_nickname})'
-    )
-    logger.info('Отправлено')
-    logger.info('Отправка уведомления постановщику задачи')
-    await message.bot.send_message(
-        task_applicant.tg_id,
-        f'Задача взята в работу инженером {html.code(selected_engineer.name)}'
-        f'\nТелеграм для связи: @{selected_engineer.tg_nickname}\n\n'
-        f'Внутренний номер: {html.code(task.number)}\n'
-        f'Запрос: {task.title}'
-    )
-    logger.info('Отправлено')
-    await state.clear()
-
-
-@sync_to_async
-def get_engineers_for_assigned_task(
-        current_employee_group: CustomGroup,
-        current_employee_id: int,
-):
-    engineers_on_shift = CustomUser.objects.filter(
-        new_work_shifts__is_works=True,
-    )
-    logger.debug('Текущая группа сотрудника: %s', current_employee_group)
-    if current_employee_group.name == 'Администраторы':
-        logger.debug('Поиск всех инженеров на смене')
-        engineers_on_shift = engineers_on_shift.filter(
-            groups__name__in=(
-                'Ведущие инженеры',
-                'Старшие инженеры',
-                'Инженеры',
-            ),
-        )
-    if current_employee_group.name == 'Ведущие инженеры':
-        logger.debug('Поиск Старших и обычных инженеров на смене')
-        engineers_on_shift = engineers_on_shift.filter(
-            groups__name__in=('Старшие инженеры', 'Инженеры'),
-        )
-    if current_employee_group.name == 'Старшие инженеры':
-        logger.debug('Поиск обычных инженеров на смене')
-        engineers_on_shift = engineers_on_shift.filter(groups__name='Инженеры')
-
-    if not engineers_on_shift.exclude(id=current_employee_id):
-        logger.warning('Нет инженеров на смене')
-        return
-    logger.debug('engineers_on_shift: %s', engineers_on_shift)
-    logger.info('Нашел подходящих инженеров')
-    return list(engineers_on_shift)
 
 
 @router.message(Command('close_task'))
-async def close_task(message: types.Message, state: FSMContext):
+async def close_task(
+        message: types.Message,
+        support_engineer: SupportEngineer,
+        state: FSMContext,
+):
     logger.info('Запрос на закрытие задачи')
-    tasks = await get_task_in_work_by_employee(message.from_user.id)
-    if not tasks:
-        await message.answer(
-            'У вас нет задач в работе. \n'
-            'Чтобы взять задачу в работу используйте команду /start_task \n'
-            'Или можно выбрать задачу используя команду /get_task'
-        )
-        return
-    task_number = [task.number for task in tasks]
-    await message.answer(
-        'Какую задачу будем закрывать?',
-        reply_markup=await keyboards.create_tg_keyboard_markup(task_number)
-    )
-    await state.set_state(TaskState.close_task)
+    try:
+        task_numbers = await support_engineer.get_task_number_in_work()
+        text, keyboard = await dialogs.request_task_for_close(task_numbers)
+        await message.answer(text, reply_markup=keyboard)
+        await state.set_state(TaskState.close_task)
+    except exceptions.TaskNotFoundError:
+        logger.info('Закрытие задач. Нет задач в работе')
+        await message.answer(await dialogs.error_not_tasks_in_work())
 
 
 @router.message(
@@ -346,120 +199,66 @@ async def close_task(message: types.Message, state: FSMContext):
 )
 async def process_close_task(
         message: types.Message,
-        employee: CustomUser,
+        support_engineer: SupportEngineer,
         regexp: re.Match[str],
         state: FSMContext,
 ):
     logger.info(f'Закрываем задачу: {regexp.group()}')
     task_number = regexp.group()
-    task = await SDTask.objects.select_related(
-        'new_applicant',
-        'new_performer',
-    ).aget(number=task_number)
-    if task.new_performer.name != employee.name:
+    task = await SDTask.objects.by_number(task_number)
+    if task.new_performer.name != support_engineer.user.name:
         logger.warning('Исполнитель и закрывающий отличаются')
         await message.answer(
-            f'Это не ваша задача.\n'
-            f'Ответственный по задаче {task.new_performer} ',
+            await dialogs.error_wrong_task_performer(task.new_performer.name),
             reply_markup=ReplyKeyboardRemove()
         )
         await state.clear()
         return
     if task.support_group == 'DISPATCHER' and task.is_close_task_command:
-        await dispatcher_close_task_command(message, task, state)
+        logger.info('Закрытие заявки созданной выездным по команде /close')
+        await state.update_data(close_task=task, get_doc=eval(task.tg_docs))
+        await message.answer(await dialogs.wait_load_documents())
+        await Service.send_documents_out_task(task, dispatcher=False)
+        text, keyboard = await dialogs.request_check_documents()
+        await message.answer(text, reply_markup=keyboard)
+        await state.set_state(TaskState.doc_approved)
         return
     if task.support_group == 'DISPATCHER':
-        await dispatcher_close_task(message, task, state)
+        logger.info('Старт процесса закрытия задачи диспетчером')
+        text, keyboard = await dialogs.request_documents()
+        await message.answer(text, reply_markup=keyboard)
+        await state.update_data(close_task=task)
+        await state.set_state(TaskState.get_doc)
         return
     if task.support_group == 'ENGINEER':
-        await engineer_close_task(message, task, state)
-
-
-async def dispatcher_close_task_command(
-        message: types.Message,
-        task: SDTask,
-        state: FSMContext,
-):
-    logger.info('Закрытие заявки созданной выездным по команде /close')
-    await state.update_data(close_task=task, get_doc=eval(task.tg_docs))
-    await message.answer('Готовлю документы. Ожидайте...')
-    await send_documents_out_task(task, dispatcher=False)
-    await message.answer(
-        'Внимательно проверь документы!\nВсе верно?',
-        reply_markup=await keyboards.get_choice_task_doc_approved_keyboard(),
-    )
-    await state.set_state(TaskState.doc_approved)
-
-
-async def dispatcher_close_task(
-        message: types.Message,
-        task: SDTask,
-        state: FSMContext,
-):
-    logger.info('Старт процесса закрытия задачи диспетчером')
-    await message.answer(
-        'Загрузите документы (акты, тех заключение)\n\n'
-        '<i>Загружать надо сразу, группой файлов\n'
-        'Сканы (фото), должны передаваться без Сжатия фото</i>',
-        reply_markup=await keyboards.create_tg_keyboard_markup(
-            ['без документов'],
-        ),
-    )
-    await state.update_data(close_task=task)
-    await state.set_state(TaskState.get_doc)
-    logger.info('Завершено')
+        task = await support_engineer.engineer_close_task(task.id)
+        await Message.send_close_task_notify(task)
+        await state.clear()
 
 
 @router.message(TaskState.get_doc)
 async def dispatcher_close_task_get_doc(
         message: types.Message,
         state: FSMContext,
-        album: Union[dict, None] = None,
+        service: Service,
+        album: dict,
 ):
-    if album is None:
-        album = {}
     logger.info('Получение документов')
-    keyboard = await keyboards.get_choice_task_doc_approved_keyboard()
-
     if message.text and message.text.lower() == 'без документов':
-        await message.answer(
-            'Нет актов и заключений. Все верно?',
-            reply_markup=keyboard,
-        )
+        text, keyboard = await dialogs.without_documents()
+        await message.answer(text, reply_markup=keyboard)
         await state.update_data(get_doc={})
         await state.set_state(TaskState.doc_approved)
         return
-    if not message.document and not album:
-        await message.answer(
-            'Все еще жду документы.\n'
-            'Пересылку пока не понимаю',
-        )
+    tg_documents = await service.get_documents(message, album)
+    if tg_documents.is_error:
+        await message.answer(tg_documents.error_msg)
         return
-
-    if message.document and not album:
-        await message.answer(
-            'Получен один документ. Все верно?',
-            reply_markup=keyboard,
-        )
-        await state.update_data(
-            get_doc={
-                message.document.file_name: message.document.file_id
-            }
-        )
-        await state.set_state(TaskState.doc_approved)
-        return
-
-    documents = {}
-    for doc in album:
-        documents[doc.document.file_name] = doc.document.file_id
-
-    await message.answer(
-        f'Получил {len(documents)} документ(ов)\n'
-        f'Имена файлов: {html.code(", ".join(documents.keys()))}\n\n'
-        f'Все верно?',
-        reply_markup=keyboard,
+    text, keyboard = await dialogs.confirmation_received_documents_disp(
+        tg_documents.documents,
     )
-    await state.update_data(get_doc=documents)
+    await message.answer(text, reply_markup=keyboard)
+    await state.update_data(get_doc=tg_documents.documents)
     await state.set_state(TaskState.doc_approved)
 
 
@@ -469,13 +268,20 @@ async def dispatcher_close_task_approved_doc_yes(
         state: FSMContext,
 ):
     await query.message.delete()
-    await query.message.answer(
-        f'Принял.\n\n'
-        f'Введите {html.underline("номера с буквами")} дочерних задач\n'
-        f'Если дочерних задач не создавалось напиши {html.bold("нет")}',
-        reply_markup=await keyboards.create_tg_keyboard_markup(['нет']),
-    )
+    text, keyboard = await dialogs.request_sub_tasks()
+    await query.message.answer(text, reply_markup=keyboard)
     await state.set_state(TaskState.approved_sub_tasks)
+
+
+@router.callback_query(TaskState.doc_approved, F.data == 'doc_apr_no')
+async def dispatcher_close_task_approved_doc_no(
+        query: types.CallbackQuery,
+        state: FSMContext,
+):
+    await query.answer()
+    await query.message.answer(await dialogs.retry_request_documents())
+    await state.update_data(get_doc=State())
+    await state.set_state(TaskState.get_doc)
 
 
 @router.message(TaskState.approved_sub_tasks)
@@ -486,16 +292,13 @@ async def dispatcher_close_task_approved_sub_tasks(
     logger.debug('Получение и проверка дочерних обращений')
     sub_tasks = []
     if message.text.lower() != 'нет':
-        sub_tasks = re.findall(r'(S[C,D]-\d{5,7})+', message.text)
+        sub_tasks = re.findall(r'([a-zA-Z]{2,3}\S?[0-9]{7})+', message.text)
         if not sub_tasks:
-            await message.answer(
-                f'Не вижу номер задач. Попробуйте снова\n'
-                f'Пример: {html.code("SC-1422495 SD-139518")}',
-            )
+            await message.answer(await dialogs.wrong_task_number())
             return
     await state.update_data(approved_sub_tasks=sub_tasks)
     await message.answer(
-        'Введите комментарий для закрытия',
+        await dialogs.request_task_close_commit(),
         reply_markup=ReplyKeyboardRemove(),
     )
     await state.set_state(TaskState.task_comment)
@@ -508,20 +311,14 @@ async def dispatcher_close_task_comment(
 ):
     data = await state.get_data()
     docs_names = ', '.join(data['get_doc'].keys())
-    task_info = 'Закрываем задачу: {number}\n' \
-                'Приложенные документы: {docs}\n' \
-                'Дочерние задачи: {sub_tasks}\n' \
-                'Комментарий при закрытии: {task_comment}'.format(
-                    number=data['close_task'].number,
-                    docs=docs_names,
-                    sub_tasks=data['approved_sub_tasks'],
-                    task_comment=message.text)
-    await state.update_data(task_comment=message.text)
-    keyboard = await keyboards.get_choice_task_closed_approved_keyboard()
-    await message.answer(
-        f'Подводим итог перед закрытием\n\n{html.code(task_info)}',
-        reply_markup=keyboard,
+    text, keyboard = await dialogs.close_task_request_approved(
+        docs_names,
+        data['close_task'].number,
+        data['approved_sub_tasks'],
+        message.text,
     )
+    await state.update_data(task_comment=message.text)
+    await message.answer(text, reply_markup=keyboard)
     await state.set_state(TaskState.approved_close_tasks)
 
 
@@ -531,183 +328,59 @@ async def dispatcher_close_task_comment(
 )
 async def dispatcher_close_task_approved(
         query: types.CallbackQuery,
+        support_engineer: SupportEngineer,
         state: FSMContext,
 ):
     logger.info('Старт закрытия задачи диспетчером')
     await query.message.delete()
     data = await state.get_data()
     task: SDTask = data['close_task']
-    approved_sub_tasks = data['approved_sub_tasks']
-    logger.debug('task: %s', task.number)
-    files_save_info = await save_doc_from_tg_to_disk(
+    task = await support_engineer.dispatcher_close_task(
+        task.id,
         task.number,
+        data['approved_sub_tasks'],
         data['get_doc'],
+        data['task_comment']
     )
-    logger.debug('Сохраненный файлы: %s', files_save_info)
-
-    if files_save_info:
-        files_save_info = str(files_save_info).strip('[]') + ','
-
-    if approved_sub_tasks:
-        approved_sub_tasks = ','.join(approved_sub_tasks)
-
-    task.status = 'COMPLETED'
-    task.closing_comment = data['task_comment']
-    task.sub_task_number = approved_sub_tasks
-    task.doc_path = files_save_info
-    task.finish_at = timezone.now()
-    await task.asave()
-
-    await query.bot.send_message(
-        task.new_applicant.tg_id,
-        f'Ваше обращение {task.number} закрыто.\n'
-        f'Запрос: {task.title}\n\n'
-        'Оцените пожалуйста работу от 1 до 5',
-        reply_markup=await keyboards.get_task_feedback_keyboard(task.id)
-    )
-    await query.message.answer(
-        'Задача завершена.\n'
-        'Посмотреть список открытых задач: /get_task',
-        reply_markup=ReplyKeyboardRemove(),
-    )
+    await Message.send_close_task_notify(task)
     await state.clear()
-    logger.info('Задача %s закрыта', task.number)
-    await state.clear()
-    logger.info('Задача закрыта')
-
-
-@router.callback_query(TaskState.doc_approved, F.data == 'doc_apr_no')
-async def dispatcher_close_task_approved_doc_no(
-        query: types.CallbackQuery,
-        state: FSMContext,
-):
-    await query.answer()
-    await query.message.answer('Ок. Давай попробуем еще раз. Жду документы')
-    await state.update_data(get_doc=State())
-    await state.set_state(TaskState.get_doc)
-
-
-async def engineer_close_task(
-        message: types.Message,
-        task: SDTask,
-        state: FSMContext,
-):
-    task.status = 'COMPLETED'
-    task.finish_at = timezone.now()
-    await task.asave()
-    await message.bot.send_message(
-        task.new_applicant.tg_id,
-        f'Ваше обращение {task.number} закрыто.\n'
-        f'Запрос: {task.title}\n\n'
-        'Оцените пожалуйста работу от 1 до 5',
-        reply_markup=await keyboards.get_task_feedback_keyboard(task.id)
-    )
-    await message.answer(
-        'Задача завершена.\n'
-        'Посмотреть список открытых задач: /get_task',
-        reply_markup=ReplyKeyboardRemove(),
-    )
-    await state.clear()
-    logger.info('Задача %s закрыта', task.number)
 
 
 @router.message(Command('my_active_tasks'))
 async def get_employee_active_tasks(
         message: types.Message,
+        support_engineer: SupportEngineer,
 ):
-    logger.info('Получение назначенных задач')
-    tasks = await get_task_in_work_by_employee(message.from_user.id)
-    if not tasks:
-        await message.answer('У вас нет задач в работе')
-        return
-    file_to_send = await prepare_active_tasks_as_file(tasks)
-    await message.answer_document(
-        file_to_send,
-        caption='Задачи в работе',
-    )
+    try:
+        tasks = await support_engineer.get_task_in_work()
+        file_to_send = await Service.prepare_tasks_as_file_for_send(
+            'Ваши задачи в работе',
+            tasks,
+            'tasks.txt',
+        )
+        await message.answer_document(
+            file_to_send,
+            caption='Задачи в работе',
+        )
+    except exceptions.TaskNotFoundError as error:
+        await message.answer(error.message)
 
 
 @router.message(Command('new_tasks'))
 async def get_new_tasks(
         message: types.Message,
 ):
-    logger.info('Получение всех не назначенных задач')
-    tasks = await sync_to_async(list)(
-        SDTask.objects.prefetch_related('new_applicant').filter(
-            new_performer__isnull=True,
-        ).exclude(
-            status='COMPLETED',
-        )
-    )
+    tasks = await SDTask.objects.get_not_assign_task()
     logger.debug('Список найденных новых задач: %s', tasks)
     if not tasks:
         await message.answer('Нет новый задач')
         return
-    file_to_send = await prepare_new_tasks_as_file(tasks)
+    file_to_send = await Service.prepare_tasks_as_file_for_send(
+        'Новые задачи',
+        tasks,
+        'new_tasks.txt',
+    )
     await message.answer_document(
         file_to_send,
         caption='Не назначенные задачи',
     )
-
-
-async def prepare_active_tasks_as_file(
-        tasks: list[SDTask]
-) -> types.BufferedInputFile:
-    logger.info('Подготовка  списка задач на пользователе в виде файла')
-    report = ['У вас в работе следующие задачи: \n']
-    time_formatted_mask = 'd-m-Y H:i:s'
-    for task in tasks:
-        start_at = format(task.start_at, time_formatted_mask)
-        text = f'{task.number}\n\n' \
-               f'Заявитель: {task.new_applicant}\n' \
-               f'Тип обращения: {task.title}\n' \
-               f'Дата регистрации: {start_at}\n' \
-               f'Текст обращения: {task.description}'
-        report.append(text)
-
-    file = '\n\n'.join(report).encode('utf-8')
-    file_name = format(timezone.now(), 'd-m-Y') + '_tasks.txt'
-    logger.info('Подготовка завершена')
-    return types.BufferedInputFile(file, filename=file_name)
-
-
-async def prepare_new_tasks_as_file(
-        tasks: list[SDTask]
-) -> types.BufferedInputFile:
-    logger.info('Подготовка  списка не назначенных задач в виде файла')
-    report = ['Новые задачи: \n']
-    time_formatted_mask = 'd-m-Y H:i:s'
-    for task in tasks:
-        start_at = format(task.start_at, time_formatted_mask)
-        text = f'{task.number}\n\n' \
-               f'Заявитель: {task.new_applicant.name}\n' \
-               f'Тип обращения: {task.title}\n' \
-               f'Дата регистрации: {start_at}\n' \
-               f'Текст обращения: {task.description}'
-        report.append(text)
-
-    file = '\n\n'.join(report).encode('utf-8')
-    file_name = format(timezone.now(), 'd-m-Y') + '_new_tasks.txt'
-    logger.info('Подготовка завершена')
-    return types.BufferedInputFile(file, filename=file_name)
-
-
-async def get_task_in_work_by_employee(employee_id: id) -> list[SDTask] | None:
-    logger.info('Получение задач в работе по сотруднику с id: %s', employee_id)
-    tasks = await sync_to_async(list)(
-        SDTask.objects.prefetch_related(
-            'new_performer',
-            'new_applicant',
-        ).filter(
-            new_performer__tg_id=employee_id,
-            status='IN_WORK',
-        )
-    )
-    if not tasks:
-        logger.warning(
-            'У сотрудника %s нет задач в работе',
-            employee_id,
-        )
-        return
-    logger.info('Задачи получены')
-    return tasks

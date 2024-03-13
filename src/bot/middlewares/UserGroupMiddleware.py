@@ -8,8 +8,6 @@ from typing import Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
-from django.db.models import Q
-
 from src.entities.FieldEngineer import FieldEngineer
 from src.entities.SupportEngineer import SupportEngineer
 from src.models import CustomUser
@@ -33,7 +31,12 @@ class UserGroupMiddleware(BaseMiddleware):
         if await employee.groups.filter(name__contains='Подрядчик').aexists():
             data['field_engineer'] = FieldEngineer(employee)
         if await employee.groups.filter(
-                Q(name__icontains='инженер') | Q(name='Диспетчеры')
+            name__in=(
+                    'Инженеры',
+                    'Старшие инженеры',
+                    'Ведущие инженеры',
+                    'Диспетчеры',
+            )
         ).aexists():
             data['support_engineer'] = SupportEngineer(employee)
         return await handler(event, data)

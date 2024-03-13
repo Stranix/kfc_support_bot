@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 from typing import Any
@@ -17,14 +18,17 @@ from asgiref.sync import sync_to_async
 
 from django.conf import settings
 from django.utils import timezone
+from django.utils import dateformat
 
 from src.bot import dialogs
 from src.bot.scheme import TGDocument
 from src.entities.User import User
-from src.bot.tasks import check_task_deadline, check_task_activate_step_2, \
-    check_end_of_shift
 from src.bot.tasks import check_task_activate_step_1
-from src.models import CustomUser, SDTask, CustomGroup
+from src.bot.tasks import check_task_activate_step_2
+from src.bot.tasks import check_task_deadline
+from src.bot.tasks import check_end_of_shift
+from src.exceptions import DocumentsNotFoundError, NoSelectedEngineerError
+from src.models import CustomUser, SDTask, CustomGroup, Dispatcher
 
 logger = logging.getLogger('support_bot')
 
@@ -127,7 +131,7 @@ class Service:
             engineers = await CustomUser.objects.engineers_on_work()
             logger.debug('engineers: %s', engineers)
             support_engineers = engineers
-        logger.debug('support_engineers: %s', support_engineers)
+            logger.debug('support_engineers: %s', support_engineers)
         return [User(engineer) for engineer in support_engineers]
 
     @staticmethod
@@ -203,3 +207,105 @@ class Service:
             media_group.add_document(text_file)
         await bot.session.close()
         return media_group.build()
+
+    @staticmethod
+    async def send_documents_out_task(
+            sd_task: SDTask,
+            dispatcher: bool = True,
+    ):
+        logger.info('Отправляю документы из задачи')
+        bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+        tg_documents = eval(sd_task.tg_docs)
+        if dispatcher:
+            tg_documents = await Service.get_documents_from_dispatcher_task(
+                sd_task.description,
+            )
+        if not tg_documents:
+            raise DocumentsNotFoundError('Нет документов в задаче')
+        media_group = await Service.create_documents_media_group(tg_documents)
+        await bot.send_media_group(
+            chat_id=sd_task.new_performer.tg_id,
+            media=media_group,
+        )
+        await bot.session.close()
+        logger.info('Документы отправлены')
+
+    @staticmethod
+    async def get_documents_from_dispatcher_task(
+            task_description: str,
+    ):
+        tg_documents = {}
+        try:
+            dispatcher_number = re.search(r'\d{6}', task_description).group()
+            disp_task = await Dispatcher.objects.aget(
+                dispatcher_number=dispatcher_number,
+            )
+            tg_documents = eval(disp_task.tg_documents)
+        except Dispatcher.DoesNotExist:
+            logger.debug('Нет задачи в диспетчере')
+        return tg_documents
+
+    @staticmethod
+    async def select_engineer_on_shift(
+            selected_engineer_name: str,
+            engineers_on_shift: list,
+    ):
+        selected_engineer = None
+        for engineer in engineers_on_shift:
+            if engineer.name == selected_engineer_name:
+                selected_engineer = engineer
+                break
+        if not selected_engineer:
+            logger.debug('Нет такого инженера на смене')
+            raise NoSelectedEngineerError(
+                'Нет такого инженера на смене. Попробуй еще раз с начала',
+            )
+        return selected_engineer
+
+    @staticmethod
+    async def save_doc_from_tg_to_disk(task_number: str, tg_docs: dict):
+        logger.info('Сохраняю документы: %s', tg_docs)
+        if not tg_docs:
+            logger.debug('Нет информации о документах')
+            return
+        bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
+        save_to = os.path.join('media/docs/', task_number)
+        if not os.path.exists(save_to):
+            os.makedirs(save_to)
+
+        save_report = []
+        for doc_name, doc_id in tg_docs.items():
+            tg_file = await bot.get_file(doc_id)
+            save_path = os.path.join(save_to, doc_name)
+            try:
+                await bot.download_file(tg_file.file_path, save_path)
+                save_report.append((doc_name, save_path))
+            except FileNotFoundError:
+                logger.error('Проблемы при сохранении %s', save_path)
+        logger.info('Документы сохранены')
+        await bot.session.close()
+        return save_report
+
+    @staticmethod
+    async def prepare_tasks_as_file_for_send(
+            report_title: str,
+            tasks: list[SDTask],
+            file_name: str,
+    ) -> BufferedInputFile:
+        """Подготовка задач в виде файла для отправки в телеграм"""
+        logger.info('Подготовка задач')
+        report = [f'{report_title}:\n']
+        time_formatted_mask = 'd-m-Y H:i:s'
+        for task in tasks:
+            start_at = dateformat.format(task.start_at, time_formatted_mask)
+            text = f'{task.number}\n\n' \
+                   f'Заявитель: {task.new_applicant.name}\n' \
+                   f'Тип обращения: {task.title}\n' \
+                   f'Дата регистрации: {start_at}\n' \
+                   f'Текст обращения: {task.description}'
+            report.append(text)
+        file = '\n\n'.join(report).encode('utf-8')
+        formatted_date = dateformat.format(timezone.now(), 'd-m-Y')
+        file_name = formatted_date + f'_{file_name}'
+        logger.info('Подготовка завершена')
+        return BufferedInputFile(file, filename=file_name)

@@ -1,8 +1,6 @@
-import os
 import re
 import asyncio
 import logging
-from typing import Union
 
 from urllib.parse import urljoin
 
@@ -18,23 +16,17 @@ from aiogram import types
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.exceptions import TelegramForbiddenError
-from aiogram.utils.media_group import MediaGroupBuilder
 
 from bs4 import BeautifulSoup
 
 from django.conf import settings
-from django.db.models import Q
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import Group as DjangoGroup
 
 from src.bot.scheme import SyncStatus
 from src.bot.scheme import TelegramUser
 from src.bot.keyboards import get_user_activate_keyboard
-from src.models import (
-    Dispatcher,
-    CustomUser,
-    SDTask,
-)
+from src.models import CustomUser
 
 logger = logging.getLogger('support_bot')
 
@@ -121,20 +113,6 @@ async def user_registration(message: types.Message) -> CustomUser:
     return employee
 
 
-async def send_message(
-        chat_id: int,
-        message: str,
-        keyboard: Union[
-            types.ReplyKeyboardMarkup,
-            types.InlineKeyboardMarkup
-        ] = None,
-):
-    logger.info('Отправляю сообщение в чат %s', chat_id)
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
-    await bot.send_message(chat_id, message, reply_markup=keyboard)
-    await bot.session.close()
-
-
 async def send_notify(
         employees: list[CustomUser],
         message: str,
@@ -192,31 +170,6 @@ async def get_tg_user_info_from_event(event: types.Update) -> TelegramUser:
     return telegram_user
 
 
-async def send_new_tasks_notify_for_middle(
-        engineer: CustomUser,
-        message: types.Message
-):
-    logger.debug('Отправка уведомлений о новых задачах старшим инженерам')
-    try:
-        await engineer.groups.aget(name='Старшие инженеры')
-    except DjangoGroup.DoesNotExist:
-        logger.debug('Инженер не входит в группу старшие инженеры')
-        return
-
-    logger.debug('Получаем новые задачи задачи')
-    new_tasks = await sync_to_async(list)(
-        SDTask.objects.filter(status='NEW')
-    )
-    if not new_tasks:
-        logger.debug('Нет новых задач')
-        return
-    tasks_number = [task.number for task in new_tasks]
-    await message.answer(
-        f'‼Внимание есть новые задачи: {html.code(", ".join(tasks_number))}\n'
-        '\nВозьмите в работу или назначьте инженеру'
-    )
-
-
 async def send_notify_to_seniors_engineers(message: str):
     logger.info('Отправка уведомлений Ведущим Инженерам')
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
@@ -232,75 +185,6 @@ async def send_notify_to_seniors_engineers(message: str):
             )
     await bot.session.close()
     logger.info('Выполнено')
-
-
-async def save_doc_from_tg_to_disk(
-        task_number: str,
-        documents: dict
-) -> list[tuple] | None:
-    logger.info('Сохраняю документы')
-    logger.debug('documents: %s', documents)
-    if not documents:
-        logger.debug('Нет информации о документах')
-        return
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
-    save_to = os.path.join('media/docs/', task_number)
-    if not os.path.exists(save_to):
-        os.makedirs(save_to)
-
-    save_report = []
-    for doc_name, doc_id in documents.items():
-        tg_file = await bot.get_file(doc_id)
-        save_path = os.path.join(save_to, doc_name)
-        try:
-            await bot.download_file(tg_file.file_path, save_path)
-            save_report.append((doc_name, save_path))
-        except FileNotFoundError:
-            logger.error('Проблемы при сохранении %s', save_path)
-    logger.info('Документы сохранены')
-    await bot.session.close()
-    return save_report
-
-
-async def send_documents_out_task(sd_task: SDTask, dispatcher: bool = True):
-    logger.info('Отправляю документы из задачи')
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
-    dispatcher_number = re.search(r'\d{6}', sd_task.title).group()
-    tg_documents = {}
-    if dispatcher:
-        try:
-            disp_task = await Dispatcher.objects.aget(
-                dispatcher_number=dispatcher_number,
-            )
-        except Dispatcher.DoesNotExist:
-            logger.warning('Нет задачи в бд. Отправка документов не возможна')
-            await bot.session.close()
-            return
-        tg_documents = eval(disp_task.tg_documents)
-
-    if not dispatcher:
-        tg_documents = eval(sd_task.tg_docs)
-
-    if not tg_documents:
-        await bot.send_message(
-            sd_task.new_performer.tg_id,
-            'Инженер не прожил документы к задаче',
-        )
-        await bot.session.close()
-        return
-
-    media_group = MediaGroupBuilder(caption="Приложенные файлы от инженера")
-    for doc_name, doc_id in tg_documents.items():
-        tg_file = await bot.get_file(doc_id)
-        io_file = await bot.download_file(tg_file.file_path)
-        text_file = types.BufferedInputFile(io_file.read(), filename=doc_name)
-        media_group.add_document(text_file)
-    await bot.send_media_group(
-        chat_id=sd_task.new_performer.tg_id,
-        media=media_group.build()
-    )
-    await bot.session.close()
-    logger.info('Документы отправлены')
 
 
 @sync_to_async
@@ -323,21 +207,3 @@ def has_perm_in_group(perm_codename: str, groups: list[DjangoGroup]) -> bool:
             return True
     logger.debug('Нет права %s в группах пользователя', perm_codename)
     return False
-
-
-@sync_to_async
-def get_employee_managers(employee: CustomUser) -> list[CustomUser]:
-    managers = []
-    for group in employee.groups.all():
-        managers.extend(group.managers.all())
-    return list(set(managers))
-
-
-async def check_employee_groups(
-        employee: CustomUser,
-        name_contains: str,
-) -> bool:
-    logger.debug('Проверка группы пользователя. Ищем -> %s', name_contains)
-    return await employee.groups.filter(
-        Q(name__icontains=name_contains) | Q(name='Администраторы')
-    ).aexists()

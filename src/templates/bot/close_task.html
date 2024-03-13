@@ -1,0 +1,29 @@
+{% if dispatcher_request_documents %}
+Загрузите документы (акты, тех заключение)<br><br>
+<i>Загружать надо сразу, группой файлов</i>
+{% endif %}
+
+{% if disp_sub_tasks %}
+Принял.<br><br>
+Введите <u>номера с буквами</u> дочерних задач<br>
+Если дочерних задач не создавалось напиши <b>нет</b>
+{% endif %}
+
+{% if close_task_approved %}
+Подводим итог перед закрытием<br><br>
+Закрываем задачу: <code>{{ task_number }}</code><br>
+Приложенные документы: <code>{{ tg_docs_name }}</code><br>
+Дочерние задачи: <code>{{ sub_tasks }}</code><br>
+Комментарий при закрытии: <code>{{ task_close_comment }}</code>
+{% endif %}
+
+{% if for_performer %}
+Задача <code>{{ number }}</code> завершена.<br><br>
+<i>Посмотреть список открытых задач:</i> /get_task
+{% endif %}
+
+{% if for_creator %}
+Ваше обращение <code>{{ number }}</code> закрыто.<br>
+Запрос: <code>{{ title }}</code><br><br>
+<i>Оцените пожалуйста работу от 1 до 5</i>
+{% endif %}
