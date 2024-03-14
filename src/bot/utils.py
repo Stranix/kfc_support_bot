@@ -10,23 +10,19 @@ from aiohttp import ClientSession
 
 from asgiref.sync import sync_to_async
 
-from aiogram import Bot
 from aiogram import html
 from aiogram import types
-from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramBadRequest
-from aiogram.exceptions import TelegramForbiddenError
 
 from bs4 import BeautifulSoup
 
-from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import Group as DjangoGroup
 
+from src.models import CustomUser
 from src.bot.scheme import SyncStatus
 from src.bot.scheme import TelegramUser
+from src.entities.Message import Message
 from src.bot.keyboards import get_user_activate_keyboard
-from src.models import CustomUser
 
 logger = logging.getLogger('support_bot')
 
@@ -100,57 +96,15 @@ async def user_registration(message: types.Message) -> CustomUser:
         tg_id=message.from_user.id,
         tg_nickname=message.from_user.username,
     )
-    senior_engineers = await get_senior_engineers()
-    logger.debug('senior_engineers: %s', senior_engineers)
     notify = f'Новый пользователь \n\n' \
              f'Телеграм id: {html.code(message.from_user.id)}\n' \
              f'Телеграм username: @{message.from_user.username}\n' \
              f'Имя: {html.code(message.from_user.full_name)}\n'
     logger.debug('notify: %s', notify)
     notify_keyboard = await get_user_activate_keyboard(employee.id)
-    await send_notify(senior_engineers, notify, notify_keyboard)
+    await Message.send_notify_to_seniors_engineers(notify, notify_keyboard)
     await message.answer('Заявка на регистрацию отправлена.')
     return employee
-
-
-async def send_notify(
-        employees: list[CustomUser],
-        message: str,
-        keyboard: types.InlineKeyboardMarkup = None,
-):
-    logger.info('Отправка уведомления')
-    if not employees:
-        logger.warning('Пустой список для отправки уведомлений')
-        return
-
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
-    for employee in employees:
-        try:
-            logger.debug('Уведомление для: %s', employee.name)
-            await bot.send_message(
-                employee.tg_id,
-                message,
-                reply_markup=keyboard,
-            )
-        except TelegramBadRequest:
-            logger.warning('Не смог отправить уведомление %s', employee.name)
-        except TelegramForbiddenError:
-            logger.warning('Заблокировал бота %s', employee.name)
-    await bot.session.close()
-    logger.info('Отправка уведомлений завершена')
-
-
-async def get_senior_engineers() -> list[CustomUser] | None:
-    senior_engineers = await sync_to_async(list)(
-        CustomUser.objects.prefetch_related('groups').filter(
-            groups__name__contains='Ведущие инженеры'
-        )
-    )
-    logger.debug('senior_engineers: %s', senior_engineers)
-    if not senior_engineers:
-        logger.error('В системе не назначены ведущие инженеры')
-        return
-    return senior_engineers
 
 
 async def get_tg_user_info_from_event(event: types.Update) -> TelegramUser:
@@ -168,23 +122,6 @@ async def get_tg_user_info_from_event(event: types.Update) -> TelegramUser:
     telegram_user = TelegramUser(tg_id, nickname)
     logger.debug('TelegramUser: %s', telegram_user)
     return telegram_user
-
-
-async def send_notify_to_seniors_engineers(message: str):
-    logger.info('Отправка уведомлений Ведущим Инженерам')
-    bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
-    senior_engineers = await get_senior_engineers()
-    logger.debug('senior_engineers: %s', senior_engineers)
-    for senior_engineer in senior_engineers:
-        try:
-            await bot.send_message(senior_engineer.tg_id, message)
-        except TelegramBadRequest:
-            logger.warning(
-                'Не смог отправить сообщение %s',
-                senior_engineer.name
-            )
-    await bot.session.close()
-    logger.info('Выполнено')
 
 
 @sync_to_async
