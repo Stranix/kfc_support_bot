@@ -12,9 +12,9 @@ from aiogram.types import ReplyKeyboardRemove
 
 from src import exceptions
 from src.bot import dialogs
+from src.bot import services
 from src.models import SDTask
 from src.entities.Message import Message
-from src.entities.Service import Service
 from src.entities.SupportEngineer import SupportEngineer
 
 
@@ -150,7 +150,7 @@ async def process_assigned_task_step_2(
     task_id = data['task'].id
     engineers_on_shift = data['engineers_on_shift']
     try:
-        selected_engineer = await Service.select_engineer_on_shift(
+        selected_engineer = await services.select_engineer_on_shift(
             selected_engineer_name,
             engineers_on_shift,
         )
@@ -218,7 +218,7 @@ async def process_close_task(
         logger.info('Закрытие заявки созданной выездным по команде /close')
         await state.update_data(close_task=task, get_doc=eval(task.tg_docs))
         await message.answer(await dialogs.wait_load_documents())
-        await Service.send_documents_out_task(task, dispatcher=False)
+        await services.send_documents_out_task(task, dispatcher=False)
         text, keyboard = await dialogs.request_check_documents()
         await message.answer(text, reply_markup=keyboard)
         await state.set_state(TaskState.doc_approved)
@@ -240,7 +240,6 @@ async def process_close_task(
 async def dispatcher_close_task_get_doc(
         message: types.Message,
         state: FSMContext,
-        service: Service,
         album: dict,
 ):
     logger.info('Получение документов')
@@ -250,7 +249,7 @@ async def dispatcher_close_task_get_doc(
         await state.update_data(get_doc={})
         await state.set_state(TaskState.doc_approved)
         return
-    tg_documents = await service.get_documents(message, album)
+    tg_documents = await services.get_documents(message, album)
     if tg_documents.is_error:
         await message.answer(tg_documents.error_msg)
         return
@@ -353,7 +352,7 @@ async def get_employee_active_tasks(
 ):
     try:
         tasks = await support_engineer.get_task_in_work()
-        file_to_send = await Service.prepare_tasks_as_file_for_send(
+        file_to_send = await services.prepare_tasks_as_file_for_send(
             'Ваши задачи в работе',
             tasks,
             'tasks.txt',
@@ -367,15 +366,13 @@ async def get_employee_active_tasks(
 
 
 @router.message(Command('new_tasks'))
-async def get_new_tasks(
-        message: types.Message,
-):
+async def get_new_tasks(message: types.Message):
     tasks = await SDTask.objects.get_not_assign_task()
     logger.debug('Список найденных новых задач: %s', tasks)
     if not tasks:
         await message.answer('Нет новый задач')
         return
-    file_to_send = await Service.prepare_tasks_as_file_for_send(
+    file_to_send = await services.prepare_tasks_as_file_for_send(
         'Новые задачи',
         tasks,
         'new_tasks.txt',

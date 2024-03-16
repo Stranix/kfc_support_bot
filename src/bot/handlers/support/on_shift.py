@@ -6,7 +6,7 @@ from aiogram.filters import Command
 
 from src.bot import dialogs
 from src.entities.Message import Message
-from src.entities.Service import Service
+from src.entities.Scheduler import Scheduler
 from src.entities.SupportEngineer import SupportEngineer
 
 logger = logging.getLogger('support_bot')
@@ -17,7 +17,7 @@ router = Router(name='on_shift_handlers')
 async def on_shift(
         message: types.Message,
         support_engineer: SupportEngineer,
-        service: Service,
+        scheduler: Scheduler,
 ):
     logger.info('Сотрудник заступает на смену')
     if await support_engineer.is_active_shift:
@@ -26,7 +26,7 @@ async def on_shift(
 
     logger.debug('Фиксируем старт смены в БД')
     shift = await support_engineer.start_work_shift()
-    await service.add_check_shift(shift.id)
+    await scheduler.add_check_shift(shift.id)
 
     logger.info('Отправляю уведомление менеджеру и пользователю')
     await message.answer(await dialogs.start_work_shift())

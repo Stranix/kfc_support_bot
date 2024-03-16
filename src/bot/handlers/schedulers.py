@@ -11,7 +11,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
 
-from src.entities.Service import Service
+from src.entities.Scheduler import Scheduler
 
 logger = logging.getLogger('support_bot')
 router = Router(name='scheduler_handlers')
@@ -24,9 +24,9 @@ class SchedulerJobState(StatesGroup):
 @router.message(Command('scheduler_jobs'))
 async def get_scheduler_jobs(
         message: types.Message,
-        service: Service,
+        scheduler: Scheduler,
 ):
-    jobs = service.scheduler.get_jobs()
+    jobs = scheduler.aio_scheduler.get_jobs()
     message_for_send = ['Активные задачи scheduler:\n']
     for job in jobs:
         print(job)
@@ -52,9 +52,9 @@ async def close_scheduler_job(
 @router.message(F.text.startswith('job_'))
 async def process_close_scheduler_job(
         message: types.Message,
-        service: Service,
+        scheduler: Scheduler,
         state: FSMContext,
 ):
-    service.scheduler.remove_job(message.text)
+    scheduler.aio_scheduler.remove_job(message.text)
     await message.answer(f'Job {message.text} удален')
     await state.clear()

@@ -9,9 +9,9 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup
 
+from src.bot import services
 from src.bot import keyboards, dialogs
 from src.entities.FieldEngineer import FieldEngineer
-from src.entities.Service import Service
 from src.entities.SupportEngineer import SupportEngineer
 from src.entities.User import User
 from src.models import SDTask, CustomGroup
@@ -76,7 +76,7 @@ class Message:
     @staticmethod
     async def send_notify_to_seniors_engineers(message: str, keyboard=None):
         logger.info('Отправка уведомлений Ведущим Инженерам')
-        senior_engineers = await Service.get_senior_engineers()
+        senior_engineers = await services.get_senior_engineers()
         await Message.send_tg_notification(
             senior_engineers,
             message,
@@ -90,7 +90,7 @@ class Message:
             keyboard=None,
     ):
         logger.info('Менеджерам группы')
-        group_managers = await Service.get_group_managers_by_group_id(
+        group_managers = await services.get_group_managers_by_group_id(
             group_id,
         )
         await Message.send_tg_notification(
@@ -102,7 +102,7 @@ class Message:
     @staticmethod
     async def send_new_task_notify(task: SDTask):
         logger.info('Отправка уведомлений о новой задаче')
-        recipients = await Service.get_engineers_on_shift_by_support_group(
+        recipients = await services.get_engineers_on_shift_by_support_group(
             task.support_group,
         )
 
@@ -144,7 +144,7 @@ class Message:
             documents: dict,
     ):
         additional_chat_id = settings.TG_ADDITIONAL_CHAT_ID
-        media_group = await Service.create_documents_media_group(documents)
+        media_group = await services.create_documents_media_group(documents)
         text_performer = await dialogs.additional_chat_for_performer()
         text_additional_chat = await dialogs.additional_chat_message(
             task_number,
@@ -192,7 +192,7 @@ class Message:
             keyboard=ReplyKeyboardRemove(),
         )
         if sd_task.is_automatic:
-            await Service.send_documents_out_task(sd_task)
+            await services.send_documents_out_task(sd_task)
         await Message.send_tg_notification(
             [User(sd_task.new_applicant)],
             text_for_creator,

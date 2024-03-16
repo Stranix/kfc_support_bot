@@ -6,11 +6,11 @@ from aiogram import types
 from aiogram.fsm.context import FSMContext
 
 from src.bot import dialogs
-from src.entities.FieldEngineer import FieldEngineer
-from src.entities.Message import Message
-from src.entities.Service import Service
-from src.entities.SupportEngineer import SupportEngineer
+from src.bot import services
 from src.models import SDTask
+from src.entities.Message import Message
+from src.entities.FieldEngineer import FieldEngineer
+from src.entities.SupportEngineer import SupportEngineer
 
 logger = logging.getLogger('support_bot')
 router = Router(name='additional_handlers')
@@ -28,7 +28,7 @@ async def process_additional_work(
     data = await state.get_data()
     task: SDTask = data['close_task']
     docs = data['get_doc']
-    external_task_number = await Service.find_external_number_in_task(
+    external_task_number = await services.find_external_number_in_task(
         task.title,
     )
     if not external_task_number:

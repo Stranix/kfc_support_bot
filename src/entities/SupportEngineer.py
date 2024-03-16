@@ -1,12 +1,13 @@
 import logging
 
 from asgiref.sync import sync_to_async
-from django.db.models import Q
+
 from django.utils import timezone
 
 from src import exceptions
+from src.bot import services
 from src.entities.User import User
-from src.entities.Service import Service
+
 from src.models import SDTask
 from src.models import CustomUser
 from src.models import WorkShift
@@ -120,9 +121,13 @@ class SupportEngineer(User):
     @property
     async def group_id(self) -> int:
         logger.info('Получаем id основной группы сотрудника')
-        groups = self.user.groups
-        main_group = await groups.filter(
-            Q(name__icontains='инженер') | Q(name='Диспетчеры')
+        main_group = await self.user.groups.filter(
+            name__in=(
+                'Инженеры',
+                'Старшие инженеры',
+                'Ведущие инженеры',
+                'Диспетчеры',
+            )
         ).afirst()
         return main_group.id
 
@@ -215,7 +220,7 @@ class SupportEngineer(User):
             closing_comment: str,
     ) -> SDTask:
         logger.info('Закрытие задачи диспетчером')
-        files_save_info = await Service.save_doc_from_tg_to_disk(
+        files_save_info = await services.save_doc_from_tg_to_disk(
             task_number,
             tg_docs,
         )

@@ -7,6 +7,7 @@ from src.models import WorkShift
 from src.entities.User import User
 from src.entities.Message import Message
 from src.entities.SupportEngineer import SupportEngineer
+from src.bot.services import get_group_managers_by_support_group
 
 logger = logging.getLogger('support_bot_tasks')
 
@@ -24,9 +25,9 @@ async def check_task_activate_step_1(task_number: str):
         logger.info('На задачу назначен инженер')
         return
 
-    support_engineer = SupportEngineer(task.new_performer)
-    await Message.send_notify_to_group_managers(
-        await support_engineer.group_id,
+    managers = await get_group_managers_by_support_group(task.support_group)
+    await Message.send_tg_notification(
+        managers,
         notify,
     )
     await Message.send_tg_notification(

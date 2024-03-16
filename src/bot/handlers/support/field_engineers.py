@@ -10,11 +10,12 @@ from aiogram.fsm.state import StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
-from src.entities.FieldEngineer import FieldEngineer
 from src.entities.Message import Message
-from src.entities.Service import Service
+from src.entities.Scheduler import Scheduler
+from src.entities.FieldEngineer import FieldEngineer
 
 from src.bot import dialogs
+from src.bot import services
 from src.models import SDTask
 from src.models import Dispatcher
 from src.models import CustomUser
@@ -70,10 +71,9 @@ async def process_get_number(message: types.Message, state: FSMContext):
 async def process_close_task_get_documents(
         message: types.Message,
         state: FSMContext,
-        service: Service,
         album: dict,
 ):
-    tg_documents = await service.get_documents(message, album)
+    tg_documents = await services.get_documents(message, album)
     if tg_documents.is_error:
         await message.answer(tg_documents.error_msg)
         return
@@ -92,7 +92,7 @@ async def process_close_task_get_documents(
 async def process_close_task_approved_doc_yes(
         query: types.CallbackQuery,
         field_engineer: FieldEngineer,
-        service: Service,
+        scheduler: Scheduler,
         state: FSMContext,
 ):
     logger.info('Создание заявки на закрытие. Финальный этап')
@@ -103,7 +103,7 @@ async def process_close_task_approved_doc_yes(
         data["get_number"],
         data["get_documents"],
     )
-    await service.add_new_task_schedulers(task)
+    await scheduler.add_new_task_schedulers(task)
     await Message.send_new_task_notify(task)
     edit_text = await dialogs.new_task_notify_for_creator(
         task.number,
@@ -186,7 +186,7 @@ async def process_task_descriptions(message: types.Message, state: FSMContext):
 async def process_task_approved(
         query: types.CallbackQuery,
         field_engineer: FieldEngineer,
-        service: Service,
+        scheduler: Scheduler,
         state: FSMContext,
 ):
     logger.info('Процесс подтверждения и создания новой заявки')
@@ -198,7 +198,7 @@ async def process_task_approved(
         data['support_group'],
         data['descriptions'],
     )
-    await service.add_new_task_schedulers(task)
+    await scheduler.add_new_task_schedulers(task)
     await Message.send_new_task_notify(task)
     edit_text = await dialogs.new_task_notify_for_creator(
         task.number,
@@ -254,14 +254,14 @@ async def process_dispatchers_task(
 async def process_dispatchers_task_get_doc(
         message: types.Message,
         field_engineer: FieldEngineer,
+        scheduler: Scheduler,
         state: FSMContext,
-        service: Service,
         album: dict,
 ):
     logger.info('Получение документов от выездного')
     data = await state.get_data()
     task: Dispatcher = data['task']
-    tg_documents = await service.get_documents(message, album)
+    tg_documents = await services.get_documents(message, album)
     if tg_documents.is_error:
         await message.answer(tg_documents.error_msg)
         return
@@ -289,7 +289,7 @@ async def process_dispatchers_task_get_doc(
         description,
         tg_documents.documents,
     )
-    await service.add_new_task_schedulers(sd_task)
+    await scheduler.add_new_task_schedulers(sd_task)
     await Message.send_new_task_notify(sd_task)
     text = await dialogs.new_task_notify_for_creator(
         sd_task.number,

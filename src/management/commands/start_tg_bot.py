@@ -1,8 +1,6 @@
 import asyncio
 import logging
 
-from apscheduler.jobstores.redis import RedisJobStore
-from apscheduler.jobstores.memory import MemoryJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from django.conf import settings
@@ -14,11 +12,11 @@ from aiogram import Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from src.entities.Service import Service
+
 from src.utils import configure_logging
+from src.entities.Scheduler import Scheduler
 from src.bot.handlers import router
 from src.bot.middlewares import AuthUpdateMiddleware
-from src.bot.middlewares import SchedulerMiddleware
 from src.bot.middlewares import EmployeeStatusMiddleware
 from src.bot.middlewares import UserGroupMiddleware
 
@@ -65,19 +63,17 @@ async def set_commands(bot: Bot):
 
 
 async def run_bot():
-    service = Service(
-        scheduler=AsyncIOScheduler(
-            jobstores=Service.get_job_store()
+    scheduler = Scheduler(
+        AsyncIOScheduler(
+            jobstores=Scheduler.get_job_store()
         )
     )
-    scheduler = service.scheduler
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     dp = Dispatcher(storage=MemoryStorage(), skip_updates=True)
     dp.include_router(router)
     dp.startup.register(start_bot)
     dp.update.outer_middleware(AuthUpdateMiddleware())
     dp.update.outer_middleware(UserGroupMiddleware())
-    dp.update.outer_middleware(SchedulerMiddleware(service))
     dp.message.outer_middleware(EmployeeStatusMiddleware())
-    scheduler.start()
-    await dp.start_polling(bot)
+    scheduler.aio_scheduler.start()
+    await dp.start_polling(bot, scheduler=scheduler)

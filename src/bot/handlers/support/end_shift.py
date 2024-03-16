@@ -7,7 +7,7 @@ from aiogram.filters import Command
 from src.bot import dialogs
 from src.models import WorkShift
 from src.entities.Message import Message
-from src.entities.Service import Service
+from src.entities.Scheduler import Scheduler
 from src.entities.SupportEngineer import SupportEngineer
 
 
@@ -19,13 +19,13 @@ router = Router(name='end_shift_handlers')
 async def end_shift(
         message: types.Message,
         support_engineer: SupportEngineer,
-        service: Service,
+        scheduler: Scheduler,
 ):
     logger.info('Старт процесса завершения смены')
     try:
         work_shift = await support_engineer.end_work_shift()
         logger.debug('Удаляю scheduler проверки смены')
-        await service.delete_scheduler_job_by_id(
+        await scheduler.delete_scheduler_job_by_id(
             f'job_{work_shift.id}_end_shift')
         await message.answer(await dialogs.end_work_shift())
         if await support_engineer.is_middle_engineer:
