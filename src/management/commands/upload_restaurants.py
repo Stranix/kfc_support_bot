@@ -66,7 +66,7 @@ def upload_restaurants(restaurants):
         owner = restaurant['Owner'].replace('&quot;', '"')
         franchise = get_franchise_by_owner(owner)
         try:
-            restaurant_db, _ = Restaurant.objects.update_or_create(
+            restaurant_db, created = Restaurant.objects.update_or_create(
                 id=int(restaurant['Ident']),
                 defaults={
                     'name': rest_name,
@@ -77,10 +77,15 @@ def upload_restaurants(restaurants):
                     'phone': restaurant['gentelephone_number'],
                     'server_ip': restaurant['genIP_REP_SRV'],
                     'franchise': franchise,
-                    'is_sync': False if franchise.alias == 'fz' else True,
+                    'ext_code': restaurant['ExtCode'],
+                    'address_guid': restaurant['AddressGUID'],
                 }
             )
-            logger.debug('Добавлен')
+            if created:
+                logger.info('Добавлен новый ресторан: %s', restaurant_db.name)
+                is_sync = False if franchise.alias == 'fz' else True
+                restaurant_db.is_sync = is_sync
+                restaurant_db.save()
         except DataError:
             logger.warning('Ошибка добавления ресторана %s', rest_name)
 

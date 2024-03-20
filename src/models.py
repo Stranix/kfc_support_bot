@@ -1,6 +1,6 @@
 import pytz
 
-from datetime import date
+from datetime import date, timedelta
 from datetime import time
 from datetime import datetime
 
@@ -358,6 +358,17 @@ class Restaurant(models.Model):
         blank=True,
         null=True,
         max_length=100,
+    )
+    ext_code = models.PositiveIntegerField(
+        'Внешний код',
+        null=True,
+        blank=True,
+    )
+    address_guid = models.CharField(
+        'Почта',
+        max_length=100,
+        blank=True,
+        default='',
     )
     address = models.CharField('Адрес', max_length=100)
     phone = models.CharField(
@@ -829,3 +840,131 @@ class Dispatcher(models.Model):
 
     def __str__(self):
         return f'{self.dispatcher_number} - {self.performer}'
+
+
+class SimpleOneTask(models.Model):
+    assignment_group_link = models.TextField('Сcылка на группу в api')
+    company_link = models.TextField('Сcылка на компанию в api')
+    description = models.TextField('Описание задачи')
+    number = models.CharField('Номер задачи', max_length=15)
+    fact_start = models.DateTimeField('Старт задачи')
+    service_link = models.TextField('Ссылка на сервис в api')
+    subject = models.TextField('Тема Обращения')
+    sys_id = models.PositiveIntegerField('Id Задачи в simple')
+    caller_department_link = models.TextField('Ссылка на ресторан в api')
+    contact_information = models.TextField('Контакты')
+    sla = models.CharField('SLA', max_length=10, null=True, blank=True)
+    exp_sla = models.DateTimeField('Выполнить до', null=True, blank=True)
+    request_type_link = models.TextField('Сcылка на проблему в api')
+    request_type = models.TextField('Проблема')
+    api_path = models.TextField('Путь к задачи')
+    caller_department = models.TextField('Заявитель')
+    service = models.TextField('Сервис')
+    company = models.TextField('Компания заявителя')
+    assignment_group = models.TextField('Группа назначения')
+    restaurant = models.ForeignKey(
+        'Restaurant',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Ресторан',
+        related_name='simpleone_tasks',
+    )
+
+    class Meta:
+        verbose_name = 'Задача SimpleOne'
+        verbose_name_plural = 'Задачи SimpleOne'
+
+    def __str__(self):
+        return self.number
+
+
+class SimpleOneCred(models.Model):
+    login = models.CharField('Логин', max_length=100)
+    token = models.TextField('Token')
+    start_at = models.DateTimeField('Получен', default=timezone.now)
+    expired_at = models.DateTimeField('Истекает')
+
+    def save(self, *args, **kwargs):
+        self.expired_at = self.start_at + timedelta(days=9)
+        super(SimpleOneCred, self).save(*args, **kwargs)
+
+
+class SimpleOneRequestType(models.Model):
+    id = models.PositiveBigIntegerField(
+        'id',
+        primary_key=True,
+    )
+    name = models.TextField()
+
+    class Meta:
+        verbose_name = 'Тип запроса SimpleOne'
+        verbose_name_plural = 'Типы запросов SimpleOne'
+
+    def __str__(self):
+        return self.name
+
+
+class SimpleOneIRBDepartment(models.Model):
+    id = models.PositiveBigIntegerField(
+        'id',
+        primary_key=True,
+    )
+    name = models.TextField()
+    ext_code = models.PositiveIntegerField(
+        'Внешний код',
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Департамент IRB SimpleOne'
+        verbose_name_plural = 'Департаменты IRB SimpleOne'
+
+    def __str__(self):
+        return self.name
+
+
+class SimpleOneSupportGroup(models.Model):
+    id = models.PositiveBigIntegerField(
+        'id',
+        primary_key=True,
+    )
+    name = models.TextField()
+
+    class Meta:
+        verbose_name = 'Группа поддержки SimpleOne'
+        verbose_name_plural = 'Группы поддержки SimpleOne'
+
+    def __str__(self):
+        return self.name
+
+
+class SimpleOneCIService(models.Model):
+    id = models.PositiveBigIntegerField(
+        'id',
+        primary_key=True,
+    )
+    name = models.TextField()
+
+    class Meta:
+        verbose_name = 'Сервис SimpleOne'
+        verbose_name_plural = 'Сервисы SimpleOne'
+
+    def __str__(self):
+        return self.name
+
+
+class SimpleOneCompany(models.Model):
+    id = models.PositiveBigIntegerField(
+        'id',
+        primary_key=True,
+    )
+    name = models.TextField()
+
+    class Meta:
+        verbose_name = 'Компания SimpleOne'
+        verbose_name_plural = 'Компании SimpleOne'
+
+    def __str__(self):
+        return self.name

@@ -1,4 +1,6 @@
+from django.db import models
 from django.conf import settings
+from django.forms import Textarea
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.admin import GroupAdmin
@@ -21,6 +23,7 @@ from src.models import (
     BotCommand,
     BreakShift,
     BotCommandCategory,
+    SimpleOneTask,
 )
 
 admin.site.unregister(DjangoGroup)
@@ -142,6 +145,30 @@ class SDTaskAdmin(admin.ModelAdmin):
     search_fields = [
         'number',
     ]
+
+
+@admin.register(SimpleOneTask)
+class SimpleOneTaskAdmin(admin.ModelAdmin):
+    list_display = [
+        'number',
+        'fact_start',
+        'subject',
+        'sys_id',
+        'sla',
+        'exp_sla',
+        'request_type',
+        'caller_department',
+        'restaurant',
+        'company',
+        'assignment_group',
+    ]
+    search_fields = [
+        'number',
+    ]
+
+    formfield_overrides = {
+        models.TextField: {'widget': Textarea(attrs={'rows': 2, 'cols': 80})},
+    }
 
 
 @admin.register(GSDTask)

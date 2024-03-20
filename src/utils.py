@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import pytz
 import json
 import logging
@@ -12,13 +14,19 @@ from datetime import timedelta
 from src.bot.scheme import TasksOnShift
 from src.bot.scheme import EngineersOnShift
 from src.bot.scheme import EngineerShiftInfo
+from src.entities.SimpleOneClient import SimpleOneClient
 
-from src.models import CustomGroup
+from src.models import CustomGroup, Restaurant
 from src.models import SDTask
 from src.models import WorkShift
-
+from src.models import SimpleOneRequestType
+from src.models import SimpleOneSupportGroup
+from src.models import SimpleOneIRBDepartment
+from src.models import SimpleOneCompany
+from src.models import SimpleOneCIService
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def configure_logging():
@@ -235,3 +243,124 @@ def format_timedelta(delta: timedelta):
         return f'{hours} ч.'
     # Display only minutes
     return f'{minutes} мин.'
+
+
+async def get_restaurant_by_ext_code(ext_code: int) -> Restaurant:
+    logger.info('Пробую найти ресторан в бд по внешнему коду')
+    logger.debug('ext_code: %s', ext_code)
+    restaurant = await Restaurant.objects.filter(
+        ext_code=ext_code,
+    ).afirst()
+    if not restaurant:
+        logger.info('Для кода %s нет подходящего ресторана в бд', ext_code)
+
+    logger.debug('restaurant %s', restaurant)
+    return restaurant
+
+
+async def get_restaurant_by_applicant(applicant: str) -> Restaurant:
+    logger.info('Пробую найти ресторан в бд по заявителю')
+    logger.debug('applicant: %s', applicant)
+    restaurant = await Restaurant.objects.filter(
+        ext_name__icontains=applicant.split()[1],
+    ).afirst()
+    if not restaurant:
+        logger.info('Не нашел для %s подходящего ресторана в бд',
+                    applicant)
+
+    logger.debug('restaurant %s', restaurant)
+    return restaurant
+
+
+async def get_simpleone_service_name_by_url(
+        service_link: str,
+        api_client: SimpleOneClient = None,
+) -> str:
+    service_id = urlparse(service_link).path.split('/')[-1]
+    try:
+        service_name = await SimpleOneCIService.objects.values('name')\
+                                                       .aget(id=service_id)
+        return service_name
+    except SimpleOneCIService.DoesNotExist:
+        if api_client is None:
+            return ''
+        logger.debug('Попытка получить %s из api', service_id)
+        return await api_client.get_service_name(service_link)
+
+
+async def get_simpleone_company_name_by_url(
+        company_link: str,
+        api_client: SimpleOneClient = None,
+) -> str:
+    company_id = urlparse(company_link).path.split('/')[-1]
+    try:
+        company_name = await SimpleOneCompany.objects.values('name')\
+                                                     .aget(id=company_id)
+        return company_name['name']
+    except SimpleOneCompany.DoesNotExist:
+        if api_client is None:
+            return ''
+        logger.debug('Попытка получить %s из api', company_id)
+        return await api_client.get_company_name(company_link)
+
+
+async def get_simpleone_request_type_name_by_url(
+        request_type_link: str,
+        api_client: SimpleOneClient = None,
+) -> str:
+    type_id = urlparse(request_type_link).path.split('/')[-1]
+    try:
+        type_name = await SimpleOneRequestType.objects.values('name')\
+                                                      .aget(id=type_id)
+        return type_name
+    except SimpleOneRequestType.DoesNotExist:
+        if api_client is None:
+            return ''
+        logger.debug('Попытка получить %s из api', type_id)
+        return await api_client.get_request_type(request_type_link)
+
+
+async def get_simpleone_assignment_group_name_by_url(
+        assignment_group_link: str,
+        api_client: SimpleOneClient = None,
+) -> str:
+    group_id = urlparse(assignment_group_link).path.split('/')[-1]
+    try:
+        group_name = await SimpleOneSupportGroup.objects.values('name')\
+                                                        .aget(id=group_id)
+        return group_name
+    except SimpleOneSupportGroup.DoesNotExist:
+        if api_client is None:
+            return ''
+        logger.debug('Попытка получить %s из api', group_id)
+        return await api_client.get_assignment_group_name(
+            assignment_group_link,
+        )
+
+
+async def get_simpleone_depart_info_by_url(
+        caller_department_link: str,
+        api_client: SimpleOneClient = None,
+) -> tuple:
+    department_id = urlparse(caller_department_link).path.split('/')[-1]
+    try:
+        department = await SimpleOneIRBDepartment.objects.values(
+            'name',
+            'ext_code',
+        ).aget(id=department_id)
+        department_name = department['name']
+        department_ext_code = department['ext_code']
+        return department_name, department_ext_code
+    except SimpleOneIRBDepartment.DoesNotExist:
+        if api_client is None:
+            return '', ''
+        logger.debug('Попытка получить %s из api', department_id)
+        depart_name, depart_code = await api_client.get_caller_department_info(
+            caller_department_link,
+        )
+        await SimpleOneIRBDepartment.objects.acreate(
+            id=int(department_id),
+            name=depart_name,
+            ext_code=depart_code,
+        )
+        return depart_name, depart_code
