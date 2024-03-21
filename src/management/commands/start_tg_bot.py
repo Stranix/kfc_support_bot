@@ -19,6 +19,7 @@ from src.bot.handlers import router
 from src.bot.middlewares import AuthUpdateMiddleware
 from src.bot.middlewares import EmployeeStatusMiddleware
 from src.bot.middlewares import UserGroupMiddleware
+from src.bot.middlewares import RightMiddleware
 
 logger = logging.getLogger('support_bot')
 
@@ -75,5 +76,6 @@ async def run_bot():
     dp.update.outer_middleware(AuthUpdateMiddleware())
     dp.update.outer_middleware(UserGroupMiddleware())
     dp.message.outer_middleware(EmployeeStatusMiddleware())
+    dp.message.outer_middleware(RightMiddleware())
     scheduler.aio_scheduler.start()
     await dp.start_polling(bot, scheduler=scheduler)
