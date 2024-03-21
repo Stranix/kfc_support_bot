@@ -84,6 +84,7 @@ async def new_task_notify_for_engineers(
         description: str,
         creator_contact: str,
         support_group: str,
+        legal: str,
 ) -> str:
     """Уведомление о новой задаче для инженеров или диспетчеров"""
     context = {
@@ -92,6 +93,7 @@ async def new_task_notify_for_engineers(
         'task_description': description.replace('\n', '<br>'),
         'user_tg_nick_name': creator_contact,
         'dispatcher': True if support_group == 'DISPATCHER' else False,
+        'legal': legal,
     }
     return await tg_render_message('bot/common.html', context)
 
@@ -116,6 +118,13 @@ async def support_help_whose_help_is_needed() -> tuple:
     """Команда /support_help. Вопрос чья помощь требуется."""
     message = 'Чья помощь требуется?'
     keyboard = await keyboards.get_choice_support_group_keyboard()
+    return message, keyboard
+
+
+async def support_help_choice_legal_entity() -> tuple:
+    """Команда /support_help. Выбор юр лица"""
+    message = 'К какому юр лицу принадлежит ресторан?'
+    keyboard = await keyboards.get_choice_legal_entity_keyboard()
     return message, keyboard
 
 
@@ -329,7 +338,7 @@ async def sd_task_info(task: SDTask, short: bool = True) -> tuple:
         'short': short,
         'task': task,
     }
-    keyboard = keyboards.get_support_task_keyboard(task.id)
+    keyboard = await keyboards.get_support_task_keyboard(task.id)
     message = await tg_render_message('bot/sd_task.html', context)
     return message, keyboard
 

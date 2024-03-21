@@ -610,6 +610,12 @@ class SDTask(models.Model):
         db_index=True,
         max_length=10,
     )
+    legal = models.CharField(
+        'Выбранное юр лицо',
+        max_length=25,
+        null=True,
+        blank=True,
+    )
     performer = models.ForeignKey(
         'Employee',
         on_delete=models.PROTECT,

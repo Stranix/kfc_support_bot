@@ -78,7 +78,7 @@ async def show_task_info(
         )
         await state.clear()
         return
-    text, keyboard = dialogs.sd_task_info(task)
+    text, keyboard = await dialogs.sd_task_info(task)
     await message.answer(text, reply_markup=keyboard)
     logger.info('Информация по задаче отправлена')
     await state.clear()

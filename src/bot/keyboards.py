@@ -325,3 +325,19 @@ async def get_simpleone_task_keyboard(task_id: int):
         ]
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_choice_legal_entity_keyboard():
+    logger.debug('Создаю клавиатуру выбора юр лица')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='IRB+Unirest',
+                callback_data='legal_irb',
+            ),
+        ],
+        [
+            InlineKeyboardButton(text='Myrest', callback_data='legal_am'),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)

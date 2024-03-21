@@ -3,6 +3,11 @@
 Заявитель: <code>{{ task.new_applicant.name }}</code><br>
 Тема обращения: <code>{{ task.title }}</code><br>
 Описание:<br>{{ task.description }}
+
+{% if task.support_group == 'ENGINEER' %}
+<br><br><i>Выбранное Юр Лицо: {{ task.legal }}</i>
+{% endif %}
+
 {% endif %}
 
 {% if for_performer %}

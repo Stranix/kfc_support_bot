@@ -9,9 +9,14 @@
 Описание: {{ task_description }}<br><br>
 {% endautoescape %}
 Телеграм для связи: @{{ user_tg_nick_name }}
-  {% if dispatcher %}
+
+{% if dispatcher %}
 <br><br>‼<i>Не забудь запросить акт и заключение (если требуется)</i>
   {% endif %}
+
+{% if not dispatcher %}
+<br><br><i>Выбранное Юр лицо: {{ legal }}</i>
+{% endif %}
 {% endif %}
 
 {% if created_task_for_creator %}

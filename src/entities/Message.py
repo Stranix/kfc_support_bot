@@ -126,6 +126,7 @@ class Message:
             task.description,
             task.new_applicant.tg_nickname,
             task.support_group,
+            task.legal,
         )
         keyboard = await keyboards.get_support_task_keyboard(task.id)
         await Message.send_tg_notification(

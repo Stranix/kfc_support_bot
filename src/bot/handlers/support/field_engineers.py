@@ -29,6 +29,7 @@ class NewTaskState(StatesGroup):
     get_gsd_number = State()
     descriptions = State()
     approved = State()
+    legal = State()
 
 
 class CloseTaskState(StatesGroup):
@@ -143,9 +144,18 @@ async def start_new_support_task(message: types.Message, state: FSMContext):
 )
 async def new_task_engineer(query: types.CallbackQuery, state: FSMContext):
     logger.info('support_help_step_2')
-    await query.message.delete()
     await state.update_data(support_group=query.data)
-    await query.message.answer(await dialogs.required_task_number())
+    text, keyboard = await dialogs.support_help_choice_legal_entity()
+    await query.message.edit_text(text, reply_markup=keyboard)
+    await state.set_state(NewTaskState.legal)
+
+
+@router.callback_query(NewTaskState.legal, F.data.startswith('legal'))
+async def choice_legal_entity(query: types.CallbackQuery, state: FSMContext):
+    logger.info('support_help_step_3')
+    legal_entity = query.data.split('_')[-1]
+    await state.update_data(legal=legal_entity)
+    await query.message.edit_text(await dialogs.required_task_number())
     await state.set_state(NewTaskState.get_gsd_number)
 
 
@@ -197,6 +207,7 @@ async def process_task_approved(
         data['get_gsd_number'],
         data['support_group'],
         data['descriptions'],
+        data['legal'],
     )
     await scheduler.add_new_task_schedulers(task)
     await Message.send_new_task_notify(task)

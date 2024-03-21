@@ -14,6 +14,7 @@ class FieldEngineer(User):
             support_group: str,
             description: str,
             *,
+            legal: str = '',
             is_close_task_command: bool = False,
             tg_documents: dict = None,
             is_automatic: bool = False
@@ -27,6 +28,7 @@ class FieldEngineer(User):
             is_close_task_command=is_close_task_command,
             tg_docs=tg_documents,
             is_automatic=is_automatic,
+            legal=legal,
         )
         task.number = f'SD-{task.id}'
         await task.asave()
@@ -57,16 +59,22 @@ class FieldEngineer(User):
             number: str,
             support_group: str,
             description: str,
+            legal: str = '',
     ) -> SDTask:
         """Создание задачи для помощи выездному инженеру"""
         logger.info(
             'Создание задачи для помощи выездному инженеру по задаче %s',
             number,
         )
+        if legal == 'irb':
+            legal = 'IRB+Unirest'
+        if legal == 'am':
+            legal = 'Myrest'
         sd_task = await self.create_sd_task(
             f'Помощь по заявке {number}',
             support_group,
             description,
+            legal=legal,
         )
         return sd_task
 
