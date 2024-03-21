@@ -232,7 +232,7 @@ async def process_dispatchers_task(
         state: FSMContext,
 ):
     logger.info(
-        'Создание заявки на закрытие в GSD из диспетчера от выездного %s',
+        'Создание заявки на закрытие во внешней системе от выездного %s',
         employee.name,
     )
     task_id = query.data.split('_')[2]
@@ -285,7 +285,7 @@ async def process_dispatchers_task_get_doc(
         task_commit=task.closing_comment,
     )
     sd_task = await field_engineer.create_task_closing_from_dispatcher(
-        str(task.dispatcher_number),
+        task,
         description,
         tg_documents.documents,
     )

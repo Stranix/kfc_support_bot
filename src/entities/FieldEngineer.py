@@ -1,6 +1,6 @@
 import logging
 
-from src.models import SDTask
+from src.models import SDTask, Dispatcher
 from src.entities.User import User
 
 logger = logging.getLogger('support_bot')
@@ -72,17 +72,20 @@ class FieldEngineer(User):
 
     async def create_task_closing_from_dispatcher(
             self,
-            number: str,
+            task: Dispatcher,
             description: str,
             documents: dict,
     ) -> SDTask:
         """Создание задачи для закрытия на основе отбивки в чате"""
         logger.info(
-            'Создание задачи для помощи выездному инженеру по задаче %s',
-            number,
+            'Диспетчер: %s Закрытие заявки внешней системы',
+            task.dispatcher_number,
         )
+        outside_number = task.gsd_numbers
+        if task.simpleone_number:
+            outside_number = task.simpleone_number
         sd_task = await self.create_sd_task(
-            f'Закрыть заявку из диспетчера {number}',
+            f'Закрыть заявку {outside_number}',
             'DISPATCHER',
             description,
             is_close_task_command=True,
