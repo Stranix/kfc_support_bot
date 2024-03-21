@@ -1,0 +1,36 @@
+{% if short %}
+Номер: <code>{{ task.number }}</code><br>
+Статус: <code>{{ task.status }}</code><br>
+Группа Поддержки: <code>{{ task.support_group  }}</code><br><br>
+
+Тема: <code>{{ task.title }}</code><br><br>
+
+Заявитель: <code>{{ task.new_applicant }}</code>
+  (@{{ task.new_applicant.tg_nickname}})<br>
+{% autoescape off %}
+Исполнитель: {{ performer}}<br><br>
+{% endautoescape %}
+
+Зарегистрирована в: <code>{{ task.start_at|date:'d-m-Y H:i:s' }}</code><br>
+Закрыта в: <code>{{ task.finish_at|date:'d-m-Y H:i:s'}}</code><br>
+{% endif %}
+
+
+{% if not short %}
+Номер: <code>{{ task.number }}</code><br>
+Статус: <code>{{ task.status }}</code><br>
+Группа Поддержки: <code>{{ task.support_group  }}</code><br><br>
+
+Заявитель: <code>{{ task.new_applicant }}</code>
+  (@{{ task.new_applicant.tg_nickname}})<br>
+{% autoescape off %}
+Исполнитель:{{ performer}}<br><br>
+{% endautoescape %}
+
+Зарегистрирована в: <code>{{ task.start_at|date:'d-m-Y H:i:s' }}</code><br>
+Закрыта в: <code>{{ task.finish_at|date:'d-m-Y H:i:s'}}</code><br><br>
+Тема: <code>{{ task.title }}</code><br>
+Описание: <code>{{ task.description }}</code><br><br>
+
+Оценка: <code>{{ task.rating|default_if_none:'' }}</code>
+{% endif %}

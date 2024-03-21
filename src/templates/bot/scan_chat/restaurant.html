@@ -1,0 +1,9 @@
+Код: <code>{{ restaurant.code }}</code><br>
+RK Ident: <code>{{ restaurant.id }}</code><br>
+Ресторан: <code>{{ restaurant.name }}</code><br>
+Юр лицо: <code>{{ restaurant.legal_entity }}</code><br>
+Внешний код: <code>{{ restaurant.ext_code }}</code><br>
+Телефон: <code>{{ restaurant.phone }}</code><br>
+Почта: {{ restaurant.address_guid }}<br>
+Ip Сервера: <code>{{ restaurant.server_ip }}</code><br>
+Синхронизация: {% if  restaurant.is_sync %}✅{% else %}⛔{% endif %}

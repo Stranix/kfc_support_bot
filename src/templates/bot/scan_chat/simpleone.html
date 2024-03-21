@@ -1,0 +1,32 @@
+{% if short %}
+Номер: <code>{{ task.number }}</code><br>
+Заявитель: <code>{{ task.caller_department }}</code><br>
+{% autoescape off %}
+Тема: <code>{{ task.subject }}</code><br><br>
+{% endautoescape %}
+
+SLA: <code>{{ task.sla }}</code><br>
+Задача Создана: <code>{{ task.fact_start|date:'d-m-Y H:i:s' }}</code><br>
+<u>Выполнить ДО:</u> <code>{{ task.exp_sla|date:'d-m-Y H:i:s' }}</code><br><br>
+
+Контакты: <b>{{ task.contact_information }}</b>
+{% endif %}
+
+{% if not short %}
+Номер: <code>{{ task.number }}</code><br>
+Группа Назначения: <code>{{ task.assignment_group }}</code><br>
+Заявитель: <code>{{ task.caller_department }}</code><br>
+Компания: <code>{{ task.company }}</code><br><br>
+
+SLA: <code>{{ task.sla }}</code><br>
+Задача Создана: <code>{{ task.fact_start|date:'d-m-Y H:i:s' }}</code><br>
+<u>Выполнить ДО:</u> <code>{{ task.exp_sla|date:'d-m-Y H:i:s' }}</code><br><br>
+
+Сервис: <code>{{ task.service }}</code><br>
+Проблема: <code>{{ task.request_type }}</code><br>
+{% autoescape off %}
+Тема: <code>{{ task.subject }}</code><br><br>
+{% endautoescape %}
+
+Контакты: <b>{{ task.contact_information }}</b>
+{% endif %}

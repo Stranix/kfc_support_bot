@@ -5,7 +5,8 @@ from typing import Any
 from django.template.loader import render_to_string
 
 from src.bot import keyboards
-from src.models import SDTask
+from src.entities.SupportEngineer import SupportEngineer
+from src.models import SDTask, GSDTask, SimpleOneTask, Restaurant
 
 logger = logging.getLogger('support_bot')
 
@@ -502,3 +503,72 @@ async def sd_task_close_for_performer(task_number: str) -> str:
         'number': task_number,
     }
     return await tg_render_message('bot/close_task.html', context)
+
+
+async def scan_chat_sd_task_info(
+        task: SDTask,
+        engineer: SupportEngineer,
+        short: bool = True,
+) -> tuple:
+    """Описание внутренней задачи"""
+    assign = False
+    performer = ''
+    if not task.new_performer and await engineer.has_perm('assign'):
+        assign = True
+    if task.new_performer:
+        name = task.new_performer.name
+        nickname = task.new_performer.tg_nickname
+        performer = f'<code>{name}</code>(@{nickname})'
+    context = {
+        'short': short,
+        'task': task,
+        'performer': performer,
+    }
+    message = await tg_render_message('bot/scan_chat/sd.html', context)
+    keyboard = await keyboards.get_sd_task_keyboard(
+        task.id,
+        short=short,
+        assign=assign,
+    )
+    return message, keyboard
+
+
+async def scan_chat_gsd_task_info(task: GSDTask, short: bool = True) -> tuple:
+    """Описание задачи GSD"""
+    keyboard = None
+    context = {
+        'short': short,
+        'task': task,
+    }
+    message = await tg_render_message('bot/scan_chat/gsd.html', context)
+    if short:
+        keyboard = await keyboards.get_gsd_task_keyboard(task.id)
+    return message, keyboard
+
+
+async def scan_chat_simpleone_task_info(
+        task: SimpleOneTask,
+        short: bool = True,
+) -> tuple:
+    """Описание задачи SimpleOne"""
+    keyboard = None
+    context = {
+        'short': short,
+        'task': task,
+    }
+    message = await tg_render_message('bot/scan_chat/simpleone.html', context)
+    if short:
+        keyboard = await keyboards.get_simpleone_task_keyboard(task.id)
+    return message, keyboard
+
+
+async def restaurant_info(restaurant: Restaurant) -> str:
+    """Информация по ресторану"""
+    context = {
+        'restaurant': restaurant,
+    }
+    return await tg_render_message('bot/scan_chat/restaurant.html', context)
+
+
+async def error_restaurant_not_found() -> str:
+    return 'Не нашел ресторан'

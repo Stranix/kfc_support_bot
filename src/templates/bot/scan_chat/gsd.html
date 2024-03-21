@@ -1,0 +1,25 @@
+{% if short %}
+Номер: <code>{{ task.number }}</code><br>
+Тема: <code>{{ task.title }}</code><br>
+Заявитель: <code>{{ task.applicant }}</code><br><br>
+
+Дата Регистрации: <code>{{ task.start_at|date:'d-m-Y H:i:s' }}</code><br>
+Срок Обработки: <code>{{ task.expired_at|date:'d-m-Y H:i:s' }}</code>
+{% endif %}
+
+{% if not short %}
+Номер: <code>{{ task.number }}</code><br>
+Группа GSD: <code>{{ task.gsd_group }}</code><br>
+Тема: <code>{{ task.title }}</code><br>
+Заявитель: <code>{{ task.applicant }}</code><br><br>
+
+Дата Регистрации: <code>{{ task.start_at|date:'d-m-Y H:i:s' }}</code><br>
+Срок Обработки: <code>{{ task.expired_at|date:'d-m-Y H:i:s' }}</code><br><br>
+
+Услуга: <code>{{ task.service }}</code><br>
+Тема: <code>{{ task.title }}</code><br><br>
+
+{% autoescape off %}
+{{ task.description }}
+{% endautoescape %}
+{% endif %}

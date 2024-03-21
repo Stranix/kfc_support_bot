@@ -285,3 +285,43 @@ async def get_yes_no_cancel_keyboard():
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_sd_task_keyboard(
+        task_id: int,
+        *,
+        short: bool = True,
+        assign: bool = False,
+):
+    logger.debug('Создаю Кнопку запроса доп информации по задаче SD')
+    inline_keyboard = []
+    if short:
+        inline_keyboard.append([
+            InlineKeyboardButton(
+                text='📄 Показать полную информацию',
+                callback_data=f'sd_task_{task_id}',
+            ),
+        ])
+    if assign:
+        inline_keyboard.append([
+            InlineKeyboardButton(
+                text='Назначить на инженера',
+                callback_data=f'atask_{task_id}'
+            ),
+        ])
+    if not inline_keyboard:
+        return None
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
+async def get_simpleone_task_keyboard(task_id: int):
+    logger.debug('Создаю Кнопку запроса доп информации по задаче SimpleOne')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='📄 Показать полную информацию',
+                callback_data=f'simpleone_task_{task_id}',
+            ),
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
