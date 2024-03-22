@@ -32,10 +32,10 @@ class UserGroupMiddleware(BaseMiddleware):
             data['field_engineer'] = FieldEngineer(employee)
         if await employee.groups.filter(
             name__in=(
-                    'Инженеры',
-                    'Старшие инженеры',
-                    'Ведущие инженеры',
-                    'Диспетчеры',
+                'Инженеры',
+                'Старшие инженеры',
+                'Ведущие инженеры',
+                'Диспетчеры',
             )
         ).aexists():
             data['support_engineer'] = SupportEngineer(employee)
