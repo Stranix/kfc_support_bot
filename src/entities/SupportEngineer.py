@@ -164,7 +164,7 @@ class SupportEngineer(User):
 
     async def get_available_to_assign(self):
         """Получаем сотрудников доступных для назначения"""
-        engineer_group = await self.user.groups.afirst()
+        engineer_group = await self.user.objects.get_main_user_group()
         logger.debug('Текущая группа: %s', engineer_group)
         if engineer_group.name == 'Старшие инженеры':
             groups_name = ('Инженеры',)
