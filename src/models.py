@@ -873,7 +873,7 @@ class SimpleOneTask(models.Model):
     fact_start = models.DateTimeField('Старт задачи')
     service_link = models.TextField('Ссылка на сервис в api')
     subject = models.TextField('Тема Обращения')
-    sys_id = models.PositiveIntegerField('Id Задачи в simple')
+    sys_id = models.PositiveBigIntegerField('Id Задачи в simple')
     caller_department_link = models.TextField('Ссылка на ресторан в api')
     contact_information = models.TextField('Контакты')
     sla = models.CharField('SLA', max_length=10, null=True, blank=True)
