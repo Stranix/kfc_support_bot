@@ -868,7 +868,7 @@ class Dispatcher(models.Model):
 class SimpleOneTask(models.Model):
     assignment_group_link = models.TextField('Сcылка на группу в api')
     company_link = models.TextField('Сcылка на компанию в api')
-    description = models.TextField('Описание задачи', default='-')
+    description = models.TextField('Описание задачи', default='-', null=True)
     number = models.CharField('Номер задачи', max_length=15)
     fact_start = models.DateTimeField('Старт задачи')
     service_link = models.TextField('Ссылка на сервис в api')

@@ -10,6 +10,7 @@ from typing import Any
 from datetime import datetime
 
 from bs4 import BeautifulSoup
+from django.db import IntegrityError
 from django.utils import timezone
 
 from src import utils
@@ -165,15 +166,18 @@ def convert_str_datetime(
 
 async def save_parsed_task_in_db(task: ParsedGSDTask | ParsedSimpleOneTask):
     logger.info('Сохраняю задачу в БД')
-    if isinstance(task, ParsedGSDTask):
-        logger.info('Задача из GSD')
-        await GSDTask.objects.aupdate_or_create(
-            number=task.number,
-            defaults=asdict(task),
-        )
-    if isinstance(task, ParsedSimpleOneTask):
-        logger.info('Задача из SimpleOne')
-        await SimpleOneTask.objects.aupdate_or_create(
-            number=task.number,
-            defaults=asdict(task),
-        )
+    try:
+        if isinstance(task, ParsedGSDTask):
+            logger.info('Задача из GSD')
+            await GSDTask.objects.aupdate_or_create(
+                number=task.number,
+                defaults=asdict(task),
+            )
+        if isinstance(task, ParsedSimpleOneTask):
+            logger.info('Задача из SimpleOne')
+            await SimpleOneTask.objects.aupdate_or_create(
+                number=task.number,
+                defaults=asdict(task),
+            )
+    except IntegrityError:
+        logger.warning('Не смог сохранить задачу %s', task.number)
