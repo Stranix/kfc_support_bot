@@ -13,6 +13,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from src.bot import dialogs
+from src.bot.services import prepare_restaurant_as_file_for_send
 from src.models import CustomGroup, Restaurant
 from src.models import CustomUser
 from src.models import BotCommand
@@ -174,6 +175,15 @@ async def cmd_rest_info_step_2(message: types.Message, state: FSMContext):
     logger.debug('restaurants: %s', restaurants)
     if not restaurants:
         await message.reply(await dialogs.error_restaurant_not_found())
+        await state.clear()
+        return
+    if len(restaurants) > 2:
+        file_to_send = await prepare_restaurant_as_file_for_send(
+            'Найденные рестораны',
+            restaurants,
+            'rests_info.txt'
+        )
+        await message.answer_document(file_to_send, caption='Рестораны')
         await state.clear()
         return
     for restaurant in restaurants:

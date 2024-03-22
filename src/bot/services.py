@@ -17,7 +17,7 @@ from src.bot import dialogs
 from src.bot.scheme import TGDocument
 from src.entities.User import User
 from src.exceptions import DocumentsNotFoundError, NoSelectedEngineerError
-from src.models import CustomUser, SDTask, CustomGroup, Dispatcher
+from src.models import CustomUser, SDTask, CustomGroup, Dispatcher, Restaurant
 
 logger = logging.getLogger('support_bot')
 
@@ -220,6 +220,34 @@ async def prepare_tasks_as_file_for_send(
                f'Тип обращения: {task.title}\n' \
                f'Дата регистрации: {start_at}\n' \
                f'Текст обращения: {task.description}'
+        report.append(text)
+    file = '\n\n'.join(report).encode('utf-8')
+    formatted_date = dateformat.format(timezone.now(), 'd-m-Y')
+    file_name = formatted_date + f'_{file_name}'
+    logger.info('Подготовка завершена')
+    return BufferedInputFile(file, filename=file_name)
+
+
+async def prepare_restaurant_as_file_for_send(
+        report_title: str,
+        restaurants: list[Restaurant],
+        file_name: str,
+) -> BufferedInputFile:
+    """Подготовка задач в виде файла для отправки в телеграм"""
+    logger.info('Подготовка задач')
+    report = [f'{report_title}:\n']
+    for restaurant in restaurants:
+        text = (
+            f'Код: {restaurant.code}\n'
+            f'RK Ident: {restaurant.id}\n'
+            f'Ресторан: {restaurant.name}\n'
+            f'Юр лицо: {restaurant.legal_entity}\n'
+            f'Внешний код: {restaurant.ext_code}\n'
+            f'Телефон: {restaurant.phone}\n'
+            f'Почта: {restaurant.address_guid}\n'
+            f'Ip Сервера: {restaurant.server_ip}\n'
+            f'Синхронизация: { restaurant.is_sync }'
+        )
         report.append(text)
     file = '\n\n'.join(report).encode('utf-8')
     formatted_date = dateformat.format(timezone.now(), 'd-m-Y')
