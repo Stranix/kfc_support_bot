@@ -12,7 +12,8 @@ from asgiref.sync import sync_to_async
 
 from django.conf import settings
 
-from src.models import CustomGroup
+from src.bot import dialogs
+from src.models import CustomGroup, Restaurant
 from src.models import CustomUser
 from src.models import BotCommand
 from src.bot.keyboards import create_tg_keyboard_markup
@@ -27,6 +28,10 @@ class UserActivationState(StatesGroup):
 
 class UserFeedBackState(StatesGroup):
     feedback = State()
+
+
+class RestaurantInfoState(StatesGroup):
+    rest_name = State()
 
 
 @router.message(Command('start'))
@@ -153,3 +158,23 @@ async def process_feedback(
         f'Фидбек от пользователя {employee.name}\n\n{feedback}\n\n\n#feedback')
     await message.answer('FeedBack отправлен. Спасибо за обратную связь!')
     await state.clear()
+
+
+@router.message(Command('rest_info'))
+async def cmd_rest_info_step_1(message: types.Message, state: FSMContext):
+    """Поиск информации по ресторану (поиск в имени)"""
+    await message.answer(await dialogs.request_rest_name())
+    await state.set_state(RestaurantInfoState.rest_name)
+
+
+@router.message(RestaurantInfoState.rest_name)
+async def cmd_rest_info_step_2(message: types.Message, state: FSMContext):
+    """Поиск информации по ресторану (поиск в имени). Шаг 2"""
+    restaurants = await Restaurant.objects.by_name(message.text)
+    logger.debug('restaurants: %s', restaurants)
+    if not restaurants:
+        await message.reply(await dialogs.error_restaurant_not_found())
+        await state.clear()
+        return
+    for restaurant in restaurants:
+        await message.reply(await dialogs.restaurant_info(restaurant))

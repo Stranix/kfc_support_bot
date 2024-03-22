@@ -581,3 +581,10 @@ async def restaurant_info(restaurant: Restaurant) -> str:
 
 async def error_restaurant_not_found() -> str:
     return 'Не нашел ресторан'
+
+
+async def request_rest_name() -> str:
+    context = {
+        'rest_name': True,
+    }
+    return await tg_render_message('bot/common.html', context)

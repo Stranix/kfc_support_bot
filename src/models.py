@@ -333,6 +333,12 @@ class FranchiseOwner(models.Model):
         return self.name
 
 
+class RestaurantQuerySet(models.QuerySet):
+
+    async def by_name(self, name: str):
+        return await sync_to_async(list)(self.filter(name__icontains=name))
+
+
 class Restaurant(models.Model):
     name = models.CharField(
         'Имя ресторана',
@@ -392,6 +398,8 @@ class Restaurant(models.Model):
         verbose_name='Франшиза',
     )
     is_sync = models.BooleanField('Синхронизация?', default=False)
+
+    objects = RestaurantQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Ресторан'
