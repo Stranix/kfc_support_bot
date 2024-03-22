@@ -11,6 +11,7 @@ from src.models import SDTask
 from src.entities.Message import Message
 from src.entities.FieldEngineer import FieldEngineer
 from src.entities.SupportEngineer import SupportEngineer
+from src.entities.Scheduler import Scheduler
 
 logger = logging.getLogger('support_bot')
 router = Router(name='additional_handlers')
@@ -20,6 +21,7 @@ router = Router(name='additional_handlers')
 async def process_additional_work(
         query: types.CallbackQuery,
         support_engineer: SupportEngineer,
+        scheduler: Scheduler,
         state: FSMContext,
 ):
     """Передача заявки в чат доп работ"""
@@ -46,5 +48,7 @@ async def process_additional_work(
         task.title,
         docs,
     )
+    job_id = f'job_{task.number}_deadline'
+    await scheduler.delete_scheduler_job_by_id(job_id)
     await state.clear()
     logger.info('Работа обработчика завершена')

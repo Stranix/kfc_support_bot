@@ -16,6 +16,7 @@ from src.bot import services
 from src.models import SDTask
 from src.entities.Message import Message
 from src.entities.SupportEngineer import SupportEngineer
+from src.entities.Scheduler import Scheduler
 
 
 logger = logging.getLogger('support_bot')
@@ -200,6 +201,7 @@ async def close_task(
 async def process_close_task(
         message: types.Message,
         support_engineer: SupportEngineer,
+        scheduler: Scheduler,
         regexp: re.Match[str],
         state: FSMContext,
 ):
@@ -232,6 +234,8 @@ async def process_close_task(
         return
     if task.support_group == 'ENGINEER':
         task = await support_engineer.engineer_close_task(task.id)
+        job_id = f'job_{task.number}_deadline'
+        await scheduler.delete_scheduler_job_by_id(job_id)
         await Message.send_close_task_notify(task)
         await state.clear()
 
@@ -328,6 +332,7 @@ async def dispatcher_close_task_comment(
 async def dispatcher_close_task_approved(
         query: types.CallbackQuery,
         support_engineer: SupportEngineer,
+        scheduler: Scheduler,
         state: FSMContext,
 ):
     logger.info('Старт закрытия задачи диспетчером')
@@ -341,6 +346,8 @@ async def dispatcher_close_task_approved(
         data['get_doc'],
         data['task_comment']
     )
+    job_id = f'job_{task.number}_deadline'
+    await scheduler.delete_scheduler_job_by_id(job_id)
     await Message.send_close_task_notify(task)
     await state.clear()
 
