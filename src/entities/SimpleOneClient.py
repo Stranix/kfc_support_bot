@@ -3,6 +3,8 @@ import aiohttp
 
 from urllib.parse import urljoin
 
+from aiohttp.web_exceptions import HTTPUnauthorized
+
 from django.conf import settings
 from django.utils import timezone
 
@@ -42,7 +44,7 @@ class SimpleOneClient:
                     logger.debug(await response.text())
                     return
                 if response.status == 401:
-                    raise aiohttp.web_exceptions.HTTPUnauthorized
+                    raise HTTPUnauthorized
                 logger.debug('response.json(): %s', await response.json())
                 return await response.json()
 
@@ -107,7 +109,7 @@ class SimpleOneClient:
         logger.debug('url: %s', url)
         try:
             task_info = await self.send_get_request(url)
-        except aiohttp.web_exceptions.HTTPUnauthorized:
+        except HTTPUnauthorized:
             logger.info('Токен не подходит. Обновляю')
             await self.get_token(force=True)
             task_info = await self.send_get_request(url)
