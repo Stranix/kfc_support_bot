@@ -276,11 +276,13 @@ async def get_simpleone_service_name_by_url(
         api_client: SimpleOneClient = None,
 ) -> str:
     service_id = urlparse(service_link).path.split('/')[-1]
+    logger.debug('Поиск service_name id (%s) в бд', service_id)
     try:
         service_name = await SimpleOneCIService.objects.values('name')\
                                                        .aget(id=service_id)
         return service_name
     except SimpleOneCIService.DoesNotExist:
+        logger.debug('Совпадений в базе не найдено')
         if api_client is None:
             return ''
         logger.debug('Попытка получить %s из api', service_id)
@@ -292,11 +294,13 @@ async def get_simpleone_company_name_by_url(
         api_client: SimpleOneClient = None,
 ) -> str:
     company_id = urlparse(company_link).path.split('/')[-1]
+    logger.debug('Поиск company_name id (%s) в бд', company_id)
     try:
         company_name = await SimpleOneCompany.objects.values('name')\
                                                      .aget(id=company_id)
         return company_name['name']
     except SimpleOneCompany.DoesNotExist:
+        logger.debug('Совпадений в базе не найдено')
         if api_client is None:
             return ''
         logger.debug('Попытка получить %s из api', company_id)
@@ -308,11 +312,13 @@ async def get_simpleone_request_type_name_by_url(
         api_client: SimpleOneClient = None,
 ) -> str:
     type_id = urlparse(request_type_link).path.split('/')[-1]
+    logger.debug('Поиск request_type_name id (%s) в бд', type_id)
     try:
         type_name = await SimpleOneRequestType.objects.values('name')\
                                                       .aget(id=type_id)
         return type_name
     except SimpleOneRequestType.DoesNotExist:
+        logger.debug('Совпадений в базе не найдено')
         if api_client is None:
             return ''
         logger.debug('Попытка получить %s из api', type_id)
@@ -324,11 +330,13 @@ async def get_simpleone_assignment_group_name_by_url(
         api_client: SimpleOneClient = None,
 ) -> str:
     group_id = urlparse(assignment_group_link).path.split('/')[-1]
+    logger.debug('Поиск assignment_group_name id (%s) в бд', group_id)
     try:
         group_name = await SimpleOneSupportGroup.objects.values('name')\
                                                         .aget(id=group_id)
         return group_name
     except SimpleOneSupportGroup.DoesNotExist:
+        logger.debug('Совпадений в базе не найдено')
         if api_client is None:
             return ''
         logger.debug('Попытка получить %s из api', group_id)
@@ -342,6 +350,7 @@ async def get_simpleone_depart_info_by_url(
         api_client: SimpleOneClient = None,
 ) -> tuple:
     department_id = urlparse(caller_department_link).path.split('/')[-1]
+    logger.debug('Поиск depart_info id (%s) в бд', department_id)
     try:
         department = await SimpleOneIRBDepartment.objects.values(
             'name',
@@ -351,6 +360,7 @@ async def get_simpleone_depart_info_by_url(
         department_ext_code = department['ext_code']
         return department_name, department_ext_code
     except SimpleOneIRBDepartment.DoesNotExist:
+        logger.debug('Совпадений в базе не найдено')
         if api_client is None:
             return '', ''
         logger.debug('Попытка получить %s из api', department_id)
