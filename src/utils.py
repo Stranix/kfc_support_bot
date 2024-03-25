@@ -25,8 +25,7 @@ from src.models import SimpleOneIRBDepartment
 from src.models import SimpleOneCompany
 from src.models import SimpleOneCIService
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger('support_bot')
 
 
 def configure_logging():
