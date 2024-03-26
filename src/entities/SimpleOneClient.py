@@ -40,8 +40,7 @@ class SimpleOneClient:
                 logger.debug('response: %s', response.status)
                 logger.debug('content-type: %s', header_content_type)
                 if header_content_type.split(';')[0] == 'text/html':
-                    logger.error('Что то пошло не так')
-                    logger.debug(await response.text())
+                    logger.error('Что то пошло не так. Не верный тип ответа')
                     return
                 if response.status == 401:
                     raise HTTPUnauthorized
