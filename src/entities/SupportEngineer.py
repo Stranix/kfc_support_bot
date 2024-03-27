@@ -164,7 +164,7 @@ class SupportEngineer(User):
 
     async def get_available_to_assign(self):
         """Получаем сотрудников доступных для назначения"""
-        engineer_group = await self.user.objects.get_main_user_group()
+        engineer_group = await self.get_main_user_group()
         logger.debug('Текущая группа: %s', engineer_group)
         if engineer_group.name == 'Старшие инженеры':
             groups_name = ('Инженеры',)
@@ -250,3 +250,12 @@ class SupportEngineer(User):
         task = await self.update_sd_task(task_id, task_update)
         logger.info('Задача %s закрыта', task.number)
         return task
+
+    async def get_main_user_group(self):
+        groups = [
+            'Ведущие инженеры',
+            'Старшие инженеры',
+            'Инженеры',
+            'Диспетчеры',
+        ]
+        return await self.user.groups.filter(name__in=groups).afirst()
