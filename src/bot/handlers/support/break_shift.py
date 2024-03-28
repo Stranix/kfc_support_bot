@@ -26,6 +26,7 @@ async def start_break_shift(
         message: types.Message,
         support_engineer: SupportEngineer,
 ):
+    logger.info('/break_start. Пользователь: %s', support_engineer.user.name)
     try:
         await support_engineer.start_break()
         logger.info('Отправляю уведомление менеджеру и пользователю')
@@ -47,6 +48,7 @@ async def stop_break_shift(
         message: types.Message,
         support_engineer: SupportEngineer,
 ):
+    logger.info('/break_stop. Пользователь: %s', support_engineer.user.name)
     try:
         await support_engineer.stop_break()
         logger.info('Отправляю уведомление менеджеру и пользователю')

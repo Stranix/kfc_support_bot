@@ -35,7 +35,7 @@ async def message_exception(
         settings.TG_BOT_ADMIN,
         f'Произошла ошибка в обработчике {message.text}\n\n'
         f'Пользователь: {employee.name}\n'
-        f'Телега: {employee.tg_nickname}'
+        f'Телега: @{employee.tg_nickname}'
     )
     await message.answer(
         '😱 ОЙ! При обработке возникла ошибка.\n'
@@ -58,7 +58,7 @@ async def callback_exception(
         settings.TG_BOT_ADMIN,
         f'Произошла ошибка при callback: {html.code(query.data)}\n\n'
         f'Пользователь: {employee.name}\n'
-        f'Телега: {employee.tg_nickname}'
+        f'Телега: @{employee.tg_nickname}'
     )
     await query.message.answer(
         '😱 ОЙ! При обработке возникла ошибка.\n'

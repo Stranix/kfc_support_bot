@@ -95,6 +95,7 @@ async def process_start_task(
         support_engineer: SupportEngineer,
 ):
     task_id = query.data.split('_')[1]
+    logger.info('Взятие задачи в работу с id: %s', task_id)
     try:
         task = await support_engineer.start_task(task_id)
         await Message.send_start_task_notify(task)
@@ -274,6 +275,7 @@ async def dispatcher_close_task_approved_doc_yes(
         query: types.CallbackQuery,
         state: FSMContext,
 ):
+    logger.info('Набор документов подтвержден')
     await query.message.delete()
     text, keyboard = await dialogs.request_sub_tasks()
     await query.message.answer(text, reply_markup=keyboard)
@@ -285,6 +287,7 @@ async def dispatcher_close_task_approved_doc_no(
         query: types.CallbackQuery,
         state: FSMContext,
 ):
+    logger.info('Набор документов НЕ подтвержден')
     await query.answer()
     await query.message.answer(await dialogs.retry_request_documents())
     await state.update_data(get_doc=State())
@@ -296,7 +299,7 @@ async def dispatcher_close_task_approved_sub_tasks(
         message: types.Message,
         state: FSMContext,
 ):
-    logger.debug('Получение и проверка дочерних обращений')
+    logger.info('Получение и проверка дочерних обращений')
     sub_tasks = []
     if message.text.lower() != 'нет':
         sub_tasks = re.findall(r'([a-zA-Z]{2,3}\S?[0-9]{7})+', message.text)
@@ -316,6 +319,7 @@ async def dispatcher_close_task_comment(
         message: types.Message,
         state: FSMContext,
 ):
+    logger.info('Закрытие задачи диспетчер - Финальное подтверждение')
     data = await state.get_data()
     docs_names = ', '.join(data['get_doc'].keys())
     text, keyboard = await dialogs.close_task_request_approved(
@@ -361,6 +365,7 @@ async def get_employee_active_tasks(
         message: types.Message,
         support_engineer: SupportEngineer,
 ):
+    logger.info('/my_active_tasks. Получение активных задач')
     try:
         tasks = await support_engineer.get_task_in_work()
         file_to_send = await services.prepare_tasks_as_file_for_send(
@@ -378,6 +383,7 @@ async def get_employee_active_tasks(
 
 @router.message(Command('new_tasks'))
 async def get_new_tasks(message: types.Message):
+    logger.info('/new_tasks. Получение Не назначенных задач')
     tasks = await SDTask.objects.get_not_assign_task()
     logger.debug('Список найденных новых задач: %s', tasks)
     if not tasks:

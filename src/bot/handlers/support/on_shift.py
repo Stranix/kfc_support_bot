@@ -19,7 +19,7 @@ async def on_shift(
         support_engineer: SupportEngineer,
         scheduler: Scheduler,
 ):
-    logger.info('Сотрудник заступает на смену')
+    logger.info('Сотрудник %s заступает на смену', support_engineer.user.name)
     if await support_engineer.is_active_shift:
         await message.answer(await dialogs.work_shift_exist())
         return
@@ -36,3 +36,4 @@ async def on_shift(
         await support_engineer.group_id,
         await dialogs.engineer_on_shift(support_engineer.user.name),
     )
+    logger.info('Процесс завершен')

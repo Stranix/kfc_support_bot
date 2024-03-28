@@ -74,6 +74,7 @@ async def process_close_task_get_documents(
         state: FSMContext,
         album: dict,
 ):
+    logger.info('Получение документов')
     tg_documents = await services.get_documents(message, album)
     if tg_documents.is_error:
         await message.answer(tg_documents.error_msg)

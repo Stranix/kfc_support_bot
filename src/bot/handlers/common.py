@@ -37,7 +37,7 @@ class RestaurantInfoState(StatesGroup):
 
 @router.message(Command('start'))
 async def cmd_start(message: types.Message, employee: CustomUser):
-    logger.debug('Обработчик команды /start')
+    logger.info('Обработчик команды /start')
     emp_status = 'Активна' if employee.is_active else 'Не активна'
     await message.answer(
         f'Приветствую {employee.name}!\n'
@@ -94,7 +94,7 @@ async def activate_user_step_2(message: types.Message, state: FSMContext):
 
 @router.message(Command('help'))
 async def cmd_help(message: types.Message, employee: CustomUser):
-    logger.debug('Обработчик команды /help')
+    logger.info('Обработчик команды /help')
     emp_groups = employee.groups.all()
     logger.debug('emp_groups: %s', emp_groups)
     bot_commands = await sync_to_async(list)(
@@ -124,6 +124,7 @@ async def cmd_help(message: types.Message, employee: CustomUser):
 
 @router.message(Command('cancel'))
 async def cmd_cancel(message: types.Message, state: FSMContext):
+    logger.info('/cancel. Отмена действий')
     await message.answer(
         'Действие отменено',
         reply_markup=types.ReplyKeyboardRemove()
@@ -133,6 +134,7 @@ async def cmd_cancel(message: types.Message, state: FSMContext):
 
 @router.callback_query(F.data == 'cancel')
 async def callback_cmd_cancel(query: types.CallbackQuery, state: FSMContext):
+    logger.info('отмена действий через кнопку')
     await query.answer('Действие отменено', show_alert=True)
     await query.message.delete()
     await state.clear()
@@ -140,6 +142,7 @@ async def callback_cmd_cancel(query: types.CallbackQuery, state: FSMContext):
 
 @router.message(Command('feedback'))
 async def cmd_feedback(message: types.Message, state: FSMContext):
+    logger.info('/feedback. Старт команды')
     await message.answer(
         'Оставьте пожелания по работе бота\n'
         'Для отмены используйте команду /cancel'
@@ -153,17 +156,20 @@ async def process_feedback(
         employee: CustomUser,
         state: FSMContext,
 ):
+    logger.info('Фидбек получен. Отправка')
     feedback = message.text
     await message.bot.send_message(
         settings.TG_BOT_ADMIN,
         f'Фидбек от пользователя {employee.name}\n\n{feedback}\n\n\n#feedback')
     await message.answer('FeedBack отправлен. Спасибо за обратную связь!')
     await state.clear()
+    logger.info('Отправка завершена')
 
 
 @router.message(Command('rest_info'))
 async def cmd_rest_info_step_1(message: types.Message, state: FSMContext):
     """Поиск информации по ресторану (поиск в имени)"""
+    logger.info('/rest_info. Шаг 1')
     await message.answer(await dialogs.request_rest_name())
     await state.set_state(RestaurantInfoState.rest_name)
 
@@ -171,6 +177,7 @@ async def cmd_rest_info_step_1(message: types.Message, state: FSMContext):
 @router.message(RestaurantInfoState.rest_name)
 async def cmd_rest_info_step_2(message: types.Message, state: FSMContext):
     """Поиск информации по ресторану (поиск в имени). Шаг 2"""
+    logger.info('/rest_info. Шаг 2')
     restaurants = await Restaurant.objects.by_name(message.text)
     logger.debug('restaurants: %s', restaurants)
     if not restaurants:

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "support-bot"
-version = "1.4.7"
+version = "1.4.8"
 description = "tg bot for KFC Support"
 authors = ["Stranix <Phantom2525@gmail.com>"]
 readme = "README.md"

@@ -27,7 +27,7 @@ class EmployeeStatusMiddleware(BaseMiddleware):
         if event.text == '/start':
             return await handler(event, data)
         employee: CustomUser = data['employee']
-        logger.debug('employee: %s', employee.name)
+        logger.info('Пользователь: %s', employee.name)
         if not employee.is_active:
             await event.reply(
                 'Ваша запись не активирована.\n'

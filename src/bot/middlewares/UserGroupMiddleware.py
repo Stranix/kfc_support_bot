@@ -29,7 +29,6 @@ class UserGroupMiddleware(BaseMiddleware):
         employee: CustomUser = data['employee']
         data['field_engineer'] = None
         data['support_engineer'] = None
-        logger.debug('employee: %s', employee.name)
         if await employee.groups.filter(name__contains='Подрядчик').aexists():
             data['field_engineer'] = FieldEngineer(employee)
         if await employee.groups.filter(
