@@ -46,7 +46,11 @@ async def get_task(
         support_engineer: SupportEngineer,
         state: FSMContext
 ):
-    logger.info('Получаем список доступных задач')
+    logger.info('/get_task - Получаем список доступных задач')
+    if support_engineer is None:
+        logger.warning('Неподходящая группа')
+        await message.reply(await dialogs.error_unsupported_group())
+        return
     tasks = await SDTask.objects.new_task_by_engineer_group(support_engineer)
     if not tasks:
         logger.info('Нет новых задач')

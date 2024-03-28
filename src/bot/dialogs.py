@@ -588,3 +588,8 @@ async def request_rest_name() -> str:
         'rest_name': True,
     }
     return await tg_render_message('bot/common.html', context)
+
+
+async def error_unsupported_group() -> str:
+    """Не подходящая группа для команды"""
+    return 'Для вашей группы команда недоступна'

@@ -77,15 +77,6 @@ class CustomUserManager(BaseUserManager):
         )
         return engineers
 
-    async def get_main_user_group(self):
-        groups = [
-            'Ведущие инженеры',
-            'Старшие инженеры',
-            'Инженеры',
-            'Диспетчеры',
-        ]
-        return await self.groups.filter(name__in=groups).afirst()
-
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     login = models.CharField('Login', max_length=50, unique=True)
