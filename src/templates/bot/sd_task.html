@@ -34,7 +34,7 @@
 {% if assign_performer %}
 💼<code>{{ appointer_name }}</code> назначил на вас задачу <code>{{ task.number }}</code><br>
 Задача у вас в работе.<br>
-Контакт для обратной связи: {task.new_applicant.name}(@{task.new_applicant.tg_nickname})<br><br>
+Контакт для обратной связи: {{ task.new_applicant.name }}(@{{ task.new_applicant.tg_nickname }})<br><br>
 <code>{{ task.title }}</code><br>
 Что требуется:<br>
 {{  task.description }}<br><br>
