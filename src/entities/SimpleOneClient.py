@@ -17,7 +17,6 @@ if settings.DEBUG:
 
 class SimpleOneClient:
     __token: str = ''
-    _connector = aiohttp.TCPConnector(verify_ssl=False)
 
     def __init__(self):
         self.api = settings.SIMPLEONE_API
@@ -31,11 +30,12 @@ class SimpleOneClient:
             'Authorization': f'Bearer {self.__token}',
             'Content-Type': 'application/json',
         }
-        async with aiohttp.ClientSession(connector=self._connector) as session:
+        async with aiohttp.ClientSession() as session:
             async with session.get(
                     url,
                     headers=headers,
                     params=params,
+                    ssl=False,
             ) as response:
                 header_content_type = response.headers.get('Content-Type')
                 logger.debug('response: %s', response.status)
@@ -84,10 +84,11 @@ class SimpleOneClient:
             'language': 'ru',
         }
         logger.debug('url: %s', url)
-        async with aiohttp.ClientSession(connector=self._connector) as session:
+        async with aiohttp.ClientSession() as session:
             async with session.post(
                     url,
                     data=data,
+                    ssl=False,
             ) as response:
                 header_content_type = response.headers.get('Content-Type')
                 logger.debug('response: %s', response.status)
