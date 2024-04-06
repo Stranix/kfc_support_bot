@@ -94,7 +94,7 @@ def upload_restaurants(restaurants):
 
 def get_franchise_by_owner(owner: str):
     franchise_alias = 'fz'
-    if owner.lower().find('ям') != -1:
+    if owner.lower().find('юнирест') != -1:
         franchise_alias = 'yum'
     if owner.lower().find('интернэшнл') != -1:
         franchise_alias = 'irb'
