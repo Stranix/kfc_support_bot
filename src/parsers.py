@@ -1,22 +1,24 @@
 import re
 import logging
-from pprint import pprint
 
 from urllib.parse import urlparse
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
+from dataclasses import dataclass
 
 from typing import Any
 from datetime import datetime
 
 from bs4 import BeautifulSoup
+
 from django.db import IntegrityError
 from django.utils import timezone
 
 from src import utils
+from src.models import GSDTask
+from src.models import Restaurant
+from src.models import SimpleOneTask
 from src.entities.SimpleOneClient import SimpleOneClient
-from src.models import Restaurant, GSDTask, SimpleOneTask
-from src.utils import get_restaurant_by_applicant
 
 logger = logging.getLogger('app_parsers')
 logger.setLevel(logging.DEBUG)
@@ -78,7 +80,7 @@ async def parse_gsd_mail(mail_text: str) -> ParsedGSDTask:
         gsd_group=re.search(r'«([\s\S]+?)»', main_info[0]).group(),
         description=mail_text,
     )
-    task.restaurant = await get_restaurant_by_applicant(task.applicant)
+    task.restaurant = await utils.get_restaurant_by_applicant(task.applicant)
     logger.info('Информация по задаче собрана')
     return task
 
@@ -118,7 +120,7 @@ async def parse_simpleone_mail(mail_text: str) -> ParsedSimpleOneTask:
         request_type_link=task_info['request_type']['link'],
     )
     task = await get_ext_task_info(task, simpleone_client)
-    pprint(asdict(task))
+    logger.info('Информация по задаче %s получена', task.number)
     return task
 
 
