@@ -45,6 +45,6 @@ jobs:
             echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
             ssh-keyscan -H ${{ secrets.SSH_HOST }} > ~/.ssh/known_hosts
         - name: connect and pull
-          run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && ./docker_deploy.sh && exit"
+          run: ssh -p 5022 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && ./docker_deploy.sh && exit"
         - name: cleanup
           run: rm -rf ~/.ssh
