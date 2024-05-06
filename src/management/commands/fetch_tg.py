@@ -48,6 +48,7 @@ async def get_message_from_tg_chanel(event):
         'ЮНИРЕСТ',
         'Рестораны быстрого питания',
         'ИНТЕРНЭШНЛ РЕСТОРАНТ БРЭНДС',
+        'МайРест',
     ]
     dispatcher_task = await parce_tg_notify(event.text)
     if dispatcher_task.company not in company:
