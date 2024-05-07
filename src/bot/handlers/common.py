@@ -51,7 +51,6 @@ async def activate_user(query: types.CallbackQuery, state: FSMContext):
     user_id = query.data.split('_')[1]
     employee = await CustomUser.objects.aget(id=user_id)
     employee.is_active = True
-    await query.message.delete()
     await employee.asave()
     await state.update_data(employee=employee)
     groups = await sync_to_async(list)(
