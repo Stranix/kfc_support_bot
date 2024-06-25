@@ -103,22 +103,22 @@ async def cmd_help(message: types.Message, employee: CustomUser):
     )
     available_commands = {}
     for command in set(bot_commands):
-        text = f'{command.name} - {command.description}'
+        text = f'{command.name} - {command.description}\n'
         try:
             available_commands[command.category.name]['commands'].append(text)
         except KeyError:
             available_commands[command.category.name] = {'commands': [text]}
 
-    help_massage = ''
+    help_message = ''
     for command_category, commands in available_commands.items():
-        help_massage += f'{html.bold(command_category)}\n'
+        help_message += f'{html.bold(command_category)}\n'
         for command in commands['commands']:
-            help_massage += f'{command}\n'
-        help_massage += '\n\n'
-    if not help_massage:
+            help_message += f'{command}\n'
+        help_message += '\n\n'
+    if not help_message:
         await message.answer('Нет доступных команд')
         return
-    await message.answer(help_massage)
+    await message.answer(help_message)
 
 
 @router.message(Command('cancel'))
