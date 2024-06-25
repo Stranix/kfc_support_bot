@@ -48,8 +48,7 @@ async def check_task_activate_step_2(task_number: str):
     await Message.send_tg_notification(
         [User(task.new_applicant)],
         f'Не взяли в работу задачу {task.number} за 20 минут.\n'
-        f'Сообщил Ведущим'
-        f'\n\n{html.italic("Инженеры работают, как правило с 8 утра")}',
+        f'Сообщил Ведущим',
     )
 
 
