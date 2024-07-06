@@ -4,6 +4,7 @@ import re
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramEntityTooLarge
 from aiogram.types import Message, BufferedInputFile
 from aiogram.utils.media_group import MediaGroupBuilder
 
@@ -111,19 +112,40 @@ async def find_external_number_in_task(text_for_search: str) -> list:
     return found_numbers
 
 
-async def create_documents_media_group(
-        tg_documents: dict,
-) -> list:
+async def get_buffered_file(
+        bot: Bot,
+        doc_name: str,
+        doc_id: str,
+) -> BufferedInputFile:
+    """Получение BufferedInputFile для отправки документа в телеграм"""
+    tg_file = await bot.get_file(doc_id)
+    io_file = await bot.download_file(tg_file.file_path)
+    return BufferedInputFile(io_file.read(), filename=doc_name)
+
+
+async def create_documents_media_group(tg_documents: dict) -> list:
     """Создаем медиа-группу из полученных ранее документов"""
     bot = Bot(token=settings.TG_BOT_TOKEN, parse_mode=ParseMode.HTML)
     media_group = MediaGroupBuilder(caption='Приложенные документы')
     for doc_name, doc_id in tg_documents.items():
-        tg_file = await bot.get_file(doc_id)
-        io_file = await bot.download_file(tg_file.file_path)
-        text_file = BufferedInputFile(io_file.read(), filename=doc_name)
-        media_group.add_document(text_file)
+        buffered_file = await get_buffered_file(bot, doc_name, doc_id)
+        media_group.add_document(buffered_file)
     await bot.session.close()
     return media_group.build()
+
+
+async def sending_documents_one_by_one(
+        bot: Bot,
+        sd_task: SDTask,
+        tg_documents: dict,
+):
+    """Отправка документов по одному"""
+    for doc_name, doc_id in tg_documents.items():
+        buffered_file = await get_buffered_file(bot, doc_name, doc_id)
+        await bot.send_document(
+            chat_id=sd_task.new_performer.tg_id,
+            document=buffered_file,
+        )
 
 
 async def send_documents_out_task(
@@ -140,10 +162,14 @@ async def send_documents_out_task(
     if not tg_documents:
         raise DocumentsNotFoundError('Нет документов в задаче')
     media_group = await create_documents_media_group(tg_documents)
-    await bot.send_media_group(
-        chat_id=sd_task.new_performer.tg_id,
-        media=media_group,
-    )
+    try:
+        await bot.send_media_group(
+            chat_id=sd_task.new_performer.tg_id,
+            media=media_group,
+        )
+    except TelegramEntityTooLarge:
+        logger.warning('Размер вложений слишком большой')
+        await sending_documents_one_by_one(bot, sd_task, tg_documents)
     await bot.session.close()
     logger.info('Документы отправлены')
 
