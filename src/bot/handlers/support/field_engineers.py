@@ -57,6 +57,10 @@ async def start_close_task(
 @router.message(CloseTaskState.get_number)
 async def process_get_number(message: types.Message, state: FSMContext):
     logger.info('Закрытие заявки. Обработка номера задачи')
+    if not message.text:
+        logger.error('Номер задачи не может быть пустым')
+        await message.answer(dialogs.error_empty_task_number())
+        return
     task_number = re.match(r'([a-zA-Z]{2,3}\S?[0-9]{7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')
