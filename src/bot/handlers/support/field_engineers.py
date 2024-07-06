@@ -163,6 +163,10 @@ async def choice_legal_entity(query: types.CallbackQuery, state: FSMContext):
 @router.message(NewTaskState.get_gsd_number)
 async def process_get_gsd_number(message: types.Message, state: FSMContext):
     logger.info('Обработка номера задачи от инженера')
+    if not message.text:
+        logger.error('Номер задачи не может быть пустым')
+        await message.answer(dialogs.error_empty_task_number())
+        return
     task_number = re.match(r'([a-zA-Z]{2,3}\S?[0-9]{7})+', message.text)
     if not task_number:
         logger.warning('Не правильный номер задачи')

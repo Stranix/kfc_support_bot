@@ -593,3 +593,8 @@ async def request_rest_name() -> str:
 async def error_unsupported_group() -> str:
     """Не подходящая группа для команды"""
     return 'Для вашей группы команда недоступна'
+
+
+def error_empty_task_number() -> str:
+    """Не передали номер задачи"""
+    return 'Номер задачи не может быть пустым'
