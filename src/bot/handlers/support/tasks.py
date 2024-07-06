@@ -4,6 +4,7 @@ import logging
 from aiogram import F
 from aiogram import Router
 from aiogram import types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.state import State
 from aiogram.fsm.state import StatesGroup
@@ -109,8 +110,10 @@ async def process_start_task(
     except SDTask.DoesNotExist:
         logger.warning('Задачи %s нет в базе', task_id)
         await query.message.answer(await dialogs.error_task_not_found())
-    finally:
+    try:
         await query.message.delete()
+    except TelegramBadRequest:
+        logger.debug('Нет сообщения для удаления')
 
 
 @router.callback_query(F.data.startswith('atask_'))
