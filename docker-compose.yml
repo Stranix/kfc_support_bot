@@ -1,13 +1,4 @@
-version: '3.8'
-
 services:
-  db:
-    image: postgres
-    restart: always
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    env_file:
-      - ./.env.db
 
   redis:
     image: redis
@@ -23,12 +14,12 @@ services:
       - media_volume:/home/app/web/media
     extra_hosts:
       - "sd.irb.rest:83.217.25.60"
+      - "host.docker.internal:host-gateway"
     expose:
       - "8000"
     env_file:
       - ./.env
     depends_on:
-      - db
       - redis
     command: gunicorn --bind 0.0.0.0:8000 config.asgi -w 4 -k uvicorn.workers.UvicornWorker
 
@@ -49,5 +40,4 @@ services:
 volumes:
   static_volume:
   media_volume:
-  postgres_data:
   redis_data:
