@@ -1,6 +1,7 @@
 import logging
 
-from src.models import SDTask, Dispatcher
+from src.models import SDTask
+from src.models import Dispatcher
 from src.entities.User import User
 
 logger = logging.getLogger('support_bot')

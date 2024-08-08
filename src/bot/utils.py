@@ -12,6 +12,7 @@ from asgiref.sync import sync_to_async
 
 from aiogram import html
 from aiogram import types
+from aiogram.utils.payload import decode_payload
 
 from bs4 import BeautifulSoup
 
@@ -19,6 +20,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.auth.models import Group as DjangoGroup
 
 from src.models import CustomUser
+from src.models import TGDeepLink
 from src.bot.scheme import SyncStatus
 from src.bot.scheme import TelegramUser
 from src.entities.Message import Message
@@ -100,11 +102,41 @@ async def user_registration(message: types.Message) -> CustomUser:
              f'Телеграм id: {html.code(message.from_user.id)}\n' \
              f'Телеграм username: @{message.from_user.username}\n' \
              f'Имя: {html.code(message.from_user.full_name)}\n'
-    logger.debug('notify: %s', notify)
     notify_keyboard = await get_user_activate_keyboard(employee.id)
     await Message.send_notify_to_seniors_engineers(notify, notify_keyboard)
     await message.answer('Заявка на регистрацию отправлена.')
     return employee
+
+
+async def deeplink_user_registration(
+        message: types.Message,
+        deeplink_key: str,
+) -> CustomUser:
+    logger.info('Регистрация через пригласительную ссылку')
+    deeplink_key = decode_payload(deeplink_key)
+    try:
+        deeplink = await TGDeepLink.objects.prefetch_related(
+            'group',
+        ).aget(
+            deeplink_key=deeplink_key,
+        )
+        employee = await CustomUser.objects.acreate(
+            login=message.from_user.username,
+            name=message.from_user.full_name.replace('@', ''),
+            tg_id=message.from_user.id,
+            tg_nickname=message.from_user.username,
+        )
+        employee.is_active = True
+        await sync_to_async(employee.groups.add)(deeplink.group)
+        await employee.asave()
+        notify = f'Новый пользователь СБЕР \n\n' \
+                 f'Телеграм id: {html.code(message.from_user.id)}\n' \
+                 f'Телеграм username: @{message.from_user.username}\n' \
+                 f'Имя: {html.code(message.from_user.full_name)}\n'
+        await Message.send_notify_to_seniors_engineers(notify)
+        return employee
+    except TGDeepLink.DoesNotExist:
+        await message.answer('Не правильная ссылка')
 
 
 async def get_tg_user_info_from_event(event: types.Update) -> TelegramUser:

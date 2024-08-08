@@ -5,6 +5,7 @@ from aiogram import types
 from aiogram import Router
 from aiogram import html
 from aiogram.filters import Command
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import ReplyKeyboardRemove
@@ -13,11 +14,12 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 
 from src.bot import dialogs
-from src.bot.services import prepare_restaurant_as_file_for_send
-from src.models import CustomGroup, Restaurant
+from src.models import CustomGroup
+from src.models import Restaurant
 from src.models import CustomUser
 from src.models import BotCommand
 from src.bot.keyboards import create_tg_keyboard_markup
+from src.bot.services import prepare_restaurant_as_file_for_send
 
 logger = logging.getLogger('support_bot')
 router = Router(name='common_handlers')
@@ -33,6 +35,19 @@ class UserFeedBackState(StatesGroup):
 
 class RestaurantInfoState(StatesGroup):
     rest_name = State()
+
+
+@router.message(CommandStart(deep_link=True))
+async def cmd_start_with_deep_link(
+        message: types.Message,
+        employee: CustomUser,
+):
+    if employee.is_active:
+        await message.answer(
+            'Учетная запись активирована.\n'
+            'Для запроса поддержки инженеров используй команду: /help_sber'
+        )
+        return
 
 
 @router.message(Command('start'))
@@ -95,7 +110,7 @@ async def activate_user_step_2(message: types.Message, state: FSMContext):
 async def cmd_help(message: types.Message, employee: CustomUser):
     logger.info('Обработчик команды /help')
     emp_groups = employee.groups.all()
-    logger.debug('emp_groups: %s', emp_groups)
+    logger.debug(f'emp_groups: {emp_groups}')
     bot_commands = await sync_to_async(list)(
         BotCommand.objects.prefetch_related('new_groups', 'category').filter(
             new_groups__in=emp_groups,

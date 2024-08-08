@@ -10,6 +10,7 @@ from aiogram.types import Update
 
 from src.models import CustomUser
 from src.bot.utils import user_registration
+from src.bot.utils import deeplink_user_registration
 from src.bot.utils import get_tg_user_info_from_event
 
 logger = logging.getLogger('middleware_support_bot')
@@ -36,7 +37,14 @@ class AuthUpdateMiddleware(BaseMiddleware):
         try:
             employee_in_db = await self.get_employee_from_db()
         except CustomUser.DoesNotExist:
-            employee_in_db = await user_registration(event.message)
+            message_text = event.message.text.split()
+            if len(message_text) == 2:
+                employee_in_db = await deeplink_user_registration(
+                    event.message,
+                    message_text[1],
+                )
+            else:
+                employee_in_db = await user_registration(event.message)
 
         if employee_in_db and employee_in_db.is_active:
             logger.debug('Пользователь в базе и активен. Фиксируем в кеше')

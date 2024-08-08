@@ -172,6 +172,20 @@ async def get_approved_task_keyboard(task_number: str):
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
 
 
+async def get_sber_approved_task_keyboard():
+    logger.debug('Создаю клавиатуру для подтверждения новой задачи сбер')
+    inline_keyboard = [
+        [
+            InlineKeyboardButton(
+                text='Подтвердить',
+                callback_data='sber_approved_new_task',
+            ),
+            InlineKeyboardButton(text='Отмена', callback_data='cancel'),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+
+
 async def get_task_feedback_keyboard(task_id: int):
     logger.debug('Создаю клавиатуру для оценки задачи')
     buttons = []

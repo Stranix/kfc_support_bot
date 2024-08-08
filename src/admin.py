@@ -24,6 +24,7 @@ from src.models import (
     BreakShift,
     BotCommandCategory,
     SimpleOneTask,
+    TGDeepLink,
 )
 
 admin.site.unregister(DjangoGroup)
@@ -320,4 +321,16 @@ class DispatcherAdmin(admin.ModelAdmin):
     search_fields = [
         'dispatcher_number',
         'gsd_numbers',
+    ]
+
+
+@admin.register(TGDeepLink)
+class TGDeepLinkAdmin(admin.ModelAdmin):
+    list_display = [
+        'deeplink_key',
+        'deeplink',
+        'group',
+        'user',
+        'creat_at',
+        'is_active',
     ]

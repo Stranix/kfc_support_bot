@@ -982,3 +982,29 @@ class SimpleOneCompany(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class TGDeepLink(models.Model):
+    deeplink_key = models.CharField('Ключ', max_length=5)
+    deeplink = models.CharField('Ссылка', max_length=150)
+    group = models.ForeignKey(
+        'CustomGroup',
+        on_delete=models.CASCADE,
+        related_name='deeplink',
+        verbose_name='Группа'
+    )
+    user = models.ForeignKey(
+        'CustomUser',
+        on_delete=models.PROTECT,
+        related_name='deeplinks',
+        verbose_name='Сотрудник',
+    )
+    creat_at = models.DateTimeField('Дата создания', default=timezone.now)
+    is_active = models.BooleanField('Активна?', default=True)
+
+    class Meta:
+        verbose_name = 'TGDeepLink'
+        verbose_name_plural = 'TGDeepLinks'
+
+    def __str__(self):
+        return self.deeplink

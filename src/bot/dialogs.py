@@ -145,6 +145,24 @@ async def request_task_confirmation(number: str, description: str) -> tuple:
     return message, keyboard
 
 
+async def sber_request_task_confirmation(
+        number: str,
+        description: str,
+) -> tuple:
+    """
+    Команда /help_sber.
+    Запрос подтверждения полученной информации
+    """
+    context = {
+        'task_confirmation': True,
+        'restaurant': number,
+        'task_description': description,
+    }
+    message = await tg_render_message('bot/help_sber.html', context)
+    keyboard = await keyboards.get_sber_approved_task_keyboard()
+    return message, keyboard
+
+
 async def error_wrong_task_description() -> str:
     """Ошибка. Нет описания к задаче"""
     context = {'wrong_task_description': True}

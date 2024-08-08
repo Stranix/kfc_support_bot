@@ -113,9 +113,10 @@ class Message:
                 group = await CustomGroup.objects.aget(name='Диспетчеры')
                 group_id = group.id
             if task.support_group == 'ENGINEER':
-                group_id = await CustomGroup.objects.aget(
+                group = await CustomGroup.objects.aget(
                     name='Старшие инженеры',
-                ).id
+                )
+                group_id = group.id
             notify = await dialogs.error_no_engineers_on_shift(task.number)
             await Message.send_notify_to_group_managers(group_id, notify)
             await Message.send_notify_to_seniors_engineers(notify)

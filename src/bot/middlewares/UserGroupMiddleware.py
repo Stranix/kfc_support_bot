@@ -8,6 +8,7 @@ from typing import Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 
+from src.entities.SberEngineer import SberEngineer
 from src.entities.FieldEngineer import FieldEngineer
 from src.entities.SupportEngineer import SupportEngineer
 from src.models import CustomUser
@@ -40,5 +41,7 @@ class UserGroupMiddleware(BaseMiddleware):
             )
         ).aexists():
             data['support_engineer'] = SupportEngineer(employee)
+        if await employee.groups.filter(name__contains='SBER').aexists():
+            data['sber_engineer'] = SberEngineer(employee)
         logger.debug('data: %s', data)
         return await handler(event, data)
