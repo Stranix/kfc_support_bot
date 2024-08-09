@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [ "new-version" ]
+    branches: [ "master" ]
 
 env:
   # Use docker.io for Docker Hub if empty
