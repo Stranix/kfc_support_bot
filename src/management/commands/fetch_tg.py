@@ -93,10 +93,10 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
     clear_message = message.replace('**', '')
     message_lines = clear_message.split('\n')
     dispatcher_number = re.search(r'\d{6}', message_lines[0])
-    itsm_number = re.search(r'ITSM_\d{5}', message_lines[4])
+    itsm_number = re.search(r'ITSM_\d{5}', message_lines[5])
     closing_comment = clear_message.split('Решение:')[1].replace('\n', '')
-    performer = message_lines[5].split(':')[1].strip()
-    simpleone_number = re.search(r'[A-Z]{3}[0-9]{7}', message_lines[9])
+    performer = message_lines[6].split(':')[1].strip()
+    simpleone_number = re.search(r'[A-Z]{3}[0-9]{7}', message_lines[10])
     try:
         if settings.DEBUG:
             performer = await CustomUser.objects.aget(
@@ -123,7 +123,7 @@ async def parce_tg_notify(message: str) -> DispatcherTaskNotify:
         restaurant=message_lines[3].split(':')[1].strip(),
         itsm_number=itsm_number,
         new_performer=performer,
-        gsd_numbers=re.findall(r'(SC-\d{7})+', message_lines[9]),
+        gsd_numbers=re.findall(r'(SC-\d{7})+', message_lines[10]),
         simpleone_number=simpleone_number,
         closing_comment=closing_comment.strip(),
     )
