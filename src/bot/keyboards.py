@@ -346,12 +346,12 @@ async def get_choice_legal_entity_keyboard():
     inline_keyboard = [
         [
             InlineKeyboardButton(
-                text='IRB+Unirest',
+                text='IRB',
                 callback_data='legal_irb',
             ),
         ],
         [
-            InlineKeyboardButton(text='Myrest', callback_data='legal_am'),
+            InlineKeyboardButton(text='Юнирест', callback_data='legal_am'),
         ],
     ]
     return InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
