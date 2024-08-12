@@ -68,9 +68,9 @@ class FieldEngineer(User):
             number,
         )
         if legal == 'irb':
-            legal = 'IRB+Unirest'
+            legal = 'IRB'
         if legal == 'am':
-            legal = 'Myrest'
+            legal = 'Unirest'
         sd_task = await self.create_sd_task(
             f'Помощь по заявке {number}',
             support_group,
