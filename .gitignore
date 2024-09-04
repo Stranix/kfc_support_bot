@@ -10,3 +10,4 @@ config/*.json
 static/
 media/
 *.session
+node_modules/

@@ -1,4 +1,5 @@
 import logging
+import re
 
 from typing import Any
 
@@ -363,9 +364,14 @@ async def sd_task_info(task: SDTask, short: bool = True) -> tuple:
 
 async def sd_task_start_for_performer(task: SDTask) -> str:
     """Сообщение: задачу взяли в работу для исполнителя"""
+    task_number_in_title = ''
+    search_task_number = re.search(r'SC-\d{7}|[A-Z]{3}\d{7}', task.title)
+    if search_task_number:
+        task_number_in_title = search_task_number.group()
     context = {
         'for_performer': True,
         'task': task,
+        'external_task_number': task_number_in_title,
     }
     return await tg_render_message('bot/sd_task.html', context)
 

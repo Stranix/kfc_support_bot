@@ -118,7 +118,7 @@ async def cmd_help(message: types.Message, employee: CustomUser):
     )
     available_commands = {}
     for command in set(bot_commands):
-        text = f'{command.name} - {command.description}\n'
+        text = f'{command.name} - {command.description}'
         try:
             available_commands[command.category.name]['commands'].append(text)
         except KeyError:

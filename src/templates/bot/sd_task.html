@@ -13,7 +13,8 @@
 {% if for_performer %}
 💼Вы взяли задачу <code>{{ task.number }}</code> в работу.<br>
 Контакт для обратной связи: {{ task.new_applicant.name }}(@{{ task.new_applicant.tg_nickname}})<br><br>
-<code>{{ task.title }}</code><br>
+{{ task.title }}
+  {% if external_task_number %}(<code>{{ external_task_number }}</code>) {% endif %}<br>
 👇Что требуется:<br>
 {{  task.description }}<br><br>
 <i>Для закрытия задачи, используйте команду</i> /close_task
